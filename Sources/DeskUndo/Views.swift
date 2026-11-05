@@ -120,6 +120,8 @@ struct SettingsView: View {
     @ViewState private var autoSwitch = false
     @ViewState private var nameField = ""
     @ViewState private var message = ""
+    @ViewState private var hovered: GuideField?
+    @FocusState private var focused: GuideField?
 
     struct Fields {
         var distance = "", screenTop = "", lens = "", height = "", seatedEye = "", elbow = "", sitDesk = "", standDesk = ""
@@ -169,18 +171,23 @@ struct SettingsView: View {
                 }
             }
             Section("Tape measure (centimetres)") {
-                field("Eye to screen, seated", $fields.distance, hint: "for calibration")
-                field("Top of screen above desk", $fields.screenTop, hint: "default \(fmt(defaults.screenTop))")
-                field("Webcam lens above screen top", $fields.lens, hint: "default \(fmt(defaults.lensOffset))")
-                field("Your height", $fields.height, hint: "default \(Int(Setup.defaultUserHeightCm))")
-                field("Seated eyes above desk", $fields.seatedEye, hint: "estimated from height")
-                field("Eyes to elbow", $fields.elbow, hint: "default 0.3 of your height")
+                FieldGuideView(active: hovered ?? focused, laptop: profile.camera == .builtIn,
+                               select: { focused = $0 },
+                               hover: { field, inside in
+                                   if inside { hovered = field } else if hovered == field { hovered = nil }
+                               })
+                field(.distance, $fields.distance, hint: "for calibration")
+                field(.screenTop, $fields.screenTop, hint: "default \(fmt(defaults.screenTop))")
+                field(.lens, $fields.lens, hint: "default \(fmt(defaults.lensOffset))")
+                field(.height, $fields.height, hint: "default \(Int(Setup.defaultUserHeightCm))")
+                field(.seatedEye, $fields.seatedEye, hint: "estimated from height")
+                field(.elbow, $fields.elbow, hint: "default 0.3 of your height")
                 Text("Leave a field empty to use the default estimate.").font(.caption).foregroundStyle(.secondary)
             }
-            Section("Desk presets (tape on the desk leg, centimetres)") {
-                field("Sit", $fields.sitDesk, hint: "desk height")
+            Section("Desk presets (floor to top of desk, from the tape on the desk leg, centimetres)") {
+                field(.sitDesk, $fields.sitDesk, hint: "floor to desk top")
                 if profile.supportsStandingPreset {
-                    field("Stand", $fields.standDesk, hint: "desk height")
+                    field(.standDesk, $fields.standDesk, hint: "floor to desk top")
                 } else {
                     Text("Desk height is fixed, so this setup has no standing preset.").font(.caption).foregroundStyle(.secondary)
                 }
@@ -226,10 +233,16 @@ struct SettingsView: View {
         return String(format: "Calibrated: focal length %.3f image widths, tilt %.1f°.", f, c.pitchDegrees ?? 0)
     }
 
-    private func field(_ label: String, _ text: Binding<String>, hint: String) -> some View {
-        LabeledContent(label) {
+    /// A tape measure field. Focusing or hovering it lights its line in the drawing above.
+    private func field(_ guide: GuideField, _ text: Binding<String>, hint: String) -> some View {
+        LabeledContent(guide.label) {
             TextField("", text: text, prompt: Text(hint)).multilineTextAlignment(.trailing).frame(width: 140)
+                .focused($focused, equals: guide)
         }
+        .onHover { inside in
+            if inside { hovered = guide } else if hovered == guide { hovered = nil }
+        }
+        .help(guide.caption(laptop: profile.camera == .builtIn))
     }
 
     private func load() {

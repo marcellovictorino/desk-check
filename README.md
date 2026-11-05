@@ -51,8 +51,12 @@ means the default estimate applies:
 | Your height | tape measure | 175 |
 | Seated eyes above desk | tape measure; used to calibrate the webcam's tilt | 23% of your height |
 | Eyes to elbow | tape measure, the same sitting or standing; live mode uses it for desk height | 30% of your height |
-| Sit and stand desk height | height read from the tape on the desk leg (stand is absent when desk height is fixed) | none |
+| Sit and stand desk height | floor to the top of the desk, read from the tape on the desk leg (stand is absent when desk height is fixed) | none |
 | Screen height, screen distance, desk height, chair height | adjustable or fixed | adjustable |
+
+A side-view drawing above the tape measure fields shows what to measure. The field you are
+in, or hover over, lights its line and caption; click a line to jump to its field. Your height,
+Eyes to elbow and Stand switch it to a standing drawing, and a MacBook setup draws a laptop.
 
 **Calibrate webcam** sits at your tape distance and stores, per webcam name, its field of
 view and tilt. Calibration belongs to the camera, not the setup, so every setup using that
