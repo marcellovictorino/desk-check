@@ -98,14 +98,28 @@ struct PreviewView: View {
     }
 }
 
+/// View-owned state, like SwiftUI's `@State`. From the macOS 27 SDK `@State` is a macro whose
+/// plugin ships with Xcode only, so the command line tools that `brew install` builds with
+/// cannot expand it. This wraps `State` directly, which needs no macro.
+@propertyWrapper
+struct ViewState<Value>: DynamicProperty {
+    private let state: State<Value>
+    init(wrappedValue: Value) { state = State(initialValue: wrappedValue) }
+    var wrappedValue: Value {
+        get { state.wrappedValue }
+        nonmutating set { state.wrappedValue = newValue }
+    }
+    var projectedValue: Binding<Value> { state.projectedValue }
+}
+
 struct SettingsView: View {
     @ObservedObject var checker: PostureChecker
-    @State private var profile = SetupProfile.external(name: "")
-    @State private var fields = Fields()
-    @State private var showPreview = false
-    @State private var autoSwitch = false
-    @State private var nameField = ""
-    @State private var message = ""
+    @ViewState private var profile = SetupProfile.external(name: "")
+    @ViewState private var fields = Fields()
+    @ViewState private var showPreview = false
+    @ViewState private var autoSwitch = false
+    @ViewState private var nameField = ""
+    @ViewState private var message = ""
 
     struct Fields {
         var distance = "", screenTop = "", lens = "", height = "", seatedEye = "", elbow = "", sitDesk = "", standDesk = ""
