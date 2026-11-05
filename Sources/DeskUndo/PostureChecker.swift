@@ -14,6 +14,7 @@ final class PostureChecker: NSObject, ObservableObject {
     @Published private(set) var advice: [Advice] = []
     @Published private(set) var webcamName: String?
     @Published private(set) var calibrationNote: String?
+    @Published private(set) var presetNote: String?
     @Published private(set) var preview: PreviewFrame?
     /// Set by a calibration run so Settings can show what changed.
     @Published private(set) var lastCalibrationText: String?
@@ -67,7 +68,7 @@ final class PostureChecker: NSObject, ObservableObject {
 
     /// Forgets the last result, which belonged to another setup.
     func reset() {
-        reading = nil; advice = []; calibrationNote = nil; preview = nil
+        reading = nil; advice = []; calibrationNote = nil; presetNote = nil; preview = nil
         statusText = "The camera is off."
     }
 
@@ -81,15 +82,24 @@ final class PostureChecker: NSObject, ObservableObject {
     func clearPreview() { preview = nil }
 
     /// Reads where the eyes are and says what to move.
-    func check() { start(calibrating: false) }
+    func check() { start(.check) }
 
     /// Sit at the tape-measured distance, then calibrate: stores this webcam's field of view and tilt.
-    func calibrate() { start(calibrating: true) }
+    func calibrate() { start(.calibrate) }
 
-    private func start(calibrating: Bool) {
+    /// Saves what the camera sees now as the remembered view of a preset, so later checks can confirm it.
+    func rememberView(_ posture: Posture) { start(.remember(posture)) }
+
+    /// Checks the camera view against a preset's remembered view.
+    func confirmPreset(_ posture: Posture) { start(.confirm(posture)) }
+
+    enum Mode: Equatable { case check, calibrate, remember(Posture), confirm(Posture) }
+
+    private func start(_ mode: Mode) {
         guard !isRunning else { return }
         isRunning = true
         preview = nil
+        presetNote = nil
         AVCaptureDevice.requestAccess(for: .video) { granted in
             Task { @MainActor in
                 self.refreshPermission()
@@ -97,12 +107,13 @@ final class PostureChecker: NSObject, ObservableObject {
                     self.finish("Desk Undo has no camera permission. Allow it in System Settings, Privacy & Security, Camera.")
                     return
                 }
-                self.begin(calibrating: calibrating)
+                self.begin(mode)
             }
         }
     }
 
-    private func begin(calibrating: Bool) {
+    private func begin(_ mode: Mode) {
+        let calibrating = mode == .calibrate
         let config = ConfigLocation.load()
         let profile = config.activeProfile
         guard let device = FaceSampler.camera(for: profile.camera) else {
@@ -123,12 +134,12 @@ final class PostureChecker: NSObject, ObservableObject {
                 if let error { self.finish(error); return }
                 guard let result else { self.finish("No reading."); return }
                 log.notice("camera session stopped, samples=\(result.samples.count, privacy: .public)")
-                if calibrating { self.finishCalibration(result) } else { self.finishCheck(result) }
+                if calibrating { self.finishCalibration(result) } else { self.finishCheck(result, mode: mode) }
             }
         }
     }
 
-    private func finishCheck(_ result: SampleResult) {
+    private func finishCheck(_ result: SampleResult, mode: Mode) {
         let config = ConfigLocation.load()
         let camera = config.camera(forWebcam: result.cameraName, fieldOfViewDegrees: result.fieldOfViewDegrees)
         let profile = config.activeProfile
@@ -144,7 +155,38 @@ final class PostureChecker: NSObject, ObservableObject {
         let line = String(format: "distance=%.1f eyeAboveTop=%.1f eyeHeight=%.1f frames=%d", median.distanceCm,
                           median.eyeAboveScreenTopCm, median.eyeHeightAboveDeskCm, readings.count)
         log.notice("check \(line, privacy: .public)")
-        finish("Checked setup \(profile.name) with \(result.cameraName). The camera is off.")
+        var message = "Checked setup \(profile.name) with \(result.cameraName). The camera is off."
+        switch mode {
+        case .remember(let posture): message = remember(median, posture: posture, config: config, profile: profile)
+        case .confirm(let posture): message = confirm(median, posture: posture, profile: profile)
+        default: break
+        }
+        finish(message)
+    }
+
+    private func remember(_ r: PostureReading, posture: Posture, config: DeskConfig, profile: SetupProfile) -> String {
+        guard var preset = profile.presets[posture] else {
+            return "Enter the \(posture.label.lowercased()) desk height from the tape in Settings first. The camera is off."
+        }
+        preset.distanceCm = r.distanceCm
+        preset.eyeAboveScreenTopCm = r.eyeAboveScreenTopCm
+        var p = profile
+        p.presets[posture] = preset
+        var updated = config
+        updated.save(p)
+        do { try ConfigLocation.save(updated) } catch { return "Could not save: \(error.localizedDescription)" }
+        presetNote = nil
+        return "Remembered \(posture.label.lowercased()) at \(Int(preset.deskHeightCm.rounded())) cm for \(profile.name). The camera is off."
+    }
+
+    private func confirm(_ r: PostureReading, posture: Posture, profile: SetupProfile) -> String {
+        guard let preset = profile.presets[posture] else { return "No \(posture.label.lowercased()) preset in this setup. The camera is off." }
+        switch preset.confirm(r) {
+        case .confirmed: presetNote = "\(posture.label) confirmed at \(Int(preset.deskHeightCm.rounded())) cm."
+        case .differs(let why): presetNote = why
+        case .notRemembered: presetNote = "Use Remember view at \(Int(preset.deskHeightCm.rounded())) cm first, so there is something to confirm."
+        }
+        return "Camera is off."
     }
 
     private func finishCalibration(_ result: SampleResult) {

@@ -45,11 +45,12 @@ public struct SetupProfile: Equatable, Sendable {
     public var screen: String
     public var measurements: Setup
     public var fixed: Set<Adjustment>
+    public var presets: [Posture: DeskPreset]
 
     public init(name: String, camera: CameraChoice = .auto, screen: String = "", measurements: Setup = Setup(),
-                fixed: Set<Adjustment> = []) {
+                fixed: Set<Adjustment> = [], presets: [Posture: DeskPreset] = [:]) {
         self.name = name; self.camera = camera; self.screen = screen
-        self.measurements = measurements; self.fixed = fixed
+        self.measurements = measurements; self.fixed = fixed; self.presets = presets
         self.measurements.builtIn = camera == .builtIn
     }
 

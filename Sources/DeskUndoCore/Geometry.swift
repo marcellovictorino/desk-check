@@ -52,6 +52,8 @@ public struct Setup: Equatable, Sendable {
     public var lensOffsetCm: Double?
     public var userHeightCm: Double?
     public var seatedEyeHeightCm: Double?
+    /// Vertical gap from the eyes down to the elbow, the same sitting or standing.
+    public var eyeToElbowCm: Double?
 
     /// True for the MacBook's own camera and screen, which sit lower and nearer the desk than an external screen.
     public var builtIn: Bool
@@ -61,16 +63,19 @@ public struct Setup: Equatable, Sendable {
     public var defaultLensOffsetCm: Double { builtIn ? 0.5 : 1 }
 
     public init(screenDistanceCm: Double? = nil, screenTopHeightCm: Double? = nil, lensOffsetCm: Double? = nil,
-                userHeightCm: Double? = nil, seatedEyeHeightCm: Double? = nil, builtIn: Bool = false) {
+                userHeightCm: Double? = nil, seatedEyeHeightCm: Double? = nil, eyeToElbowCm: Double? = nil, builtIn: Bool = false) {
         self.builtIn = builtIn
         self.screenDistanceCm = screenDistanceCm; self.screenTopHeightCm = screenTopHeightCm
         self.lensOffsetCm = lensOffsetCm; self.userHeightCm = userHeightCm; self.seatedEyeHeightCm = seatedEyeHeightCm
+        self.eyeToElbowCm = eyeToElbowCm
     }
 
     public var screenTop: Double { screenTopHeightCm ?? defaultScreenTopHeightCm }
     public var lensOffset: Double { lensOffsetCm ?? defaultLensOffsetCm }
     public var userHeight: Double { userHeightCm ?? Self.defaultUserHeightCm }
     /// Eye height above the desk when seated, estimated from body height when not measured.
+    /// Eyes to elbow, estimated from body height (about 0.3 of it) when not measured.
+    public var eyeToElbow: Double { eyeToElbowCm ?? userHeight * 0.3 }
     public var seatedEyeHeight: Double { seatedEyeHeightCm ?? userHeight * 0.23 }
 }
 

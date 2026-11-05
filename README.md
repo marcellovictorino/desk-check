@@ -4,8 +4,9 @@ Command-Z for your desk: a macOS menu bar app that uses your webcam to tell you,
 centimetres, how to move your screen and desk, and remembers your sitting and standing
 desk heights so you can always go back to your favourite setting.
 
-> **Status:** early. Desk Undo checks your screen distance and height with the webcam
-> and tells you what to move. Sit and stand presets and live adjustment come next.
+> **Status:** early. Desk Undo checks your screen distance and height with the webcam,
+> remembers sit and stand desk heights, and has a live mode for cranking the desk.
+> Chair advice is not built yet.
 
 ## What it does
 
@@ -49,6 +50,8 @@ means the default estimate applies:
 | Webcam lens above screen top | tape measure | 1 (0.5 for the MacBook) |
 | Your height | tape measure | 175 |
 | Seated eyes above desk | tape measure; used to calibrate the webcam's tilt | 23% of your height |
+| Eyes to elbow | tape measure, the same sitting or standing; live mode uses it for desk height | 30% of your height |
+| Sit and stand desk height | height read from the tape on the desk leg (stand is absent when desk height is fixed) | none |
 | Screen height, screen distance, desk height, chair height | adjustable or fixed | adjustable |
 
 **Calibrate webcam** sits at your tape distance and stores, per webcam name, its field of
@@ -58,8 +61,32 @@ field of view is assumed, which can be a few centimetres off. The optional previ
 the camera picture with the detected eye points while a check runs; the picture is held in
 memory only.
 
-"Your height" and the chair and desk adjustments are stored for the sit and stand presets
-and do not change today's advice.
+Chair height is stored but does not change advice yet.
+
+### Desk presets
+
+Presets belong to a setup. In Settings, type the desk height you read on the tape stuck to
+the desk leg for **Sit** and **Stand**. Set the desk to that height, then press
+**Remember view** in the popover: the camera stores how far the screen is and where your
+eyes sit against it. Later, set the desk to the tape reading and press **Confirm**; the
+camera checks the view is within 3 cm of what you saved and says what is off if not.
+Changing the tape height forgets the remembered view. A setup with a fixed desk (the
+MacBook template) has a sit preset only.
+
+### Live mode
+
+**Live** in the popover opens a small window that stays on top. The camera runs while it
+is open and turns off when you close it, press Stop, or after 10 minutes. Readings are
+averaged over about a second, so the number follows your cranking without flicker.
+Each adjustment you can move gets a row with a colour, an arrow and the centimetres to move:
+
+| Adjustment | Target | Green | Yellow |
+| --- | --- | --- | --- |
+| Screen height | top of screen 2 cm below eye level | within 3 cm | within 6 cm |
+| Screen distance | 62 cm from the eyes | within 12 cm | within 20 cm |
+| Desk height | desk surface 3 cm below your elbow | within 3 cm | within 6 cm |
+
+Beyond yellow is red. Fixed adjustments get no row, so the MacBook setup shows distance only.
 
 Accuracy target: within 3 cm for distance and 2 cm for eye height compared with a tape
 measure, sitting and standing, after calibration. That has to be checked at your own desk;

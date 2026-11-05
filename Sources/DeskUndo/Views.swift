@@ -3,6 +3,8 @@ import SwiftUI
 
 struct PopoverView: View {
     @ObservedObject var checker: PostureChecker
+    @ObservedObject var live = LiveController.shared
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -28,6 +30,10 @@ struct PopoverView: View {
                 Text(String(format: "Eyes %.0f cm from the screen, %.0f cm above the desk.", r.distanceCm, r.eyeHeightAboveDeskCm))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            presets
+            if let note = checker.presetNote {
+                Text(note).font(.caption).fixedSize(horizontal: false, vertical: true)
+            }
             if let note = checker.calibrationNote {
                 Text(note).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
@@ -37,6 +43,8 @@ struct PopoverView: View {
                 Button("Check posture") { checker.check() }
                     .disabled(checker.isRunning)
                     .keyboardShortcut(.defaultAction)
+                Button("Live") { openWindow(id: "live"); NSApp.activate(ignoringOtherApps: true) }
+                    .disabled(checker.isRunning || live.isRunning)
                 Spacer()
                 SettingsLink { Text("Settings…") }
                 Button("Quit") { NSApplication.shared.terminate(nil) }
@@ -47,6 +55,27 @@ struct PopoverView: View {
         .frame(width: 320)
         .onAppear { checker.reloadSetups(); checker.refreshPermission() }
         .onDisappear { checker.clearPreview() }
+    }
+}
+
+extension PopoverView {
+    /// Sit and stand desk heights read from the tape on the desk leg; a seated-only setup has no standing preset.
+    @ViewBuilder var presets: some View {
+        let profile = ConfigLocation.load().profile(named: checker.activeSetup)
+        let shown = Posture.allCases.filter { $0 == .sit || profile.supportsStandingPreset }
+        if shown.contains(where: { profile.presets[$0] != nil }) {
+            Divider()
+            ForEach(shown, id: \.self) { posture in
+                if let preset = profile.presets[posture] {
+                    HStack {
+                        Text("\(posture.label): \(Int(preset.deskHeightCm.rounded())) cm on the tape").font(.callout)
+                        Spacer()
+                        Button("Confirm") { checker.confirmPreset(posture) }.disabled(checker.isRunning || preset.distanceCm == nil)
+                        Button("Remember view") { checker.rememberView(posture) }.disabled(checker.isRunning)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -79,7 +108,7 @@ struct SettingsView: View {
     @State private var message = ""
 
     struct Fields {
-        var distance = "", screenTop = "", lens = "", height = "", seatedEye = ""
+        var distance = "", screenTop = "", lens = "", height = "", seatedEye = "", elbow = "", sitDesk = "", standDesk = ""
     }
 
     var body: some View {
@@ -131,7 +160,18 @@ struct SettingsView: View {
                 field("Webcam lens above screen top", $fields.lens, hint: "default \(fmt(defaults.lensOffset))")
                 field("Your height", $fields.height, hint: "default \(Int(Setup.defaultUserHeightCm))")
                 field("Seated eyes above desk", $fields.seatedEye, hint: "estimated from height")
+                field("Eyes to elbow", $fields.elbow, hint: "default 0.3 of your height")
                 Text("Leave a field empty to use the default estimate.").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Desk presets (tape on the desk leg, centimetres)") {
+                field("Sit", $fields.sitDesk, hint: "desk height")
+                if profile.supportsStandingPreset {
+                    field("Stand", $fields.standDesk, hint: "desk height")
+                } else {
+                    Text("Desk height is fixed, so this setup has no standing preset.").font(.caption).foregroundStyle(.secondary)
+                }
+                Text("Set the desk to the height on the tape, then use Remember view in the menu bar popover so the camera can confirm it later.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Section("Webcam calibration") {
                 Text(checker.webcamName ?? "The camera for this setup is not connected")
@@ -184,7 +224,8 @@ struct SettingsView: View {
         let s = profile.measurements
         func str(_ v: Double?) -> String { v.map { String(format: "%g", $0) } ?? "" }
         fields = Fields(distance: str(s.screenDistanceCm), screenTop: str(s.screenTopHeightCm), lens: str(s.lensOffsetCm),
-                        height: str(s.userHeightCm), seatedEye: str(s.seatedEyeHeightCm))
+                        height: str(s.userHeightCm), seatedEye: str(s.seatedEyeHeightCm), elbow: str(s.eyeToElbowCm),
+                        sitDesk: str(profile.presets[.sit]?.deskHeightCm), standDesk: str(profile.presets[.stand]?.deskHeightCm))
         showPreview = config.showPreview
         autoSwitch = config.autoSwitch
         nameField = ""
@@ -197,7 +238,15 @@ struct SettingsView: View {
         var p = profile
         p.measurements = Setup(screenDistanceCm: num(fields.distance), screenTopHeightCm: num(fields.screenTop),
                                lensOffsetCm: num(fields.lens), userHeightCm: num(fields.height),
-                               seatedEyeHeightCm: num(fields.seatedEye))
+                               seatedEyeHeightCm: num(fields.seatedEye), eyeToElbowCm: num(fields.elbow))
+        // Changing the tape height forgets the remembered camera view, which belonged to the old height.
+        for (posture, text) in [(Posture.sit, fields.sitDesk), (.stand, fields.standDesk)] {
+            if let cm = num(text), cm > 0 {
+                if p.presets[posture]?.deskHeightCm != cm { p.presets[posture] = DeskPreset(deskHeightCm: cm) }
+            } else {
+                p.presets[posture] = nil
+            }
+        }
         config.save(p)
         config.showPreview = showPreview
         config.autoSwitch = autoSwitch

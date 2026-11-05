@@ -24,6 +24,11 @@ struct DeskUndoApp: App {
         }
         .menuBarExtraStyle(.window)
 
+        Window("Live adjustment", id: "live") {
+            LiveView(live: LiveController.shared)
+        }
+        .windowResizability(.contentSize)
+
         Settings {
             SettingsView(checker: checker)
         }

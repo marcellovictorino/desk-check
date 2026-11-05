@@ -61,9 +61,22 @@ public struct DeskConfig: Equatable {
         }
         let measurements = Setup(screenDistanceCm: n("screen_distance_cm"), screenTopHeightCm: n("screen_top_height_cm"),
                                  lensOffsetCm: n("lens_offset_cm"), userHeightCm: n("user_height_cm"),
-                                 seatedEyeHeightCm: n("seated_eye_height_cm"))
+                                 seatedEyeHeightCm: n("seated_eye_height_cm"), eyeToElbowCm: n("eye_to_elbow_cm"))
+        var presets: [Posture: DeskPreset] = [:]
+        for posture in Posture.allCases {
+            let key = posture.rawValue
+            guard let desk = n("\(key)_desk_height_cm") else { continue }
+            presets[posture] = DeskPreset(deskHeightCm: desk, distanceCm: n("\(key)_distance_cm"),
+                                          eyeAboveScreenTopCm: number("\(key)_eye_above_screen_top_cm", in: table))
+        }
         return SetupProfile(name: name, camera: CameraChoice(str("camera")), screen: str("screen"),
-                            measurements: measurements, fixed: fixed)
+                            measurements: measurements, fixed: fixed, presets: presets)
+    }
+
+    /// A number that may be zero or negative, such as eyes below the top of the screen.
+    private func number(_ key: String, in table: String) -> Double? {
+        if case .number(let v)? = document.value(key, in: table) { return v }
+        return nil
     }
 
     public var activeProfile: SetupProfile { profile(named: activeSetupName) }
@@ -76,8 +89,17 @@ public struct DeskConfig: Equatable {
         document.set("screen", .string(p.screen), in: table)
         for (key, v) in [("screen_distance_cm", m.screenDistanceCm), ("screen_top_height_cm", m.screenTopHeightCm),
                          ("lens_offset_cm", m.lensOffsetCm), ("user_height_cm", m.userHeightCm),
-                         ("seated_eye_height_cm", m.seatedEyeHeightCm)] {
+                         ("seated_eye_height_cm", m.seatedEyeHeightCm), ("eye_to_elbow_cm", m.eyeToElbowCm)] {
             if let v { document.set(key, .number(v), in: table) } else { document.remove(key, in: table) }
+        }
+        for posture in Posture.allCases {
+            let key = posture.rawValue
+            // A setup with a fixed desk has no standing preset.
+            let preset = (posture == .stand && !p.supportsStandingPreset) ? nil : p.presets[posture]
+            for (suffix, v) in [("desk_height_cm", preset?.deskHeightCm), ("distance_cm", preset?.distanceCm),
+                                ("eye_above_screen_top_cm", preset?.eyeAboveScreenTopCm)] {
+                if let v { document.set("\(key)_\(suffix)", .number(v), in: table) } else { document.remove("\(key)_\(suffix)", in: table) }
+            }
         }
         for a in Adjustment.allCases {
             document.set(a.rawValue, .string(p.fixed.contains(a) ? Self.fixedWord : Self.adjustableWord), in: table)
@@ -209,6 +231,13 @@ public struct DeskConfig: Equatable {
     # Your height, and your eyes above the desk surface when seated.
     # user_height_cm = 175
     # seated_eye_height_cm = 40
+    # Vertical gap from your eyes to your elbow (default 0.3 of your height). Live mode keeps the
+    # desk surface 3 cm below your elbow.
+    # eye_to_elbow_cm = 52
+    # Desk presets: the height read from the tape on the desk leg. The camera numbers are added
+    # by the popover's "Remember view" and let it confirm you are back at the same height.
+    # sit_desk_height_cm = 72
+    # stand_desk_height_cm = 112
     # What you can move here: "adjustable" or "fixed". A setup with a fixed desk has no standing preset.
     screen_height = "adjustable"
     screen_distance = "adjustable"
