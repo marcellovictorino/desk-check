@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "DeskUndoCore"),
-        .executableTarget(name: "DeskUndo", dependencies: ["DeskUndoCore"])
+        .executableTarget(name: "DeskUndo", dependencies: ["DeskUndoCore"]),
+        .testTarget(name: "DeskUndoCoreTests", dependencies: ["DeskUndoCore"])
     ]
 )

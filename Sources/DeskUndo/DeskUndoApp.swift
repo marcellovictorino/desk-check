@@ -7,7 +7,7 @@ let log = Logger(subsystem: "io.github.marcellovictorino.desk-undo", category: "
 @main
 struct DeskUndoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var camera = CameraCheck.shared
+    @StateObject private var checker = PostureChecker.shared
 
     init() {
         do {
@@ -20,24 +20,24 @@ struct DeskUndoApp: App {
 
     var body: some Scene {
         MenuBarExtra("Desk Undo", systemImage: "arrow.uturn.backward.circle") {
-            PopoverView(camera: camera)
+            PopoverView(checker: checker)
         }
         .menuBarExtraStyle(.window)
 
         Settings {
-            SettingsView()
+            SettingsView(checker: checker)
         }
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// `open DeskUndo.app --args --check-camera` runs one camera check at launch,
-    /// the same as pressing Test camera, so the check can be tried from a script.
+    /// `open DeskUndo.app --args --check` runs one check at launch, the same as pressing
+    /// Check posture; the numbers go to the unified log (subsystem io.github.marcellovictorino.desk-undo).
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
-            CameraCheck.shared.refreshPermission()
-            if CommandLine.arguments.contains("--check-camera") {
-                CameraCheck.shared.run()
+            PostureChecker.shared.refreshPermission()
+            if CommandLine.arguments.contains("--check") {
+                PostureChecker.shared.check()
             }
         }
     }

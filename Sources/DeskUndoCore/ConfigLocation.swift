@@ -22,6 +22,15 @@ public enum ConfigLocation {
         directory.appendingPathComponent("config.toml")
     }
 
+    public static func load() -> DeskConfig {
+        DeskConfig(text: (try? String(contentsOf: file, encoding: .utf8)) ?? DeskConfig.starterContents)
+    }
+
+    public static func save(_ config: DeskConfig) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try config.document.text.write(to: file, atomically: false, encoding: .utf8)  // not atomic, so a config symlinked from dotfiles stays a symlink
+    }
+
     /// Writes a commented starter file when none exists. Returns true when it wrote one.
     @discardableResult
     public static func ensureStarterFile() throws -> Bool {
@@ -32,9 +41,5 @@ public enum ConfigLocation {
         return true
     }
 
-    public static let starterContents = """
-    # Desk Undo settings. Lines starting with # are comments.
-    # Measurements and presets arrive in later versions; the app keeps only numbers here.
-
-    """
+    public static let starterContents = DeskConfig.starterContents
 }
