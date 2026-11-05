@@ -6,7 +6,8 @@ let log = Logger(subsystem: "io.github.marcellovictorino.desk-undo", category: "
 
 @main
 struct DeskUndoApp: App {
-    @StateObject private var camera = CameraCheck()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @StateObject private var camera = CameraCheck.shared
 
     init() {
         do {
@@ -64,5 +65,18 @@ struct SettingsView: View {
         }
         .padding(20)
         .frame(width: 460)
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// `open DeskUndo.app --args --check-camera` runs one camera check at launch,
+    /// the same as pressing Test camera, so the check can be tried from a script.
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Task { @MainActor in
+            CameraCheck.shared.refreshPermission()
+            if CommandLine.arguments.contains("--check-camera") {
+                CameraCheck.shared.run()
+            }
+        }
     }
 }

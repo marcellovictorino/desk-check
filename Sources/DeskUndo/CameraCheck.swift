@@ -5,6 +5,8 @@ import SwiftUI
 /// Frames are dropped as they arrive: no image is kept in memory or written anywhere.
 @MainActor
 final class CameraCheck: NSObject, ObservableObject {
+    static let shared = CameraCheck()
+
     @Published private(set) var permissionText = "unknown"
     @Published private(set) var statusText = "The camera is off."
     @Published private(set) var isRunning = false
