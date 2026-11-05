@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Runs one on-demand check: opens the camera, reads the eyes, closes the camera, explains the result.
 @MainActor
-final class PostureChecker: ObservableObject {
+final class PostureChecker: NSObject, ObservableObject {
     static let shared = PostureChecker()
 
     @Published private(set) var permissionText = "unknown"
@@ -18,10 +18,63 @@ final class PostureChecker: ObservableObject {
     /// Set by a calibration run so Settings can show what changed.
     @Published private(set) var lastCalibrationText: String?
 
+    @Published private(set) var setupNames: [String] = []
+    @Published private(set) var activeSetup = ""
+    private var observers: [NSObjectProtocol] = []
+
+    override init() {
+        super.init()
+        reloadSetups()
+        for name in [AVCaptureDevice.wasConnectedNotification, AVCaptureDevice.wasDisconnectedNotification] {
+            observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.camerasChanged() }
+            })
+        }
+    }
+
+    /// Re-reads the setup list and the setup in use from the config file.
+    func reloadSetups() {
+        let config = ConfigLocation.load()
+        setupNames = config.setupNames
+        activeSetup = config.activeSetupName
+        webcamName = FaceSampler.camera(for: config.activeProfile.camera)?.localizedName
+    }
+
+    func selectSetup(_ name: String) {
+        var config = ConfigLocation.load()
+        guard config.setupNames.contains(name) else { return }
+        config.activeSetupName = name
+        try? ConfigLocation.save(config)
+        reset()
+        reloadSetups()
+    }
+
+    /// With auto switching on, a webcam plugged in or out moves to the setup that fits what is connected.
+    private func camerasChanged() {
+        let config = ConfigLocation.load()
+        if config.autoSwitch {
+            let cameras = FaceSampler.connectedCameras()
+            let external = cameras.filter { $0.deviceType == .external }.map(\.localizedName)
+            let builtIn = cameras.filter { $0.deviceType != .external }.map(\.localizedName)
+            if let name = config.suggestedSetup(externalCameras: external, builtInCameras: builtIn), name != config.activeSetupName {
+                log.notice("auto-switching setup to \(name, privacy: .public)")
+                selectSetup(name)
+                return
+            }
+        }
+        reloadSetups()
+    }
+
+    /// Forgets the last result, which belonged to another setup.
+    func reset() {
+        reading = nil; advice = []; calibrationNote = nil; preview = nil
+        statusText = "The camera is off."
+    }
+
     func refreshPermission() {
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         permissionText = Self.describe(status)
-        webcamName = FaceSampler.preferredCamera()?.localizedName
+        webcamName = FaceSampler.camera(for: ConfigLocation.load().activeProfile.camera)?.localizedName
         log.notice("camera permission \(self.permissionText, privacy: .public)")
     }
 
@@ -50,13 +103,17 @@ final class PostureChecker: ObservableObject {
     }
 
     private func begin(calibrating: Bool) {
-        guard let device = FaceSampler.preferredCamera() else { finish("No camera found."); return }
         let config = ConfigLocation.load()
-        if calibrating, config.setup.screenDistanceCm == nil {
+        let profile = config.activeProfile
+        guard let device = FaceSampler.camera(for: profile.camera) else {
+            finish(profile.camera == .auto ? "No camera found." : "The camera for setup \(profile.name) is not connected.")
+            return
+        }
+        if calibrating, profile.measurements.screenDistanceCm == nil {
             finish("Enter your tape-measured screen distance in Settings first.")
             return
         }
-        statusText = "Camera on: \(device.localizedName). Look at the screen…"
+        statusText = "Camera on (\(profile.name)): \(device.localizedName). Look at the screen…"
         log.notice("camera session starting on \(device.localizedName, privacy: .public)")
         let sampler = FaceSampler(wantPreview: config.showPreview) { frame in
             Task { @MainActor in self.preview = frame }
@@ -74,24 +131,25 @@ final class PostureChecker: ObservableObject {
     private func finishCheck(_ result: SampleResult) {
         let config = ConfigLocation.load()
         let camera = config.camera(forWebcam: result.cameraName, fieldOfViewDegrees: result.fieldOfViewDegrees)
-        let readings = result.samples.compactMap { Geometry.reading($0, camera: camera, setup: config.setup) }
+        let profile = config.activeProfile
+        let readings = result.samples.compactMap { Geometry.reading($0, camera: camera, setup: profile.measurements) }
         guard let median = Geometry.median(readings) else {
             finish("No face found. Sit facing the screen with your face lit. The camera is off.")
             return
         }
         reading = median
-        advice = AdviceEngine.advise(median)
+        advice = AdviceEngine.advise(median, fixed: profile.fixed)
         calibrationNote = config.calibration(forWebcam: result.cameraName).focalWidths == nil
             ? "This webcam is not calibrated, so distances are estimates. Calibrate it in Settings." : nil
         let line = String(format: "distance=%.1f eyeAboveTop=%.1f eyeHeight=%.1f frames=%d", median.distanceCm,
                           median.eyeAboveScreenTopCm, median.eyeHeightAboveDeskCm, readings.count)
         log.notice("check \(line, privacy: .public)")
-        finish("Checked with \(result.cameraName). The camera is off.")
+        finish("Checked setup \(profile.name) with \(result.cameraName). The camera is off.")
     }
 
     private func finishCalibration(_ result: SampleResult) {
         var config = ConfigLocation.load()
-        let setup = config.setup
+        let setup = config.activeProfile.measurements
         guard let tape = setup.screenDistanceCm else { finish("Enter your tape-measured screen distance first."); return }
         let focals = result.samples.compactMap { Geometry.calibrateFocal($0, tapeDistanceCm: tape) }
         guard let focal = Self.median(focals) else {

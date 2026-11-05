@@ -1,7 +1,7 @@
 import Foundation
 
 public struct Advice: Equatable, Sendable {
-    public enum Status: Sendable { case good, adjust }
+    public enum Status: Sendable { case good, adjust, fixed }
     public var status: Status
     public var sentence: String
 }
@@ -15,8 +15,15 @@ public enum AdviceEngine {
     public static let heightBand = 0.0...10.0
     public static let heightTarget = 5.0
 
-    public static func advise(_ r: PostureReading) -> [Advice] {
-        [screenDistance(r.distanceCm), screenHeight(r.eyeAboveScreenTopCm)]
+    /// A fixed adjustment cannot be moved in the current setup, so it is reported but not advised.
+    public static func advise(_ r: PostureReading, fixed: Set<Adjustment> = []) -> [Advice] {
+        let distance = fixed.contains(.screenDistance)
+            ? Advice(status: .fixed, sentence: "Screen distance is fixed in this setup; it is \(cm(r.distanceCm)) from your eyes.")
+            : screenDistance(r.distanceCm)
+        let height = fixed.contains(.screenHeight)
+            ? Advice(status: .fixed, sentence: "Screen height is fixed in this setup; your eyes are \(relative(r.eyeAboveScreenTopCm)).")
+            : screenHeight(r.eyeAboveScreenTopCm)
+        return [distance, height]
     }
 
     static func screenDistance(_ d: Double) -> Advice {

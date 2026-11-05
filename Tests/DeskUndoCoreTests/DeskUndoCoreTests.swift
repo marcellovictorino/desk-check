@@ -109,25 +109,37 @@ final class AdviceTests: XCTestCase {
 }
 
 final class ConfigTests: XCTestCase {
-    func testStarterFileUsesDefaultsAndAllowsComments() {
+    func testStarterFileHasOneStandingDeskSetupWithDefaults() {
         let c = DeskConfig(text: DeskConfig.starterContents)
-        XCTAssertEqual(c.setup, Setup())
-        XCTAssertEqual(c.setup.screenTop, 45)
+        XCTAssertEqual(c.setupNames, ["Standing desk"])
+        XCTAssertEqual(c.activeSetupName, "Standing desk")
+        let p = c.activeProfile
+        XCTAssertEqual(p.camera, .auto)
+        XCTAssertEqual(p.measurements.screenTop, 45)
+        XCTAssertTrue(p.supportsStandingPreset)
         XCTAssertFalse(c.showPreview)
+        XCTAssertFalse(c.autoSwitch)
+    }
+
+    func testAFileWithNoSetupsShowsADefaultSetup() {
+        let c = DeskConfig(text: "# old file\n[preferences]\npreview = true\n")
+        XCTAssertEqual(c.setupNames, ["Standing desk"])
     }
 
     func testMeasuredValuesReplaceDefaultsAndSurviveASave() {
         var c = DeskConfig(text: DeskConfig.starterContents)
-        c.setup = Setup(screenDistanceCm: 58.5, screenTopHeightCm: 47, lensOffsetCm: 2, userHeightCm: 181, seatedEyeHeightCm: 41)
-        let reread = DeskConfig(text: c.document.text)
-        XCTAssertEqual(reread.setup, c.setup)
-        XCTAssertTrue(c.document.text.contains("# Delete a line to go back to the default estimate"))
+        var p = c.activeProfile
+        p.measurements = Setup(screenDistanceCm: 58.5, screenTopHeightCm: 47, lensOffsetCm: 2, userHeightCm: 181, seatedEyeHeightCm: 41)
+        c.save(p)
+        let reread = DeskConfig(text: c.document.text).activeProfile
+        XCTAssertEqual(reread.measurements, p.measurements)
+        XCTAssertTrue(c.document.text.contains("# Delete a measurement line to go back to the default estimate"))
     }
 
     func testHandWrittenCommentsAndOtherKeysSurviveAnEdit() {
         let text = """
         # my own note
-        [measurements]
+        [setups."Desk"]
         screen_top_height_cm = 47 # tape, Monday
         custom_key = "keep me"
 
@@ -135,42 +147,181 @@ final class ConfigTests: XCTestCase {
         preview = true
         """
         var c = DeskConfig(text: text)
-        var s = c.setup
-        s.screenTopHeightCm = 50
-        s.lensOffsetCm = 2
-        c.setup = s
+        var p = c.profile(named: "Desk")
+        p.measurements.screenTopHeightCm = 50
+        p.measurements.lensOffsetCm = 2
+        c.save(p)
         XCTAssertTrue(c.document.text.contains("# my own note"))
         XCTAssertTrue(c.document.text.contains("screen_top_height_cm = 50 # tape, Monday"))
         XCTAssertTrue(c.document.text.contains("custom_key = \"keep me\""))
-        XCTAssertEqual(c.setup.lensOffsetCm, 2)
+        XCTAssertEqual(c.profile(named: "Desk").measurements.lensOffsetCm, 2)
         XCTAssertTrue(c.showPreview)
     }
 
-    func testCalibrationIsPerWebcam() {
+    // MARK: Setups (captain's requirement: a standing desk with an external camera and a MacBook on a normal desk)
+
+    func twoSetups() -> DeskConfig {
         var c = DeskConfig(text: DeskConfig.starterContents)
+        var desk = c.profile(named: "Standing desk")
+        desk.camera = .named("HD Pro Webcam C920")
+        desk.measurements = Setup(screenDistanceCm: 62, screenTopHeightCm: 50, lensOffsetCm: 2)
+        c.save(desk)
+        var mac = SetupProfile.laptop(name: "MacBook")
+        mac.measurements = Setup(screenDistanceCm: 45, screenTopHeightCm: 22)
+        XCTAssertTrue(c.addSetup(mac))
+        return c
+    }
+
+    func testTwoSetupsKeepTheirOwnCameraScreenAndMeasurements() {
+        let c = DeskConfig(text: twoSetups().document.text)
+        XCTAssertEqual(c.setupNames, ["Standing desk", "MacBook"])
+        let desk = c.profile(named: "Standing desk"), mac = c.profile(named: "MacBook")
+        XCTAssertEqual(desk.camera, .named("HD Pro Webcam C920"))
+        XCTAssertEqual(desk.measurements.screenTopHeightCm, 50)
+        XCTAssertEqual(mac.camera, .builtIn)
+        XCTAssertEqual(mac.screen, "MacBook")
+        XCTAssertEqual(mac.measurements.screenTopHeightCm, 22)
+        XCTAssertEqual(mac.measurements.lensOffset, 0.5, "built-in camera defaults apply until measured")
+        XCTAssertEqual(desk.measurements.lensOffset, 2)
+    }
+
+    func testSeatedOnlySetupHasNoStandingPresetAndFixedAdjustments() {
+        let c = DeskConfig(text: twoSetups().document.text)
+        let mac = c.profile(named: "MacBook")
+        XCTAssertFalse(mac.supportsStandingPreset)
+        XCTAssertEqual(mac.fixed, [.deskHeight, .screenHeight])
+        XCTAssertTrue(c.profile(named: "Standing desk").supportsStandingPreset)
+        XCTAssertTrue(c.document.text.contains("desk_height = \"fixed\""))
+    }
+
+    func testFixedAdjustmentIsReportedNotAdvised() {
+        let r = PostureReading(distanceCm: 45, eyeAboveScreenTopCm: 15, eyeHeightAboveDeskCm: 0)
+        let advice = AdviceEngine.advise(r, fixed: [.screenHeight])
+        XCTAssertEqual(advice[0].status, .adjust)
+        XCTAssertEqual(advice[1].status, .fixed)
+        XCTAssertEqual(advice[1].sentence, "Screen height is fixed in this setup; your eyes are 15 cm above its top edge.")
+    }
+
+    func testLastUsedSetupIsRemembered() {
+        var c = twoSetups()
+        c.activeSetupName = "MacBook"
+        XCTAssertEqual(DeskConfig(text: c.document.text).activeSetupName, "MacBook")
+        c.activeSetupName = "Gone"   // a setup that no longer exists falls back to the first
+        XCTAssertEqual(DeskConfig(text: c.document.text).activeSetupName, "Standing desk")
+    }
+
+    func testRenameDuplicateAndDelete() {
+        var c = twoSetups()
+        c.activeSetupName = "MacBook"
+        XCTAssertTrue(c.renameSetup("MacBook", to: "Sofa"))
+        XCTAssertEqual(c.activeSetupName, "Sofa", "renaming the active setup keeps it active")
+        XCTAssertEqual(c.profile(named: "Sofa").camera, .builtIn)
+        XCTAssertTrue(c.duplicateSetup("Standing desk", as: "Standing desk 2"))
+        XCTAssertEqual(c.setupNames, ["Standing desk", "Standing desk 2", "Sofa"])
+        XCTAssertEqual(c.profile(named: "Standing desk 2"), SetupProfile(name: "Standing desk 2", camera: .named("HD Pro Webcam C920"), screen: "external", measurements: c.profile(named: "Standing desk").measurements))
+        XCTAssertTrue(c.deleteSetup("Sofa"))
+        XCTAssertEqual(c.activeSetupName, "Standing desk")
+        XCTAssertEqual(c.setupNames, ["Standing desk", "Standing desk 2"])
+        XCTAssertTrue(c.deleteSetup("Standing desk 2"))
+        XCTAssertFalse(c.deleteSetup("Standing desk"), "the last setup stays")
+    }
+
+    func testNamesMustBeNewAndNotEmpty() {
+        var c = twoSetups()
+        XCTAssertFalse(c.addSetup(.external(name: "")))
+        XCTAssertFalse(c.addSetup(.external(name: "MacBook")))
+        XCTAssertFalse(c.renameSetup("MacBook", to: "Standing desk"))
+        XCTAssertFalse(c.duplicateSetup("MacBook", as: " "))
+        XCTAssertEqual(c.setupNames.count, 2)
+    }
+
+    func testSetupNameWithQuotesAndDotsRoundTrips() {
+        var c = DeskConfig(text: DeskConfig.starterContents)
+        XCTAssertTrue(c.addSetup(.laptop(name: "Mum's \"sofa\" v1.2")))
+        XCTAssertEqual(DeskConfig(text: c.document.text).setupNames, ["Standing desk", "Mum's \"sofa\" v1.2"])
+    }
+
+    func testDuplicateKeepsCommentsOfTheCopiedSetup() {
+        var c = DeskConfig(text: DeskConfig.starterContents)
+        XCTAssertTrue(c.duplicateSetup("Standing desk", as: "Copy"))
+        XCTAssertEqual(c.document.text.components(separatedBy: "# Top edge of the screen above the desk surface").count - 1, 2)
+    }
+
+    // MARK: Auto-suggest
+
+    func testExternalWebcamPluggedInSuggestsTheStandingDeskSetup() {
+        var c = twoSetups()
+        c.activeSetupName = "MacBook"
+        XCTAssertEqual(c.suggestedSetup(externalCameras: ["HD Pro Webcam C920"], builtInCameras: ["MacBook Pro Camera"]), "Standing desk")
+    }
+
+    func testUnpluggingTheWebcamSuggestsTheMacBookSetup() {
+        let c = twoSetups()
+        XCTAssertEqual(c.suggestedSetup(externalCameras: [], builtInCameras: ["MacBook Pro Camera"]), "MacBook")
+    }
+
+    func testTheSetupInUseIsKeptWhenItStillFits() {
+        var c = twoSetups()
+        c.activeSetupName = "Standing desk"
+        XCTAssertEqual(c.suggestedSetup(externalCameras: ["HD Pro Webcam C920"], builtInCameras: []), "Standing desk")
+    }
+
+    func testNoCameraSuggestsNothing() {
+        XCTAssertNil(twoSetups().suggestedSetup(externalCameras: [], builtInCameras: []))
+    }
+
+    // MARK: Calibration stays per camera
+
+    func testCalibrationIsPerWebcamAndSharedByEverySetupUsingIt() {
+        var c = twoSetups()
         c.setCalibration(WebcamCalibration(focalWidths: 0.7812, pitchDegrees: -2.5), forWebcam: "HD Pro Webcam C920")
         c.setCalibration(WebcamCalibration(focalWidths: 0.9), forWebcam: "MacBook Pro Camera")
         let r = DeskConfig(text: c.document.text)
         XCTAssertEqual(r.calibration(forWebcam: "HD Pro Webcam C920"), WebcamCalibration(focalWidths: 0.7812, pitchDegrees: -2.5))
         XCTAssertEqual(r.calibration(forWebcam: "MacBook Pro Camera").focalWidths, 0.9)
         XCTAssertEqual(r.calibration(forWebcam: "Other"), WebcamCalibration())
+        var copy = r
+        XCTAssertTrue(copy.duplicateSetup("Standing desk", as: "Standing desk 2"))
+        XCTAssertEqual(copy.calibration(forWebcam: "HD Pro Webcam C920").focalWidths, 0.7812)
+        XCTAssertTrue(copy.deleteSetup("Standing desk 2"))
+        XCTAssertEqual(copy.calibration(forWebcam: "HD Pro Webcam C920").focalWidths, 0.7812, "deleting a setup keeps calibration")
     }
 
-    func testUncalibratedWebcamFallsBackToReportedFieldOfView() {
+    func testUncalibratedWebcamFallsBackToATypicalFieldOfView() {
         let c = DeskConfig(text: DeskConfig.starterContents)
         XCTAssertEqual(c.camera(forWebcam: "x", fieldOfViewDegrees: 90).focalWidths, 0.5, accuracy: 0.001)
+        XCTAssertEqual(c.camera(forWebcam: "x", fieldOfViewDegrees: nil).focalWidths, CameraModel(fieldOfViewDegrees: 70).focalWidths, accuracy: 0.001)
     }
 
     func testNonNumbersAndNonPositiveValuesCountAsNotMeasured() {
-        let c = DeskConfig(text: "[measurements]\nscreen_top_height_cm = \"tall\"\nlens_offset_cm = -3\nuser_height_cm = 180")
-        XCTAssertNil(c.setup.screenTopHeightCm)
-        XCTAssertNil(c.setup.lensOffsetCm)
-        XCTAssertEqual(c.setup.userHeightCm, 180)
+        let c = DeskConfig(text: "[setups.\"A\"]\nscreen_top_height_cm = \"tall\"\nlens_offset_cm = -3\nuser_height_cm = 180")
+        let m = c.profile(named: "A").measurements
+        XCTAssertNil(m.screenTopHeightCm)
+        XCTAssertNil(m.lensOffsetCm)
+        XCTAssertEqual(m.userHeightCm, 180)
     }
 
     func testWebcamNameWithQuotesRoundTrips() {
         var c = DeskConfig(text: "")
         c.setCalibration(WebcamCalibration(focalWidths: 0.8), forWebcam: "Cam \"Pro\" 2")
         XCTAssertEqual(DeskConfig(text: c.document.text).calibration(forWebcam: "Cam \"Pro\" 2").focalWidths, 0.8)
+    }
+}
+
+final class TOMLLayoutTests: XCTestCase {
+    func testMeasuredValueTakesTheCommentedTemplateLine() {
+        var c = DeskConfig(text: DeskConfig.starterContents)
+        var p = c.activeProfile
+        p.measurements.screenTopHeightCm = 52
+        c.save(p)
+        let text = c.document.text
+        XCTAssertTrue(text.contains("# Top edge of the screen above the desk surface (default 45; 24 for the built-in screen).\nscreen_top_height_cm = 52\n"))
+        XCTAssertFalse(text.contains("# screen_top_height_cm"))
+    }
+
+    func testNewSectionsStayAfterTheirOwnIntroducingComment() {
+        var c = DeskConfig(text: DeskConfig.starterContents)
+        c.setCalibration(WebcamCalibration(focalWidths: 0.8), forWebcam: "Cam")
+        XCTAssertTrue(c.document.text.contains("# pitch_degrees = 0\n\n[webcams.\"Cam\"]\nfocal_widths = 0.8"))
     }
 }

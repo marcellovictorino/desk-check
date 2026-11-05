@@ -10,35 +10,140 @@ public struct WebcamCalibration: Equatable, Sendable {
 }
 
 /// Desk Undo's settings, read from and written to `config.toml` without disturbing the person's comments.
+///
+/// A setup is a named place Desk Undo is used, such as a standing desk with an external camera or a
+/// MacBook on a normal desk. Setups live in `[setups."Name"]` tables; calibration stays per webcam.
 public struct DeskConfig: Equatable {
     public var document: TOMLDocument
 
     public init(text: String) { document = TOMLDocument(text: text) }
 
-    private static let measurements = "measurements"
     private static let preferences = "preferences"
+    private static let fixedWord = "fixed"
+    private static let adjustableWord = "adjustable"
+    public static let defaultSetupName = "Standing desk"
 
-    public var setup: Setup {
+    // MARK: Setups
+
+    public var setupNames: [String] {
+        let names = document.tableNames(prefix: "setups")
+        return names.isEmpty ? [Self.defaultSetupName] : names
+    }
+
+    /// The setup last used, or the first one when it is unset or no longer exists.
+    public var activeSetupName: String {
         get {
-            func n(_ key: String) -> Double? {
-                if case .number(let v)? = document.value(key, in: Self.measurements), v > 0 { return v }
-                return nil
-            }
-            return Setup(screenDistanceCm: n("screen_distance_cm"), screenTopHeightCm: n("screen_top_height_cm"),
-                         lensOffsetCm: n("lens_offset_cm"), userHeightCm: n("user_height_cm"),
-                         seatedEyeHeightCm: n("seated_eye_height_cm"))
+            if case .string(let n)? = document.value("active_setup", in: Self.preferences), setupNames.contains(n) { return n }
+            return setupNames[0]
         }
-        set {
-            func put(_ key: String, _ v: Double?) {
-                if let v { document.set(key, .number(v), in: Self.measurements) }
-                else { document.remove(key, in: Self.measurements) }
-            }
-            put("screen_distance_cm", newValue.screenDistanceCm)
-            put("screen_top_height_cm", newValue.screenTopHeightCm)
-            put("lens_offset_cm", newValue.lensOffsetCm)
-            put("user_height_cm", newValue.userHeightCm)
-            put("seated_eye_height_cm", newValue.seatedEyeHeightCm)
+        set { document.set("active_setup", .string(newValue), in: Self.preferences) }
+    }
+
+    public var autoSwitch: Bool {
+        get { if case .bool(let b)? = document.value("auto_switch", in: Self.preferences) { return b } else { return false } }
+        set { document.set("auto_switch", .bool(newValue), in: Self.preferences) }
+    }
+
+    public func profile(named name: String) -> SetupProfile {
+        let table = TOMLDocument.tableName(setup: name)
+        guard document.hasTable(table) else { return .external(name: name) }
+        func n(_ key: String) -> Double? {
+            if case .number(let v)? = document.value(key, in: table), v > 0 { return v }
+            return nil
         }
+        func str(_ key: String) -> String {
+            if case .string(let v)? = document.value(key, in: table) { return v }
+            return ""
+        }
+        var fixed = Set<Adjustment>()
+        for a in Adjustment.allCases {
+            if case .string(Self.fixedWord)? = document.value(a.rawValue, in: table) { fixed.insert(a) }
+        }
+        let measurements = Setup(screenDistanceCm: n("screen_distance_cm"), screenTopHeightCm: n("screen_top_height_cm"),
+                                 lensOffsetCm: n("lens_offset_cm"), userHeightCm: n("user_height_cm"),
+                                 seatedEyeHeightCm: n("seated_eye_height_cm"))
+        return SetupProfile(name: name, camera: CameraChoice(str("camera")), screen: str("screen"),
+                            measurements: measurements, fixed: fixed)
+    }
+
+    public var activeProfile: SetupProfile { profile(named: activeSetupName) }
+
+    /// Writes every field of the setup. Measurements left empty are removed so the default applies.
+    public mutating func save(_ p: SetupProfile) {
+        let table = TOMLDocument.tableName(setup: p.name)
+        let m = p.measurements
+        document.set("camera", .string(p.camera.text), in: table)
+        document.set("screen", .string(p.screen), in: table)
+        for (key, v) in [("screen_distance_cm", m.screenDistanceCm), ("screen_top_height_cm", m.screenTopHeightCm),
+                         ("lens_offset_cm", m.lensOffsetCm), ("user_height_cm", m.userHeightCm),
+                         ("seated_eye_height_cm", m.seatedEyeHeightCm)] {
+            if let v { document.set(key, .number(v), in: table) } else { document.remove(key, in: table) }
+        }
+        for a in Adjustment.allCases {
+            document.set(a.rawValue, .string(p.fixed.contains(a) ? Self.fixedWord : Self.adjustableWord), in: table)
+        }
+    }
+
+    /// Adds a setup from a template. Returns false when the name is empty or taken.
+    @discardableResult
+    public mutating func addSetup(_ template: SetupProfile) -> Bool {
+        guard isFreeName(template.name) else { return false }
+        materialiseDefaultSetup()
+        save(template)
+        return true
+    }
+
+    @discardableResult
+    public mutating func renameSetup(_ old: String, to new: String) -> Bool {
+        guard isFreeName(new), setupNames.contains(old) else { return false }
+        materialiseDefaultSetup()
+        let wasActive = activeSetupName == old
+        document.renameTable(TOMLDocument.tableName(setup: old), to: TOMLDocument.tableName(setup: new))
+        if wasActive { activeSetupName = new }
+        return true
+    }
+
+    @discardableResult
+    public mutating func duplicateSetup(_ old: String, as new: String) -> Bool {
+        guard isFreeName(new), setupNames.contains(old) else { return false }
+        materialiseDefaultSetup()
+        document.duplicateTable(TOMLDocument.tableName(setup: old), as: TOMLDocument.tableName(setup: new))
+        return true
+    }
+
+    /// Deletes a setup. The last one cannot be deleted.
+    @discardableResult
+    public mutating func deleteSetup(_ name: String) -> Bool {
+        materialiseDefaultSetup()
+        guard setupNames.count > 1, setupNames.contains(name) else { return false }
+        let wasActive = activeSetupName == name
+        document.removeTable(TOMLDocument.tableName(setup: name))
+        if wasActive { activeSetupName = setupNames[0] }
+        return true
+    }
+
+    private func isFreeName(_ name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        return !trimmed.isEmpty && trimmed == name && !document.tableNames(prefix: "setups").contains(name)
+    }
+
+    /// A file with no setup tables shows the default setup; writing the first change makes it real.
+    private mutating func materialiseDefaultSetup() {
+        if document.tableNames(prefix: "setups").isEmpty { save(.external(name: Self.defaultSetupName)) }
+    }
+
+    /// The setup to switch to when webcams are plugged in or unplugged, or nil to leave things alone.
+    /// With an external webcam connected, only setups that can use it qualify; otherwise any setup the
+    /// connected cameras can serve does. The setup already in use wins when it qualifies.
+    public func suggestedSetup(externalCameras: [String], builtInCameras: [String]) -> String? {
+        let qualifying = setupNames.filter { name in
+            switch profile(named: name).camera {
+            case .auto: return !externalCameras.isEmpty || !builtInCameras.isEmpty
+            case .builtIn: return externalCameras.isEmpty && !builtInCameras.isEmpty
+            case .named(let n): return externalCameras.contains(n) || (externalCameras.isEmpty && builtInCameras.contains(n))
+            }
+        }
+        return qualifying.contains(activeSetupName) ? activeSetupName : qualifying.first
     }
 
     public var showPreview: Bool {
@@ -78,25 +183,39 @@ public struct DeskConfig: Equatable {
 
     public static let starterContents = """
     # Desk Undo settings. Lines starting with # are comments; the app keeps them when it saves.
-    # Delete a line to go back to the default estimate. Lengths are in centimetres.
+    # Delete a measurement line to go back to the default estimate. Lengths are in centimetres.
 
-    [measurements]
-    # Tape measure, eye to screen surface, while you sit as you normally do.
-    # Used to calibrate the webcam; leave out until you have measured it.
+    [preferences]
+    # The setup used last; the menu bar popover and Settings change it.
+    active_setup = "Standing desk"
+    # Switch setup by itself when a webcam is plugged in or unplugged.
+    auto_switch = false
+    # Show the camera view with detected eye points during a check. The picture is never saved.
+    preview = false
+
+    # A setup is one place you use Desk Undo. Copy a table and rename it to add another, for example
+    # [setups."MacBook on the sofa table"] with camera = "built-in".
+    [setups."Standing desk"]
+    # "auto" is an external webcam when one is plugged in, else the MacBook's. "built-in" is always
+    # the MacBook's own. Or write a webcam name exactly as macOS shows it.
+    camera = "auto"
+    screen = "external"
+    # Tape measure, eye to screen surface, while you sit as you normally do. Used to calibrate the webcam.
     # screen_distance_cm = 60
-    # Top edge of the screen above the desk surface (default 45).
+    # Top edge of the screen above the desk surface (default 45; 24 for the built-in screen).
     # screen_top_height_cm = 45
-    # Webcam lens centre above the top edge of the screen (default 1).
+    # Webcam lens centre above the top edge of the screen (default 1; 0.5 for the built-in camera).
     # lens_offset_cm = 1
     # Your height, and your eyes above the desk surface when seated.
     # user_height_cm = 175
     # seated_eye_height_cm = 40
+    # What you can move here: "adjustable" or "fixed". A setup with a fixed desk has no standing preset.
+    screen_height = "adjustable"
+    screen_distance = "adjustable"
+    desk_height = "adjustable"
+    chair_height = "adjustable"
 
-    [preferences]
-    # Show the camera view with detected eye points during a check. The picture is never saved.
-    preview = false
-
-    # Webcam calibration is added here by Settings, one table per webcam name, for example:
+    # Webcam calibration is stored per webcam, not per setup, and is added here by Settings:
     # [webcams."HD Pro Webcam C920"]
     # focal_widths = 0.78
     # pitch_degrees = 0

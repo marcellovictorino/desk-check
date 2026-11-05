@@ -21,6 +21,21 @@ Distance comes from how far apart your eyes look in the frame; height from where
 relative to the lens, plus the lens's height above the top of the screen. Both are
 estimates until you give Desk Undo tape measurements and calibrate your webcam.
 
+### Setups
+
+A setup is one place you use Desk Undo, for example a standing desk with an external
+webcam and screen, and a MacBook on a normal desk. Each setup has its own camera, screen
+label, tape measurements, lens offset and list of what you can move. The popover shows a
+picker when there is more than one, and Desk Undo remembers the one you used last.
+**Settings** can add (from an external or a MacBook template), rename, duplicate and
+delete setups. The MacBook template is seated only: desk height and screen height are
+fixed, so it has no standing preset and advice reports screen height instead of telling
+you to move it.
+
+Switching setups automatically is optional (`auto_switch = true`): Desk Undo moves to the
+setup that fits when a webcam is plugged in or unplugged. Reacting to the lid opening or
+closing is not built yet.
+
 ### Settings
 
 Open **Settings…** from the popover. All lengths are in centimetres, and an empty field
@@ -28,19 +43,23 @@ means the default estimate applies:
 
 | Setting | Meaning | Default |
 | --- | --- | --- |
+| Camera | automatic (external if plugged in), the MacBook's, or a webcam by name | automatic |
 | Eye to screen | tape measure, seated as you normally sit; used to calibrate | none |
-| Top of screen above desk | tape measure | 45 |
-| Webcam lens above screen top | tape measure | 1 |
+| Top of screen above desk | tape measure | 45 (24 for the MacBook) |
+| Webcam lens above screen top | tape measure | 1 (0.5 for the MacBook) |
 | Your height | tape measure | 175 |
 | Seated eyes above desk | tape measure; used to calibrate the webcam's tilt | 23% of your height |
+| Screen height, screen distance, desk height, chair height | adjustable or fixed | adjustable |
 
 **Calibrate webcam** sits at your tape distance and stores, per webcam name, its field of
-view and tilt. An external webcam that was calibrated keeps its numbers when you switch
-to the laptop camera and back. Without calibration a typical 70 degree field of view is
-assumed, which can be a few centimetres off. The optional preview shows the camera picture
-with the detected eye points while a check runs; the picture is held in memory only.
+view and tilt. Calibration belongs to the camera, not the setup, so every setup using that
+camera shares it, and deleting a setup keeps it. Without calibration a typical 70 degree
+field of view is assumed, which can be a few centimetres off. The optional preview shows
+the camera picture with the detected eye points while a check runs; the picture is held in
+memory only.
 
-"Your height" is stored for the sit and stand presets and does not change today's advice.
+"Your height" and the chair and desk adjustments are stored for the sit and stand presets
+and do not change today's advice.
 
 Accuracy target: within 3 cm for distance and 2 cm for eye height compared with a tape
 measure, sitting and standing, after calibration. That has to be checked at your own desk;
@@ -48,11 +67,16 @@ see [Checking accuracy](#checking-accuracy).
 
 ### Checking accuracy
 
-1. Sit, enter your measurements and calibrate. Check posture.
+Do this once for each setup you use, for example the standing desk and the MacBook.
+
+1. Pick the setup, sit, enter its measurements and calibrate. Check posture.
 2. Compare the reported distance with a tape measure from your eyes to the screen, and the
    reported "eyes above the top edge" with a tape against the screen's top edge.
 3. Stand and compare again. Move the screen exactly 5 cm and check that the reading
-   changes by 5 cm, within the limits above.
+   changes by 5 cm, within the limits above. A MacBook setup is seated only, so skip
+   the standing reading there and move the laptop 5 cm instead.
+4. Switch to the other setup in the popover and confirm it reads its own camera and
+   measurements, not the first setup's.
 
 ## Install
 
@@ -105,8 +129,9 @@ upgrading to 0.1.1 the permission read "not asked yet" again and macOS asked aga
 
 Settings live in `~/.config/desk-undo/config.toml`, a plain text file that allows
 comments, so it can sit in your dotfiles. The app writes a commented starter file on
-first launch. Settings edits only the lines it changes, so your own comments stay. Webcam
-calibration lives in one `[webcams."<camera name>"]` table per webcam.
+first launch. Settings edits only the lines it changes, so your own comments stay. Each setup is a
+`[setups."<name>"]` table, which you can also copy by hand. Webcam calibration lives in
+one `[webcams."<camera name>"]` table per webcam.
 
 ## Build from source
 

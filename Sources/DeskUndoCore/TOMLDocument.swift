@@ -37,6 +37,41 @@ public struct TOMLDocument: Equatable {
         "webcams.\(TOMLValue.string(webcam).rendered)"
     }
 
+    public static func tableName(setup: String) -> String {
+        "setups.\(TOMLValue.string(setup).rendered)"
+    }
+
+    /// Names of the tables under `prefix.` in file order, e.g. the setup names for `setups`.
+    public func tableNames(prefix: String) -> [String] {
+        lines.compactMap { Self.header($0) }.compactMap { header in
+            guard header.hasPrefix(prefix + ".") else { return nil }
+            let rest = header.dropFirst(prefix.count + 1).trimmingCharacters(in: .whitespaces)
+            guard rest.hasPrefix("\""), let v = Self.parseValue(rest).value, case .string(let name) = v else { return rest }
+            return name
+        }
+    }
+
+    public func hasTable(_ table: String) -> Bool { lines.contains { Self.header($0) == table } }
+
+    public mutating func removeTable(_ table: String) {
+        guard let i = lines.firstIndex(where: { Self.header($0) == table }), let range = tableRange(table) else { return }
+        lines.removeSubrange(i..<range.upperBound)
+    }
+
+    public mutating func renameTable(_ table: String, to new: String) {
+        guard let i = lines.firstIndex(where: { Self.header($0) == table }) else { return }
+        lines[i] = "[\(new)]"
+    }
+
+    /// Copies a table, comments included, under a new name placed right after it.
+    public mutating func duplicateTable(_ table: String, as new: String) {
+        guard hasTable(table), let range = tableRange(table) else { return }
+        var body = Array(lines[range])
+        while body.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { body.removeLast() }
+        let insertAt = range.lowerBound + body.count
+        lines.insert(contentsOf: ["", "[\(new)]"] + body, at: insertAt)
+    }
+
     public func value(_ key: String, in table: String) -> TOMLValue? {
         guard let range = tableRange(table) else { return nil }
         for i in range {
@@ -64,9 +99,17 @@ public struct TOMLDocument: Equatable {
                 return
             }
         }
-        // Insert after the table's last non-blank line.
+        // A commented-out template line for this key becomes the real line, so the file stays tidy.
+        for i in range {
+            let t = lines[i].trimmingCharacters(in: .whitespaces)
+            if t.hasPrefix("#"), let (k, _) = Self.keyAndRest(String(t.dropFirst())), k == key {
+                lines[i] = newPair
+                return
+            }
+        }
+        // Otherwise insert after the table's last key, so a comment that introduces the next section stays with it.
         var at = range.lowerBound
-        for i in range where !lines[i].trimmingCharacters(in: .whitespaces).isEmpty { at = i + 1 }
+        for i in range where Self.keyAndRest(lines[i]) != nil { at = i + 1 }
         lines.insert(newPair, at: at)
     }
 

@@ -42,11 +42,19 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
         self.onPreview = onPreview
     }
 
-    /// Prefers an external webcam, which is what Desk Undo is designed for.
-    static func preferredCamera() -> AVCaptureDevice? {
-        let discovery = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.external, .builtInWideAngleCamera], mediaType: .video, position: .unspecified)
-        return discovery.devices.first { $0.deviceType == .external } ?? discovery.devices.first
+    static func connectedCameras() -> [AVCaptureDevice] {
+        AVCaptureDevice.DiscoverySession(deviceTypes: [.external, .builtInWideAngleCamera], mediaType: .video,
+                                         position: .unspecified).devices
+    }
+
+    /// The camera a setup asks for, if it is connected. "auto" prefers an external webcam.
+    static func camera(for choice: CameraChoice) -> AVCaptureDevice? {
+        let all = connectedCameras()
+        switch choice {
+        case .auto: return all.first { $0.deviceType == .external } ?? all.first
+        case .builtIn: return all.first { $0.deviceType == .builtInWideAngleCamera }
+        case .named(let name): return all.first { $0.localizedName == name }
+        }
     }
 
     func run(device: AVCaptureDevice, completion: @escaping @Sendable (SampleResult?, String?) -> Void) {
