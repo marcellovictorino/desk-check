@@ -2,32 +2,46 @@ import DeskCheckCore
 import AppKit
 import SwiftUI
 
-/// A small window that stays on top while the desk is cranked. Closing it turns the camera off.
+/// Live adjustment inside the menu bar popover. Its height never changes: the title and Stop sit in a header, the
+/// bands have a reserved area, and the status text has a reserved line pair, so Stop stays where the pointer is.
 struct LiveView: View {
     @ObservedObject var live: LiveController
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Live adjustment").font(.headline)
-                Spacer()
                 Text(live.setupName).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                // Esc stops Live and returns to the main view; Esc there, or a click away, closes the popover.
+                Button("Stop") { live.stop() }.keyboardShortcut(.cancelAction).glassButton(prominent: true)
             }
-            if live.advice.isEmpty {
-                Text(live.isRunning ? "Waiting for a steady reading…" : "Start live mode, then move the desk or screen.")
-                    .foregroundStyle(.secondary)
+            Text(InstructionText.live).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            ZStack(alignment: .top) {
+                if live.advice.isEmpty {
+                    Text(live.isRunning ? "Waiting for a steady reading…" : LiveController.offText)
+                        .foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    GlassGroup(spacing: LiveLayout.rowSpacing) {
+                        VStack(spacing: LiveLayout.rowSpacing) {
+                            ForEach(live.advice, id: \.adjustment) { BandRow(item: $0) }
+                        }
+                    }
+                }
             }
-            ForEach(live.advice, id: \.adjustment) { BandRow(item: $0) }
-            Text(live.statusText).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Button(live.isRunning ? "Stop" : "Start") { live.isRunning ? live.stop() : live.start() }
-                .keyboardShortcut(.defaultAction)
+            .frame(height: LiveLayout.bandAreaHeight(rows: live.rowCount), alignment: .top)
+            Text(live.statusText).font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(height: 32, alignment: .topLeading)
         }
-        .padding(16)
-        .frame(width: 300)
-        .background(FloatingWindow())
-        .onAppear { live.start() }
-        .onDisappear { live.stop() }
     }
+}
+
+/// The one instruction line each window carries.
+enum InstructionText {
+    static let popover = "Check desk measures once. Live shows the bands while you move the desk."
+    static let live = "Move the desk or screen until every band is green. Stop turns the camera off."
+    static let settings = "Measure with a tape, type centimetres, then Save. Hover a field to see where the tape runs."
 }
 
 struct BandRow: View {
@@ -53,19 +67,10 @@ struct BandRow: View {
             Text(item.direction == .none ? "OK" : "\(item.moveCm) cm")
                 .font(.system(.title2, design: .rounded).monospacedDigit()).frame(width: 70, alignment: .trailing)
         }
-        .padding(8)
-        .background(colour.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 8)
+        .frame(height: LiveLayout.rowHeight)
+        .glassTile(tint: colour)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(item.adjustment.label): \(item.level == .green ? "green" : item.level == .yellow ? "yellow" : "red"). \(item.text)")
     }
-}
-
-/// Keeps the live window above other windows so it stays visible while the desk is cranked.
-struct FloatingWindow: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async { view.window?.level = .floating }
-        return view
-    }
-    func updateNSView(_ view: NSView, context: Context) {}
 }

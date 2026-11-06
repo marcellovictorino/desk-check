@@ -2,7 +2,8 @@
 import DeskCheckCore
 
 /// Streams eye positions from the webcam until stopped. Every frame is analysed and dropped; only
-/// the eye coordinates leave this class, and stopping closes the camera before `stop()` returns.
+/// the eye coordinates leave this class. `stop()` returns at once and closes the camera on its own queue,
+/// so the menu bar never freezes while the camera shuts down.
 final class LiveSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     static let framesToSkip = 10
     /// Vision at full frame rate is wasteful; about ten readings a second is plenty for a one second average.
@@ -34,9 +35,9 @@ final class LiveSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
     func stop() {
         let session = lock.withLock { () -> AVCaptureSession? in stopped = true; defer { self.session = nil }; return self.session }
         guard let session else { return }
-        // Waits for the camera to close, then for any frame still being analysed.
-        sessionQueue.sync { session.stopRunning() }
-        frameQueue.sync {}
+        // The session queue runs this after any pending startRunning, so stop always follows start. Frames still
+        // in flight are dropped by `stopped`.
+        sessionQueue.async { session.stopRunning() }
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {

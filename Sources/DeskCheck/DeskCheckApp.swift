@@ -1,4 +1,5 @@
 import DeskCheckCore
+import AppKit
 import SwiftUI
 import os
 
@@ -25,15 +26,6 @@ struct DeskCheckApp: App {
             Image(nsImage: MenuBarIcon.image()).accessibilityLabel("Desk Check")
         }
         .menuBarExtraStyle(.window)
-
-        Window("Live adjustment", id: "live") {
-            LiveView(live: LiveController.shared)
-        }
-        .windowResizability(.contentSize)
-
-        Settings {
-            SettingsView(checker: checker)
-        }
     }
 }
 

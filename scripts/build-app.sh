@@ -13,8 +13,12 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 # /usr/bin/xcrun, not a wrapper on PATH: Homebrew's wrapper drops DEVELOPER_DIR when asked for a path.
 echo "toolchain: $(/usr/bin/xcrun --find swift)"
 # --disable-sandbox: SwiftPM's own build sandbox cannot nest inside Homebrew's.
-swift build --package-path "$root" -c release --arch arm64 --disable-sandbox
-bin="$(swift build --package-path "$root" -c release --arch arm64 --show-bin-path)"
+# The platform_version flags make the binary record the SDK it was built with. SwiftPM's default build system
+# writes sdk 14.0 whatever SDK is installed, and macOS 26 then draws the old grey buttons instead of Liquid Glass.
+sdk="$(/usr/bin/xcrun --show-sdk-version)"
+set -- -c release --arch arm64 -Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker "$sdk"
+swift build --package-path "$root" "$@" --disable-sandbox
+bin="$(swift build --package-path "$root" "$@" --show-bin-path)"
 
 app="$out/DeskCheck.app"
 rm -rf "$app"

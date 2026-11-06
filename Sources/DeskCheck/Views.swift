@@ -1,12 +1,34 @@
 import DeskCheckCore
+import AppKit
 import SwiftUI
 
 struct PopoverView: View {
     @ObservedObject var checker: PostureChecker
     @ObservedObject var live = LiveController.shared
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if live.isRunning {
+                LiveView(live: live)
+            } else if checker.showingSettings {
+                settingsView
+            } else {
+                checkView
+            }
+        }
+        .padding(14)
+        .frame(width: checker.showingSettings && !live.isRunning ? 520 : 320)
+        .onAppear { checker.reloadSetups(); checker.refreshPermission() }
+        // Clicking away: the menu bar popover is hidden, not torn down, so onDisappear never fires for it.
+        // The popover's window losing key status is the signal, and it turns the camera off.
+        .background(WindowHidden(visible: { live.popoverIsVisible = $0 }) {
+            checker.clearPreview(); live.popoverHidden()
+            // Next time the popover opens it starts on the main view, unless a calibration is still running.
+            if !checker.isRunning { checker.showingSettings = false }
+        })
+    }
+
+    private var checkView: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Desk Check").font(.headline)
@@ -19,17 +41,30 @@ struct PopoverView: View {
                 } else {
                     Text(checker.activeSetup).font(.caption).foregroundStyle(.secondary)
                 }
+                Button { checker.showingSettings = true } label: { Image(systemName: "gearshape") }
+                    .glassIconButton().help("Settings").accessibilityLabel("Settings")
+                Button { NSApplication.shared.terminate(nil) } label: { Image(systemName: "power") }
+                    .glassIconButton().help("Quit Desk Check").accessibilityLabel("Quit")
             }
             if let preview = checker.preview { PreviewView(frame: preview) }
             if let r = checker.reading {
-                ForEach(Array(checker.advice.enumerated()), id: \.offset) { _, item in
-                    Label(item.sentence, systemImage: item.status == .good ? "checkmark.circle.fill" : item.status == .fixed ? "lock.circle.fill" : "arrow.up.and.down.circle.fill")
-                        .foregroundStyle(item.status == .good ? Color.green : item.status == .fixed ? Color.secondary : Color.orange)
-                        .fixedSize(horizontal: false, vertical: true)
+                GlassGroup(spacing: 6) {
+                    VStack(spacing: 6) {
+                        ForEach(Array(checker.advice.enumerated()), id: \.offset) { _, item in
+                            let tint = item.status == .good ? Color.green : item.status == .fixed ? Color.gray : Color.orange
+                            Label(item.sentence, systemImage: item.status == .good ? "checkmark.circle.fill" : item.status == .fixed ? "lock.circle.fill" : "arrow.up.and.down.circle.fill")
+                                .foregroundStyle(item.status == .good ? Color.green : item.status == .fixed ? Color.secondary : Color.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 10).padding(.vertical, 7)
+                                .glassTile(tint: tint)
+                        }
+                    }
                 }
                 Text(String(format: "Eyes %.0f cm from the screen, %.0f cm above the desk.", r.distanceCm, r.eyeHeightAboveDeskCm))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Text(InstructionText.popover).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             presets
             if let note = checker.presetNote {
                 Text(note).font(.caption).fixedSize(horizontal: false, vertical: true)
@@ -43,18 +78,31 @@ struct PopoverView: View {
                 Button("Check desk") { checker.check() }
                     .disabled(checker.isRunning)
                     .keyboardShortcut(.defaultAction)
-                Button("Live") { openWindow(id: "live"); NSApp.activate(ignoringOtherApps: true) }
-                    .disabled(checker.isRunning || live.isRunning)
+                    .glassButton(prominent: true)
+                Button("Live") { live.start() }
+                    .disabled(checker.isRunning)
+                    .glassButton()
                 Spacer()
-                SettingsLink { Text("Settings…") }
-                Button("Quit") { NSApplication.shared.terminate(nil) }
+            }
+            .controlSize(.large)
+            if live.statusText != LiveController.offText {
+                Text(live.statusText).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Text("Camera permission: \(checker.permissionText)").font(.caption2).foregroundStyle(.tertiary)
         }
-        .padding(14)
-        .frame(width: 320)
-        .onAppear { checker.reloadSetups(); checker.refreshPermission() }
-        .onDisappear { checker.clearPreview() }
+    }
+
+    /// Settings replace the popover content like Live does. Esc, or Back, returns to the main view.
+    private var settingsView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Button { checker.showingSettings = false } label: { Label("Back", systemImage: "chevron.left") }
+                    .keyboardShortcut(.cancelAction).glassButton()
+                Text("Settings").font(.headline)
+                Spacer()
+            }
+            SettingsView(checker: checker)
+        }
     }
 }
 
@@ -71,7 +119,9 @@ extension PopoverView {
                         Text("\(posture.label): \(Int(preset.deskHeightCm.rounded())) cm on the tape").font(.callout)
                         Spacer()
                         Button("Confirm") { checker.confirmPreset(posture) }.disabled(checker.isRunning || preset.distanceCm == nil)
+                            .glassButton()
                         Button("Remember view") { checker.rememberView(posture) }.disabled(checker.isRunning)
+                            .glassButton()
                     }
                 }
             }
@@ -95,6 +145,47 @@ struct PreviewView: View {
             .scaleEffect(x: -1, y: 1)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .accessibilityLabel("Camera preview with detected eye points")
+    }
+}
+
+/// Calls `hidden` when the window holding this view stops being the key window or leaves the screen. The menu bar
+/// popover is reused rather than rebuilt, so SwiftUI's own onDisappear does not run when it closes.
+struct WindowHidden: NSViewRepresentable {
+    let visible: (@escaping () -> Bool) -> Void
+    let hidden: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        let observer = context.coordinator
+        DispatchQueue.main.async { [weak view] in
+            guard let window = view?.window else { return }
+            observer.attach(to: window)
+            visible { [weak window] in window.map { $0.isVisible && $0.occlusionState.contains(.visible) } ?? false }
+        }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) { context.coordinator.hidden = hidden }
+
+    func makeCoordinator() -> Coordinator { Coordinator(hidden: hidden) }
+
+    final class Coordinator {
+        var hidden: () -> Void
+        private var tokens: [NSObjectProtocol] = []
+        init(hidden: @escaping () -> Void) { self.hidden = hidden }
+
+        func attach(to window: NSWindow?) {
+            guard let window, tokens.isEmpty else { return }
+            let center = NotificationCenter.default
+            tokens.append(center.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { [weak self] _ in
+                self?.hidden()
+            })
+            tokens.append(center.addObserver(forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main) { [weak self] _ in
+                if !window.occlusionState.contains(.visible) { self?.hidden() }
+            })
+        }
+
+        deinit { tokens.forEach(NotificationCenter.default.removeObserver) }
     }
 }
 
@@ -128,7 +219,22 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        // The drawing stays above the scrolling form so it is visible while a value is typed.
+        VStack(spacing: 0) {
+            FieldGuideView(active: hovered ?? focused, laptop: profile.camera == .builtIn,
+                           select: { focused = $0 },
+                           hover: { field, inside in
+                               if inside { hovered = field } else if hovered == field { hovered = nil }
+                           })
+            form
+        }
+        .frame(width: 492, height: 600)
+        .onAppear { checker.reloadSetups(); checker.refreshPermission(); load() }
+    }
+
+    private var form: some View {
         Form {
+            Text(InstructionText.settings).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Section("Setup") {
                 Picker("Setup", selection: Binding(get: { checker.activeSetup }, set: { switchSetup(to: $0) })) {
                     ForEach(checker.setupNames, id: \.self) { Text($0).tag($0) }
@@ -146,10 +252,11 @@ struct SettingsView: View {
                     Button("Delete", role: .destructive) { edit { $0.deleteSetup(checker.activeSetup) } }
                         .disabled(checker.setupNames.count < 2)
                 }
+                .glassButton()
                 Text("Rename, Duplicate and Add use the name above. Delete removes the selected setup; its webcam calibration stays.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Toggle("Switch setup when a webcam is plugged in or unplugged", isOn: $autoSwitch)
-            }
+            }.glassSection()
             Section("Camera and screen") {
                 Picker("Camera", selection: $profile.camera) {
                     Text("Automatic (external if plugged in)").tag(CameraChoice.auto)
@@ -169,13 +276,8 @@ struct SettingsView: View {
                 if !profile.supportsStandingPreset {
                     Text("Desk height is fixed, so this setup has no standing preset.").font(.caption).foregroundStyle(.secondary)
                 }
-            }
+            }.glassSection()
             Section("Tape measure (centimetres)") {
-                FieldGuideView(active: hovered ?? focused, laptop: profile.camera == .builtIn,
-                               select: { focused = $0 },
-                               hover: { field, inside in
-                                   if inside { hovered = field } else if hovered == field { hovered = nil }
-                               })
                 field(.distance, $fields.distance, hint: "for calibration")
                 field(.screenTop, $fields.screenTop, hint: "default \(fmt(defaults.screenTop))")
                 field(.lens, $fields.lens, hint: "default \(fmt(defaults.lensOffset))")
@@ -183,7 +285,7 @@ struct SettingsView: View {
                 field(.seatedEye, $fields.seatedEye, hint: "estimated from height")
                 field(.elbow, $fields.elbow, hint: "default 0.3 of your height")
                 Text("Leave a field empty to use the default estimate.").font(.caption).foregroundStyle(.secondary)
-            }
+            }.glassSection()
             Section("Desk presets (floor to top of desk, from the tape on the desk leg, centimetres)") {
                 field(.sitDesk, $fields.sitDesk, hint: "floor to desk top")
                 if profile.supportsStandingPreset {
@@ -193,7 +295,7 @@ struct SettingsView: View {
                 }
                 Text("Set the desk to the height on the tape, then use Remember view in the menu bar popover so the camera can confirm it later.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
+            }.glassSection()
             Section("Webcam calibration") {
                 Text(checker.webcamName ?? "The camera for this setup is not connected")
                 Text("Sit as you normally do with your eyes at the tape distance, then calibrate. Calibration belongs to the webcam, so every setup using it shares it.")
@@ -201,20 +303,30 @@ struct SettingsView: View {
                 HStack {
                     Button("Calibrate webcam") { save(); checker.calibrate() }
                         .disabled(checker.isRunning || checker.webcamName == nil)
+                        .glassButton()
                     if checker.isRunning { ProgressView().controlSize(.small) }
                 }
                 Text(checker.lastCalibrationText ?? calibrationSummary).font(.caption).foregroundStyle(.secondary)
                 Toggle("Show camera preview with eye points during a check", isOn: $showPreview)
-            }
+            }.glassSection()
             HStack {
-                Button("Save") { save(); message = "Saved." }.keyboardShortcut(.defaultAction)
+                Button("Save") { save(); message = "Saved." }.keyboardShortcut(.defaultAction).glassButton(prominent: true)
                 Text(message).font(.caption).foregroundStyle(.secondary)
             }
-            LabeledContent("Config file", value: ConfigLocation.file.path).font(.caption)
+            LabeledContent("Config file") {
+                HStack {
+                    Text(ConfigLocation.file.path).textSelection(.enabled)
+                    Button("Open config file") { openConfigFile() }.glassButton()
+                }
+            }.font(.caption)
         }
         .formStyle(.grouped)
-        .frame(width: 520)
-        .onAppear { checker.reloadSetups(); checker.refreshPermission(); load() }
+        .clearFormBackground()
+    }
+
+    private func openConfigFile() {
+        let file = ConfigLocation.file
+        openWithTextEditFallback(file) { message = "No app could open the config file. Open \(file.path) yourself." }
     }
 
     private var defaults: Setup { Setup(builtIn: profile.camera == .builtIn) }
