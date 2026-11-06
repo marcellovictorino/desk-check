@@ -1,11 +1,11 @@
 #!/bin/sh
-# Reads Desk Undo's permissions back from a built DeskUndo.app and fails when the
+# Reads Desk Check's permissions back from a built DeskCheck.app and fails when the
 # privacy promises in the README do not hold: menu bar only, camera on request,
-# App Sandbox with no network access, and only ~/.config/desk-undo/ outside the container.
+# App Sandbox with no network access, and only ~/.config/desk-check/ outside the container.
 #
-# Usage: Tests/verify-app.sh <path to DeskUndo.app>
+# Usage: Tests/verify-app.sh <path to DeskCheck.app>
 set -eu
-app="${1:?path to DeskUndo.app}"
+app="${1:?path to DeskCheck.app}"
 plist="$app/Contents/Info.plist"
 ents="$(mktemp)"
 trap 'rm -f "$ents"' EXIT
@@ -23,7 +23,8 @@ check() { # description, command...
 }
 
 exception=com.apple.security.temporary-exception.files.home-relative-path.read-write
-expected_keys="com.apple.security.app-sandbox com.apple.security.device.camera $exception"
+legacy=com.apple.security.temporary-exception.files.home-relative-path.read-only
+expected_keys="com.apple.security.app-sandbox com.apple.security.device.camera $exception $legacy"
 actual_keys="$(plutil -convert json -o - "$ents" | /usr/bin/python3 -I -c 'import json,sys; print(" ".join(sorted(json.load(sys.stdin))))')"
 
 check "signature is valid" codesign --verify --strict "$app"
@@ -34,7 +35,8 @@ check "App Sandbox on" is "$(ent com.apple.security.app-sandbox '' || true)" tru
 check "camera entitlement on" is "$(ent com.apple.security.device.camera '' || true)" true
 check "no network client entitlement" is "$(ent com.apple.security.network.client '' || echo absent)" absent
 check "no network server entitlement" is "$(ent com.apple.security.network.server '' || echo absent)" absent
-check "one folder exception, /.config/desk-undo/" is "$(ent $exception '' || true)|$(ent $exception .0 || true)" "1|/.config/desk-undo/"
+check "one folder exception, /.config/desk-check/" is "$(ent $exception '' || true)|$(ent $exception .0 || true)" "1|/.config/desk-check/"
+check "read-only access to the old folder, /.config/desk-undo/" is "$(ent $legacy '' || true)|$(ent $legacy .0 || true)" "1|/.config/desk-undo/"
 check "no other entitlements" is "$actual_keys" "$expected_keys"
 
 exit $fail

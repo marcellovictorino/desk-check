@@ -20,7 +20,7 @@ public enum TOMLValue: Equatable {
     }
 }
 
-/// A line-based reader and editor for the small TOML subset Desk Undo uses:
+/// A line-based reader and editor for the small TOML subset Desk Check uses:
 /// `[table]` headers, `key = number | true | false | "string"`, and `#` comments.
 ///
 /// Edits change only the value they touch, so comments and layout a person added by hand survive.

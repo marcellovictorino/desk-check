@@ -1,4 +1,4 @@
-import DeskUndoCore
+import DeskCheckCore
 import SwiftUI
 
 struct PopoverView: View {
@@ -9,7 +9,7 @@ struct PopoverView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Desk Undo").font(.headline)
+                Text("Desk Check").font(.headline)
                 Spacer()
                 if checker.setupNames.count > 1 {
                     Picker("Setup", selection: Binding(get: { checker.activeSetup }, set: { checker.selectSetup($0) })) {
@@ -40,7 +40,7 @@ struct PopoverView: View {
             Text(checker.statusText)
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
-                Button("Check posture") { checker.check() }
+                Button("Check desk") { checker.check() }
                     .disabled(checker.isRunning)
                     .keyboardShortcut(.defaultAction)
                 Button("Live") { openWindow(id: "live"); NSApp.activate(ignoringOtherApps: true) }

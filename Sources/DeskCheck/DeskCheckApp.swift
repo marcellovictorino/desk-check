@@ -1,11 +1,11 @@
-import DeskUndoCore
+import DeskCheckCore
 import SwiftUI
 import os
 
-let log = Logger(subsystem: "io.github.marcellovictorino.desk-undo", category: "app")
+let log = Logger(subsystem: "io.github.marcellovictorino.desk-check", category: "app")
 
 @main
-struct DeskUndoApp: App {
+struct DeskCheckApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var checker = PostureChecker.shared
 
@@ -19,8 +19,10 @@ struct DeskUndoApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("Desk Undo", systemImage: "arrow.uturn.backward.circle") {
+        MenuBarExtra {
             PopoverView(checker: checker)
+        } label: {
+            Image(nsImage: MenuBarIcon.image()).accessibilityLabel("Desk Check")
         }
         .menuBarExtraStyle(.window)
 
@@ -36,8 +38,8 @@ struct DeskUndoApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// `open DeskUndo.app --args --check` runs one check at launch, the same as pressing
-    /// Check posture; the numbers go to the unified log (subsystem io.github.marcellovictorino.desk-undo).
+    /// `open DeskCheck.app --args --check` runs one check at launch, the same as pressing
+    /// Check posture; the numbers go to the unified log (subsystem io.github.marcellovictorino.desk-check).
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             PostureChecker.shared.refreshPermission()

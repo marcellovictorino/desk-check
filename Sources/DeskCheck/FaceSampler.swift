@@ -1,6 +1,6 @@
 @preconcurrency import AVFoundation
 import CoreImage
-import DeskUndoCore
+import DeskCheckCore
 import Vision
 
 /// A small copy of one frame for the optional preview, with the eye positions as fractions of its size
@@ -26,8 +26,8 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
 
     // Frames arrive on `frameQueue`; the session starts, waits and stops on `sessionQueue`.
     // They must differ, or the wait blocks frame delivery.
-    private let frameQueue = DispatchQueue(label: "desk-undo.camera.frames")
-    private let sessionQueue = DispatchQueue(label: "desk-undo.camera.session")
+    private let frameQueue = DispatchQueue(label: "desk-check.camera.frames")
+    private let sessionQueue = DispatchQueue(label: "desk-check.camera.session")
     private let lock = NSLock()
     private let enough = DispatchSemaphore(value: 0)
     private let ciContext = CIContext()

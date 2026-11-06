@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "DeskUndo",
+    name: "DeskCheck",
     platforms: [.macOS(.v14)],
     targets: [
-        .target(name: "DeskUndoCore"),
-        .executableTarget(name: "DeskUndo", dependencies: ["DeskUndoCore"]),
-        .testTarget(name: "DeskUndoCoreTests", dependencies: ["DeskUndoCore"])
+        .target(name: "DeskCheckCore"),
+        .executableTarget(name: "DeskCheck", dependencies: ["DeskCheckCore"]),
+        .testTarget(name: "DeskCheckCoreTests", dependencies: ["DeskCheckCore"])
     ]
 )

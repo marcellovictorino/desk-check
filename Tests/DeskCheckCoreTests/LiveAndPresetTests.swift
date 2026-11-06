@@ -1,7 +1,7 @@
 import XCTest
-@testable import DeskUndoCore
+@testable import DeskCheckCore
 
-/// Intent source: piece 3 of the Desk Undo brief (SCR-705): sit and stand presets read from a desk-leg tape and
+/// Intent source: piece 3 of the Desk Check brief (SCR-705): sit and stand presets read from a desk-leg tape and
 /// confirmed by the camera; live mode bands of top of screen 2 cm below eye level (green 3, yellow 6),
 /// distance 62 cm (12, 20) and desk 3 cm below the elbow (3, 6); readings averaged about a second;
 /// all of it per setup, with a MacBook-only seated setup having no desk-height preset.

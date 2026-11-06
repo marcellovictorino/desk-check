@@ -9,9 +9,9 @@ public struct WebcamCalibration: Equatable, Sendable {
     }
 }
 
-/// Desk Undo's settings, read from and written to `config.toml` without disturbing the person's comments.
+/// Desk Check's settings, read from and written to `config.toml` without disturbing the person's comments.
 ///
-/// A setup is a named place Desk Undo is used, such as a standing desk with an external camera or a
+/// A setup is a named place Desk Check is used, such as a standing desk with an external camera or a
 /// MacBook on a normal desk. Setups live in `[setups."Name"]` tables; calibration stays per webcam.
 public struct DeskConfig: Equatable {
     public var document: TOMLDocument
@@ -204,7 +204,7 @@ public struct DeskConfig: Equatable {
     }
 
     public static let starterContents = """
-    # Desk Undo settings. Lines starting with # are comments; the app keeps them when it saves.
+    # Desk Check settings. Lines starting with # are comments; the app keeps them when it saves.
     # Delete a measurement line to go back to the default estimate. Lengths are in centimetres.
 
     [preferences]
@@ -215,7 +215,7 @@ public struct DeskConfig: Equatable {
     # Show the camera view with detected eye points during a check. The picture is never saved.
     preview = false
 
-    # A setup is one place you use Desk Undo. Copy a table and rename it to add another, for example
+    # A setup is one place you use Desk Check. Copy a table and rename it to add another, for example
     # [setups."MacBook on the sofa table"] with camera = "built-in".
     [setups."Standing desk"]
     # "auto" is an external webcam when one is plugged in, else the MacBook's. "built-in" is always

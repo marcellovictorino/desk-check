@@ -7,8 +7,13 @@
 	<true/>
 	<key>com.apple.security.device.camera</key>
 	<true/>
-	<!-- The only folder outside the app's container that Desk Undo may read or write. -->
+	<!-- The only folder outside the app's container that Desk Check may read or write. -->
 	<key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>
+	<array>
+		<string>/.config/desk-check/</string>
+	</array>
+	<!-- Read-only, so a first launch can copy the settings the app kept under its old name, Desk Undo. -->
+	<key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
 	<array>
 		<string>/.config/desk-undo/</string>
 	</array>

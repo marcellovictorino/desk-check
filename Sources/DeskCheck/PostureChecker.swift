@@ -1,5 +1,5 @@
 @preconcurrency import AVFoundation
-import DeskUndoCore
+import DeskCheckCore
 import SwiftUI
 
 /// Runs one on-demand check: opens the camera, reads the eyes, closes the camera, explains the result.
@@ -104,7 +104,7 @@ final class PostureChecker: NSObject, ObservableObject {
             Task { @MainActor in
                 self.refreshPermission()
                 guard granted else {
-                    self.finish("Desk Undo has no camera permission. Allow it in System Settings, Privacy & Security, Camera.")
+                    self.finish("Desk Check has no camera permission. Allow it in System Settings, Privacy & Security, Camera.")
                     return
                 }
                 self.begin(mode)
@@ -155,7 +155,8 @@ final class PostureChecker: NSObject, ObservableObject {
         let line = String(format: "distance=%.1f eyeAboveTop=%.1f eyeHeight=%.1f frames=%d", median.distanceCm,
                           median.eyeAboveScreenTopCm, median.eyeHeightAboveDeskCm, readings.count)
         log.notice("check \(line, privacy: .public)")
-        var message = "Checked setup \(profile.name) with \(result.cameraName). The camera is off."
+        let passed = advice.allSatisfy { $0.status != .adjust }
+        var message = (passed ? "Desk check passed" : "Checked") + " for \(profile.name) with \(result.cameraName). The camera is off."
         switch mode {
         case .remember(let posture): message = remember(median, posture: posture, config: config, profile: profile)
         case .confirm(let posture): message = confirm(median, posture: posture, profile: profile)

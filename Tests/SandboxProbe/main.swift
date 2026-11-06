@@ -1,4 +1,4 @@
-// Runs under Desk Undo's own entitlements (see Tests/sandbox-probe.sh) and checks the
+// Runs under Desk Check's own entitlements (see Tests/sandbox-probe.sh) and checks the
 // sandbox does what the README promises: the config folder works, every other folder
 // in the home folder is closed, and network connections are refused.
 import Darwin
@@ -19,7 +19,7 @@ let home = ConfigLocation.realHomeDirectory
 let fm = FileManager.default
 
 expect(NSHomeDirectory().contains("/Library/Containers/"), "running inside the App Sandbox container")
-expect(ConfigLocation.file.path == home.path + "/.config/desk-undo/config.toml",
+expect(ConfigLocation.file.path == home.path + "/.config/desk-check/config.toml",
        "config path is in the real home folder, not the container")
 
 // Config folder: create it if needed, write, read back, remove the probe file.
@@ -35,7 +35,7 @@ do {
 }
 
 // Anywhere else in the home folder is closed.
-let outside = home.appendingPathComponent(".config/desk-undo-sandbox-probe-outside")
+let outside = home.appendingPathComponent(".config/desk-check-sandbox-probe-outside")
 let wroteOutside = (try? "x".write(to: outside, atomically: false, encoding: .utf8)) != nil
 if wroteOutside { try? fm.removeItem(at: outside) }
 expect(!wroteOutside, "writing beside the config folder is refused")

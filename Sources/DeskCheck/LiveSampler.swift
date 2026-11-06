@@ -1,5 +1,5 @@
 @preconcurrency import AVFoundation
-import DeskUndoCore
+import DeskCheckCore
 
 /// Streams eye positions from the webcam until stopped. Every frame is analysed and dropped; only
 /// the eye coordinates leave this class, and stopping closes the camera before `stop()` returns.
@@ -8,8 +8,8 @@ final class LiveSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
     /// Vision at full frame rate is wasteful; about ten readings a second is plenty for a one second average.
     static let minimumInterval = 0.1
 
-    private let frameQueue = DispatchQueue(label: "desk-undo.live.frames")
-    private let sessionQueue = DispatchQueue(label: "desk-undo.live.session")
+    private let frameQueue = DispatchQueue(label: "desk-check.live.frames")
+    private let sessionQueue = DispatchQueue(label: "desk-check.live.session")
     private let lock = NSLock()
     private var session: AVCaptureSession?
     private var framesSeen = 0

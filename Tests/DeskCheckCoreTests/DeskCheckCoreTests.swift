@@ -1,5 +1,5 @@
 import XCTest
-@testable import DeskUndoCore
+@testable import DeskCheckCore
 
 /// Intent sources: the piece 2 brief (SCR-705) asks for distance and height readings within
 /// 3 cm and 2 cm, tape-measure inputs with defaults until measured, per-webcam calibration,
@@ -91,15 +91,15 @@ final class AdviceTests: XCTestCase {
     func testEachAdjustmentGetsOneSentenceWithANumber() {
         let advice = AdviceEngine.advise(reading(45, 15))
         XCTAssertEqual(advice.map(\.sentence), [
-            "Move the screen 15 cm further away; it is 45 cm from your eyes.",
-            "Raise the screen by 10 cm; your eyes are 15 cm above its top edge.",
+            "Distance: move the screen 15 cm further away.",
+            "Screen: raise 10 cm.",
         ])
     }
 
     func testTooFarAndScreenTooHigh() {
         let advice = AdviceEngine.advise(reading(80, -3))
-        XCTAssertEqual(advice[0].sentence, "Move the screen 20 cm closer; it is 80 cm from your eyes.")
-        XCTAssertEqual(advice[1].sentence, "Lower the screen by 8 cm; your eyes are 3 cm below its top edge.")
+        XCTAssertEqual(advice[0].sentence, "Distance: move the screen 20 cm closer.")
+        XCTAssertEqual(advice[1].sentence, "Screen: lower 8 cm.")
     }
 
     func testGoodPostureNeedsNoAdjustment() {
@@ -323,5 +323,44 @@ final class TOMLLayoutTests: XCTestCase {
         var c = DeskConfig(text: DeskConfig.starterContents)
         c.setCalibration(WebcamCalibration(focalWidths: 0.8), forWebcam: "Cam")
         XCTAssertTrue(c.document.text.contains("# pitch_degrees = 0\n\n[webcams.\"Cam\"]\nfocal_widths = 0.8"))
+    }
+}
+
+/// Intent source: the Desk Check rename (DESK-10): settings kept under the old Desk Undo name must carry over,
+/// so nobody loses their setups, tape measurements and webcam calibration.
+final class ConfigMigrationTests: XCTestCase {
+    func scratch() throws -> URL {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("desk-check-migration-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        return dir
+    }
+
+    func testOldSettingsAreCopiedAndLeftInPlace() throws {
+        let root = try scratch()
+        let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
+        try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+        try "# my own comment\nuser_height_cm = 181\n".write(to: old.appendingPathComponent("config.toml"), atomically: false, encoding: .utf8)
+        XCTAssertFalse(try ConfigLocation.ensureStarterFile(in: new, legacy: old))
+        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), "# my own comment\nuser_height_cm = 181\n")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: old.appendingPathComponent("config.toml").path))
+    }
+
+    func testNewSettingsAreNeverOverwrittenByOldOnes() throws {
+        let root = try scratch()
+        let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
+        for (dir, text) in [(old, "old\n"), (new, "new\n")] {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try text.write(to: dir.appendingPathComponent("config.toml"), atomically: false, encoding: .utf8)
+        }
+        try ConfigLocation.ensureStarterFile(in: new, legacy: old)
+        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), "new\n")
+    }
+
+    func testNoOldSettingsWritesTheStarterFile() throws {
+        let root = try scratch()
+        let new = root.appendingPathComponent("desk-check")
+        XCTAssertTrue(try ConfigLocation.ensureStarterFile(in: new, legacy: root.appendingPathComponent("desk-undo")))
+        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), DeskConfig.starterContents)
     }
 }

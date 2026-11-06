@@ -1,5 +1,5 @@
 @preconcurrency import AVFoundation
-import DeskUndoCore
+import DeskCheckCore
 import SwiftUI
 
 /// Live adjustment: the camera runs while the live window is open, readings are averaged over about
@@ -29,7 +29,7 @@ final class LiveController: ObservableObject {
         AVCaptureDevice.requestAccess(for: .video) { granted in
             Task { @MainActor in
                 guard self.isRunning else { return }
-                guard granted else { self.fail("Desk Undo has no camera permission. Allow it in System Settings, Privacy & Security, Camera."); return }
+                guard granted else { self.fail("Desk Check has no camera permission. Allow it in System Settings, Privacy & Security, Camera."); return }
                 self.begin()
             }
         }

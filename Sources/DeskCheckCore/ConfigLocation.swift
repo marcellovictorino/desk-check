@@ -1,10 +1,10 @@
 import Foundation
 
-/// Where Desk Undo keeps its settings: `~/.config/desk-undo/config.toml`.
+/// Where Desk Check keeps its settings: `~/.config/desk-check/config.toml`.
 ///
 /// Inside the App Sandbox, `NSHomeDirectory()` and `FileManager.homeDirectoryForCurrentUser`
 /// point at the app's container, not the person's home folder. The sandbox grants one
-/// exception, `~/.config/desk-undo/`, so the path is built from the real home folder
+/// exception, `~/.config/desk-check/`, so the path is built from the real home folder
 /// read from the user database.
 public enum ConfigLocation {
     public static var realHomeDirectory: URL {
@@ -14,8 +14,14 @@ public enum ConfigLocation {
         return URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
     }
 
-    public static var directory: URL {
+    /// Desk Check was called Desk Undo until version 0.2; its settings lived in `~/.config/desk-undo/`.
+    /// The sandbox lets the app read that folder (see Resources/DeskCheck.entitlements) so a first launch can copy it.
+    public static var legacyDirectory: URL {
         realHomeDirectory.appendingPathComponent(".config/desk-undo", isDirectory: true)
+    }
+
+    public static var directory: URL {
+        realHomeDirectory.appendingPathComponent(".config/desk-check", isDirectory: true)
     }
 
     public static var file: URL {
@@ -34,10 +40,23 @@ public enum ConfigLocation {
     /// Writes a commented starter file when none exists. Returns true when it wrote one.
     @discardableResult
     public static func ensureStarterFile() throws -> Bool {
+        try ensureStarterFile(in: directory, legacy: legacyDirectory)
+    }
+
+    /// When `directory` has no `config.toml`, copies the one in `legacy` (the old Desk Undo folder, left untouched)
+    /// or else writes the starter file. Returns true when it wrote a file that is not a copy of the old settings.
+    @discardableResult
+    static func ensureStarterFile(in directory: URL, legacy: URL) throws -> Bool {
         let fm = FileManager.default
-        if fm.fileExists(atPath: file.path) { return false }
+        let target = directory.appendingPathComponent("config.toml")
+        if fm.fileExists(atPath: target.path) { return false }
         try fm.createDirectory(at: directory, withIntermediateDirectories: true)
-        try starterContents.write(to: file, atomically: false, encoding: .utf8)
+        let old = legacy.appendingPathComponent("config.toml")
+        if let text = try? String(contentsOf: old, encoding: .utf8) {
+            try text.write(to: target, atomically: false, encoding: .utf8)
+            return false
+        }
+        try starterContents.write(to: target, atomically: false, encoding: .utf8)
         return true
     }
 

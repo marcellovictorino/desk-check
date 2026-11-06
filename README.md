@@ -1,10 +1,10 @@
-# Desk Undo
+# Desk Check
 
 Command-Z for your desk: a macOS menu bar app that uses your webcam to tell you, in
 centimetres, how to move your screen and desk, and remembers your sitting and standing
 desk heights so you can always go back to your favourite setting.
 
-> **Status:** early. Desk Undo checks your screen distance and height with the webcam,
+> **Status:** early. Desk Check checks your screen distance and height with the webcam,
 > remembers sit and stand desk heights, and has a live mode for cranking the desk.
 > Chair advice is not built yet.
 
@@ -20,20 +20,20 @@ per adjustment, each with a number:
 
 Distance comes from how far apart your eyes look in the frame; height from where they sit
 relative to the lens, plus the lens's height above the top of the screen. Both are
-estimates until you give Desk Undo tape measurements and calibrate your webcam.
+estimates until you give Desk Check tape measurements and calibrate your webcam.
 
 ### Setups
 
-A setup is one place you use Desk Undo, for example a standing desk with an external
+A setup is one place you use Desk Check, for example a standing desk with an external
 webcam and screen, and a MacBook on a normal desk. Each setup has its own camera, screen
 label, tape measurements, lens offset and list of what you can move. The popover shows a
-picker when there is more than one, and Desk Undo remembers the one you used last.
+picker when there is more than one, and Desk Check remembers the one you used last.
 **Settings** can add (from an external or a MacBook template), rename, duplicate and
 delete setups. The MacBook template is seated only: desk height and screen height are
 fixed, so it has no standing preset and advice reports screen height instead of telling
 you to move it.
 
-Switching setups automatically is optional (`auto_switch = true`): Desk Undo moves to the
+Switching setups automatically is optional (`auto_switch = true`): Desk Check moves to the
 setup that fits when a webcam is plugged in or unplugged. Reacting to the lid opening or
 closing is not built yet.
 
@@ -112,21 +112,24 @@ Do this once for each setup you use, for example the standing desk and the MacBo
 ## Install
 
 ```sh
-brew install marcellovictorino/tap/desk-undo
-desk-undo
+brew install marcellovictorino/tap/desk-check
+desk-check
 ```
 
-Homebrew builds Desk Undo on your Mac with Apple's command line tools, which Homebrew
+Homebrew builds Desk Check on your Mac with Apple's command line tools, which Homebrew
 already needs; Xcode is not required. The app built this way is signed for your Mac
 only, so macOS opens it without a warning and no Apple developer account is involved.
 
-Desk Undo lives in the menu bar and has no Dock icon. To find it in Spotlight too:
+Desk Check lives in the menu bar and has no Dock icon. To find it in Spotlight too:
 
 ```sh
-ln -sf "$(brew --prefix)/opt/desk-undo/DeskUndo.app" ~/Applications/
+ln -sf "$(brew --prefix)/opt/desk-check/DeskCheck.app" ~/Applications/
 ```
 
 Requires macOS 14 or later on Apple silicon.
+
+Coming from Desk Undo: `brew uninstall desk-undo`, then install `desk-check`. The tap keeps `desk-undo`
+as an alias that installs Desk Check.
 
 After each `brew upgrade`, macOS asks for the camera once more; see
 [Camera permission and upgrades](#camera-permission-and-upgrades).
@@ -137,13 +140,13 @@ After each `brew upgrade`, macOS asks for the camera once more; see
 - No image is ever saved. The app keeps numbers only, on your Mac.
 - No network access at all. The App Sandbox denies every connection: the app does not
   have the network permission.
-- The only folder outside its own container that Desk Undo may read or write is
-  `~/.config/desk-undo/`, where `config.toml` lives.
+- The only folder outside its own container that Desk Check may read or write is
+  `~/.config/desk-check/`, where `config.toml` lives.
 
 You can read these permissions back from the installed app yourself:
 
 ```sh
-codesign -d --entitlements - "$(brew --prefix)/opt/desk-undo/DeskUndo.app"
+codesign -d --entitlements - "$(brew --prefix)/opt/desk-check/DeskCheck.app"
 ```
 
 ## Camera permission and upgrades
@@ -158,17 +161,19 @@ upgrading to 0.1.1 the permission read "not asked yet" again and macOS asked aga
 
 ## Configuration
 
-Settings live in `~/.config/desk-undo/config.toml`, a plain text file that allows
+Settings live in `~/.config/desk-check/config.toml`, a plain text file that allows
 comments, so it can sit in your dotfiles. The app writes a commented starter file on
-first launch. Settings edits only the lines it changes, so your own comments stay. Each setup is a
+first launch. Desk Check was called Desk Undo before version 0.2. If `~/.config/desk-undo/config.toml`
+exists and the new file does not, the first launch copies it across and leaves the old folder alone,
+so you can delete it yourself once you are happy. Settings edits only the lines it changes, so your own comments stay. Each setup is a
 `[setups."<name>"]` table, which you can also copy by hand. Webcam calibration lives in
 one `[webcams."<camera name>"]` table per webcam.
 
 ## Build from source
 
 ```sh
-scripts/build-app.sh 0.1.0 .build/app     # builds and signs .build/app/DeskUndo.app
-open .build/app/DeskUndo.app
+scripts/build-app.sh 0.1.0 .build/app     # builds and signs .build/app/DeskCheck.app
+open .build/app/DeskCheck.app
 ```
 
 To build with the command line tools even when Xcode is installed, prefix the command
@@ -177,25 +182,25 @@ with `DEVELOPER_DIR=/Library/Developer/CommandLineTools`.
 ## Tests
 
 ```sh
-Tests/verify-app.sh .build/app/DeskUndo.app   # reads the permissions back from the built app
+Tests/verify-app.sh .build/app/DeskCheck.app   # reads the permissions back from the built app
 swift test                                     # geometry, advice and config tests (needs Xcode)
 Tests/sandbox-probe.sh                         # runs a probe under the app's sandbox rules
 scripts/test-formula-locally.sh 0.1.0          # installs through a local test tap
 swift Tests/camera-in-use.swift                # lists cameras in use; exits 1 if any is on
-open "$(brew --prefix)/opt/desk-undo/DeskUndo.app" --args --check   # one check at launch
+open "$(brew --prefix)/opt/desk-check/DeskCheck.app" --args --check   # one check at launch
 ```
 
 `verify-app.sh` fails if the app gains a Dock icon, loses the camera text, leaves the
 sandbox, or gains network access or any other folder. `sandbox-probe.sh` signs a small
 program with the app's own entitlements and checks, through the kernel, that the config
 folder works while the rest of the home folder and the network are refused. The probe
-creates `~/.config/desk-undo/` if it is missing, and macOS keeps an empty container for
+creates `~/.config/desk-check/` if it is missing, and macOS keeps an empty container for
 it in `~/Library/Containers/`.
 
 ## Credits
 
-Desk Undo is inspired by [Posturr](https://github.com/tldev/dorso) (now Dorso) by tldev,
-a macOS app that blurs your screen when you slouch. Desk Undo shares no code with it.
+Desk Check is inspired by [Posturr](https://github.com/tldev/dorso) (now Dorso) by tldev,
+a macOS app that blurs your screen when you slouch. Desk Check shares no code with it.
 
 This is general guidance, not medical advice.
 

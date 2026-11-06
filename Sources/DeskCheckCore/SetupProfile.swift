@@ -38,7 +38,7 @@ public enum CameraChoice: Hashable, Sendable {
     }
 }
 
-/// One place Desk Undo is used: its camera, its screen, its tape measurements and what can be moved there.
+/// One place Desk Check is used: its camera, its screen, its tape measurements and what can be moved there.
 public struct SetupProfile: Equatable, Sendable {
     public var name: String
     public var camera: CameraChoice

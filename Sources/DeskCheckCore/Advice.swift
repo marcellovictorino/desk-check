@@ -28,21 +28,21 @@ public enum AdviceEngine {
 
     static func screenDistance(_ d: Double) -> Advice {
         if distanceBand.contains(d) {
-            return Advice(status: .good, sentence: "Screen distance is right at \(cm(d)).")
+            return Advice(status: .good, sentence: "Distance: right at \(cm(d)).")
         }
         let move = abs(distanceTarget - d)
         let direction = d < distanceBand.lowerBound ? "further away" : "closer"
-        return Advice(status: .adjust, sentence: "Move the screen \(cm(move)) \(direction); it is \(cm(d)) from your eyes.")
+        return Advice(status: .adjust, sentence: "Distance: move the screen \(cm(move)) \(direction).")
     }
 
     static func screenHeight(_ eyeAboveTop: Double) -> Advice {
         let position = relative(eyeAboveTop)
         if heightBand.contains(eyeAboveTop) {
-            return Advice(status: .good, sentence: "Screen height is right: your eyes are \(position).")
+            return Advice(status: .good, sentence: "Screen: height is right, eyes \(position).")
         }
         let move = abs(heightTarget - eyeAboveTop)
         let verb = eyeAboveTop < heightBand.lowerBound ? "Lower" : "Raise"
-        return Advice(status: .adjust, sentence: "\(verb) the screen by \(cm(move)); your eyes are \(position).")
+        return Advice(status: .adjust, sentence: "Screen: \(verb.lowercased()) \(cm(move)).")
     }
 
     private static func cm(_ v: Double) -> String { "\(Int(v.rounded())) cm" }
