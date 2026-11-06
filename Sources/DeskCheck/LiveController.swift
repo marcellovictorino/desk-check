@@ -19,6 +19,12 @@ final class LiveController: ObservableObject {
     /// Adjustable rows of the setup in use; the live view reserves room for them so Stop never moves.
     @Published private(set) var rowCount = 3
 
+    /// True from pressing Live until the camera permission answer arrives. The system prompt takes focus from the popover,
+    /// which must not count as clicking away.
+    private(set) var awaitingPermission = false
+    /// Set by the popover; whether its window is still on screen.
+    var popoverIsVisible: () -> Bool = { true }
+
     private var sampler: LiveSampler?
     private var average = RollingAverage()
     private var profile = SetupProfile.external(name: "")
@@ -34,10 +40,14 @@ final class LiveController: ObservableObject {
         let profile = ConfigLocation.load().activeProfile
         setupName = profile.name
         rowCount = Adjustment.allCases.filter { $0 != .chairHeight && !profile.fixed.contains($0) }.count
+        awaitingPermission = true
         AVCaptureDevice.requestAccess(for: .video) { granted in
             Task { @MainActor in
                 // An answer for a session that was stopped, or stopped and restarted, is ignored.
                 guard self.run.isCurrent(token) else { return }
+                self.awaitingPermission = false
+                // The popover was closed while the prompt was up: nobody is watching, so the camera stays off.
+                guard self.popoverIsVisible() else { self.stop(); return }
                 guard granted else { self.fail("Desk Check has no camera permission. Allow it in System Settings, Privacy & Security, Camera."); return }
                 self.begin(token)
             }
@@ -86,7 +96,14 @@ final class LiveController: ObservableObject {
         }
     }
 
+    /// The popover was hidden or lost focus. Ignored while the permission prompt is up, because the prompt causes it.
+    func popoverHidden() {
+        guard !awaitingPermission else { return }
+        stop()
+    }
+
     func stop(reason: String = LiveController.offText) {
+        awaitingPermission = false
         timeout?.cancel(); timeout = nil
         sampler?.stop(); sampler = nil
         if run.stop() { log.notice("live session stopped") }

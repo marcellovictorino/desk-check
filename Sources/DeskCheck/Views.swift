@@ -16,7 +16,7 @@ struct PopoverView: View {
         .onAppear { checker.reloadSetups(); checker.refreshPermission() }
         // Clicking away: the menu bar popover is hidden, not torn down, so onDisappear never fires for it.
         // The popover's window losing key status is the signal, and it turns the camera off.
-        .background(WindowHidden { checker.clearPreview(); live.stop() })
+        .background(WindowHidden(visible: { live.popoverIsVisible = $0 }) { checker.clearPreview(); live.popoverHidden() })
     }
 
     private var checkView: some View {
@@ -123,12 +123,17 @@ struct PreviewView: View {
 /// Calls `hidden` when the window holding this view stops being the key window or leaves the screen. The menu bar
 /// popover is reused rather than rebuilt, so SwiftUI's own onDisappear does not run when it closes.
 struct WindowHidden: NSViewRepresentable {
+    let visible: (@escaping () -> Bool) -> Void
     let hidden: () -> Void
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         let observer = context.coordinator
-        DispatchQueue.main.async { observer.attach(to: view.window) }
+        DispatchQueue.main.async { [weak view] in
+            guard let window = view?.window else { return }
+            observer.attach(to: window)
+            visible { [weak window] in window.map { $0.isVisible && $0.occlusionState.contains(.visible) } ?? false }
+        }
         return view
     }
 
