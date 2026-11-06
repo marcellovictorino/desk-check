@@ -45,3 +45,19 @@ struct GlassGroup<Content: View>: View {
         }
     }
 }
+
+extension View {
+    /// Settings window: the form floats on a translucent window instead of a flat grey one.
+    @ViewBuilder func glassWindowBackground() -> some View {
+        if #available(macOS 15, *) {
+            scrollContentBackground(.hidden).containerBackground(.regularMaterial, for: .window)
+        } else {
+            self
+        }
+    }
+
+    /// Form sections drawn as translucent cards rather than opaque grey ones.
+    func glassSection() -> some View {
+        listRowBackground(Rectangle().fill(.thinMaterial))
+    }
+}

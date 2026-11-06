@@ -232,7 +232,7 @@ struct SettingsView: View {
                 Text("Rename, Duplicate and Add use the name above. Delete removes the selected setup; its webcam calibration stays.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Toggle("Switch setup when a webcam is plugged in or unplugged", isOn: $autoSwitch)
-            }
+            }.glassSection()
             Section("Camera and screen") {
                 Picker("Camera", selection: $profile.camera) {
                     Text("Automatic (external if plugged in)").tag(CameraChoice.auto)
@@ -252,7 +252,7 @@ struct SettingsView: View {
                 if !profile.supportsStandingPreset {
                     Text("Desk height is fixed, so this setup has no standing preset.").font(.caption).foregroundStyle(.secondary)
                 }
-            }
+            }.glassSection()
             Section("Tape measure (centimetres)") {
                 FieldGuideView(active: hovered ?? focused, laptop: profile.camera == .builtIn,
                                select: { focused = $0 },
@@ -266,7 +266,7 @@ struct SettingsView: View {
                 field(.seatedEye, $fields.seatedEye, hint: "estimated from height")
                 field(.elbow, $fields.elbow, hint: "default 0.3 of your height")
                 Text("Leave a field empty to use the default estimate.").font(.caption).foregroundStyle(.secondary)
-            }
+            }.glassSection()
             Section("Desk presets (floor to top of desk, from the tape on the desk leg, centimetres)") {
                 field(.sitDesk, $fields.sitDesk, hint: "floor to desk top")
                 if profile.supportsStandingPreset {
@@ -276,7 +276,7 @@ struct SettingsView: View {
                 }
                 Text("Set the desk to the height on the tape, then use Remember view in the menu bar popover so the camera can confirm it later.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
+            }.glassSection()
             Section("Webcam calibration") {
                 Text(checker.webcamName ?? "The camera for this setup is not connected")
                 Text("Sit as you normally do with your eyes at the tape distance, then calibrate. Calibration belongs to the webcam, so every setup using it shares it.")
@@ -289,7 +289,7 @@ struct SettingsView: View {
                 }
                 Text(checker.lastCalibrationText ?? calibrationSummary).font(.caption).foregroundStyle(.secondary)
                 Toggle("Show camera preview with eye points during a check", isOn: $showPreview)
-            }
+            }.glassSection()
             HStack {
                 Button("Save") { save(); message = "Saved." }.keyboardShortcut(.defaultAction).glassButton(prominent: true)
                 Text(message).font(.caption).foregroundStyle(.secondary)
@@ -297,11 +297,12 @@ struct SettingsView: View {
             LabeledContent("Config file") {
                 HStack {
                     Text(ConfigLocation.file.path).textSelection(.enabled)
-                    Button("Open config file") { openConfigFile() }
+                    Button("Open config file") { openConfigFile() }.glassButton()
                 }
             }.font(.caption)
         }
         .formStyle(.grouped)
+        .glassWindowBackground()
         .frame(width: 520)
         .onAppear { checker.reloadSetups(); checker.refreshPermission(); load() }
     }
