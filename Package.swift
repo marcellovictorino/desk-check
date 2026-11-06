@@ -7,6 +7,7 @@ let package = Package(
     targets: [
         .target(name: "DeskCheckCore"),
         .executableTarget(name: "DeskCheck", dependencies: ["DeskCheckCore"]),
-        .testTarget(name: "DeskCheckCoreTests", dependencies: ["DeskCheckCore"])
+        .testTarget(name: "DeskCheckCoreTests", dependencies: ["DeskCheckCore"]),
+        .testTarget(name: "DeskCheckViewTests", dependencies: ["DeskCheck"])
     ]
 )

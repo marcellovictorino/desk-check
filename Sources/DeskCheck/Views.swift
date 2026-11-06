@@ -7,6 +7,19 @@ struct PopoverView: View {
     @ObservedObject var live = LiveController.shared
 
     var body: some View {
+        content
+            .onAppear { checker.reloadSetups(); checker.refreshPermission() }
+            // Clicking away: the menu bar popover is hidden, not torn down, so onDisappear never fires for it.
+            // The popover's window losing key status is the signal, and it turns the camera off.
+            .background(WindowHidden(visible: { live.popoverIsVisible = $0 }) {
+                checker.clearPreview(); live.popoverHidden()
+                // Next time the popover opens it starts on the main view, unless a calibration is still running.
+                if !checker.isRunning { checker.showingSettings = false }
+            })
+    }
+
+    /// The real view content without window lifecycle hooks, also used by offscreen image tests.
+    var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             if live.isRunning {
                 LiveView(live: live)
@@ -18,14 +31,6 @@ struct PopoverView: View {
         }
         .padding(14)
         .frame(width: checker.showingSettings && !live.isRunning ? 520 : 320)
-        .onAppear { checker.reloadSetups(); checker.refreshPermission() }
-        // Clicking away: the menu bar popover is hidden, not torn down, so onDisappear never fires for it.
-        // The popover's window losing key status is the signal, and it turns the camera off.
-        .background(WindowHidden(visible: { live.popoverIsVisible = $0 }) {
-            checker.clearPreview(); live.popoverHidden()
-            // Next time the popover opens it starts on the main view, unless a calibration is still running.
-            if !checker.isRunning { checker.showingSettings = false }
-        })
     }
 
     private var checkView: some View {
@@ -109,7 +114,7 @@ struct PopoverView: View {
 extension PopoverView {
     /// Sit and stand desk heights read from the tape on the desk leg; a seated-only setup has no standing preset.
     @ViewBuilder var presets: some View {
-        let profile = ConfigLocation.load().profile(named: checker.activeSetup)
+        let profile = checker.loadConfig().profile(named: checker.activeSetup)
         let shown = Posture.allCases.filter { $0 == .sit || profile.supportsStandingPreset }
         if shown.contains(where: { profile.presets[$0] != nil }) {
             Divider()
@@ -340,7 +345,7 @@ struct SettingsView: View {
 
     private var calibrationSummary: String {
         guard let name = checker.webcamName else { return "" }
-        let c = ConfigLocation.load().calibration(forWebcam: name)
+        let c = checker.loadConfig().calibration(forWebcam: name)
         guard let f = c.focalWidths else { return "Not calibrated: distances assume a typical 70 degree field of view." }
         return String(format: "Calibrated: focal length %.3f image widths, tilt %.1f°.", f, c.pitchDegrees ?? 0)
     }
@@ -358,7 +363,7 @@ struct SettingsView: View {
     }
 
     private func load() {
-        let config = ConfigLocation.load()
+        let config = checker.loadConfig()
         profile = config.activeProfile
         let s = profile.measurements
         func str(_ v: Double?) -> String { v.map { String(format: "%g", $0) } ?? "" }
@@ -373,7 +378,7 @@ struct SettingsView: View {
     /// Writes the form into the config file under the setup being edited.
     private func save() {
         func num(_ s: String) -> Double? { Double(s.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) }
-        var config = ConfigLocation.load()
+        var config = checker.loadConfig()
         var p = profile
         p.measurements = Setup(screenDistanceCm: num(fields.distance), screenTopHeightCm: num(fields.screenTop),
                                lensOffsetCm: num(fields.lens), userHeightCm: num(fields.height),
@@ -405,7 +410,7 @@ struct SettingsView: View {
     /// Saves the form, applies one setup-list change, and reloads. The change says whether it applied.
     private func edit(_ change: (inout DeskConfig) -> Bool) {
         save()
-        var config = ConfigLocation.load()
+        var config = checker.loadConfig()
         let before = config.activeSetupName
         guard change(&config) else {
             message = "Not changed: the name must be new and not empty, and the last setup cannot be deleted."
