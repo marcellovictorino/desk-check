@@ -10,13 +10,13 @@ desk heights so you can always go back to your favourite setting.
 
 ## What it does
 
-Press **Check posture** in the menu bar popover. The camera opens for about two seconds,
+Press **Check desk** in the menu bar popover. The camera opens for about two seconds,
 finds your eyes with Apple's Vision face landmarks, closes again, and gives one sentence
 per adjustment, each with a number:
 
-- Screen distance, aiming for 50 to 70 cm from your eyes: "Move the screen 12 cm closer."
+- Screen distance, aiming for 50 to 70 cm from your eyes: "Distance: move the screen 15 cm further away."
 - Screen height, aiming for your eyes 0 to 10 cm above the top edge:
-  "Lower the screen by 8 cm."
+  "Screen: lower 8 cm."
 
 Distance comes from how far apart your eyes look in the frame; height from where they sit
 relative to the lens, plus the lens's height above the top of the screen. Both are
@@ -100,7 +100,7 @@ see [Checking accuracy](#checking-accuracy).
 
 Do this once for each setup you use, for example the standing desk and the MacBook.
 
-1. Pick the setup, sit, enter its measurements and calibrate. Check posture.
+1. Pick the setup, sit, enter its measurements and calibrate. Check desk.
 2. Compare the reported distance with a tape measure from your eyes to the screen, and the
    reported "eyes above the top edge" with a tape against the screen's top edge.
 3. Stand and compare again. Move the screen exactly 5 cm and check that the reading
@@ -128,9 +128,6 @@ ln -sf "$(brew --prefix)/opt/desk-check/DeskCheck.app" ~/Applications/
 
 Requires macOS 14 or later on Apple silicon.
 
-Coming from Desk Undo: `brew uninstall desk-undo`, then install `desk-check`. The tap keeps `desk-undo`
-as an alias that installs Desk Check.
-
 After each `brew upgrade`, macOS asks for the camera once more; see
 [Camera permission and upgrades](#camera-permission-and-upgrades).
 
@@ -140,8 +137,8 @@ After each `brew upgrade`, macOS asks for the camera once more; see
 - No image is ever saved. The app keeps numbers only, on your Mac.
 - No network access at all. The App Sandbox denies every connection: the app does not
   have the network permission.
-- The only folder outside its own container that Desk Check may read or write is
-  `~/.config/desk-check/`, where `config.toml` lives.
+- Desk Check writes settings to `~/.config/desk-check/config.toml`. On first launch it can also read
+  `~/.config/desk-undo/config.toml` to migrate settings; it never writes to the old folder.
 
 You can read these permissions back from the installed app yourself:
 
@@ -172,7 +169,7 @@ one `[webcams."<camera name>"]` table per webcam.
 ## Build from source
 
 ```sh
-scripts/build-app.sh 0.1.0 .build/app     # builds and signs .build/app/DeskCheck.app
+scripts/build-app.sh 0.2.0 .build/app     # builds and signs .build/app/DeskCheck.app
 open .build/app/DeskCheck.app
 ```
 
@@ -185,17 +182,16 @@ with `DEVELOPER_DIR=/Library/Developer/CommandLineTools`.
 Tests/verify-app.sh .build/app/DeskCheck.app   # reads the permissions back from the built app
 swift test                                     # geometry, advice and config tests (needs Xcode)
 Tests/sandbox-probe.sh                         # runs a probe under the app's sandbox rules
-scripts/test-formula-locally.sh 0.1.0          # installs through a local test tap
+scripts/test-formula-locally.sh 0.2.0          # installs through a local test tap
 swift Tests/camera-in-use.swift                # lists cameras in use; exits 1 if any is on
 open "$(brew --prefix)/opt/desk-check/DeskCheck.app" --args --check   # one check at launch
 ```
 
-`verify-app.sh` fails if the app gains a Dock icon, loses the camera text, leaves the
-sandbox, or gains network access or any other folder. `sandbox-probe.sh` signs a small
-program with the app's own entitlements and checks, through the kernel, that the config
-folder works while the rest of the home folder and the network are refused. The probe
-creates `~/.config/desk-check/` if it is missing, and macOS keeps an empty container for
-it in `~/Library/Containers/`.
+`verify-app.sh` checks the app's Dock, camera, network and folder permissions. `sandbox-probe.sh`
+signs a small program with the app's entitlements and checks through the kernel that Desk Check
+can write its current settings folder, read the legacy folder without writing to it, and cannot
+access other home folders or the network. The probe creates `~/.config/desk-check/` if needed;
+macOS keeps an empty container for it in `~/Library/Containers/`.
 
 ## Credits
 

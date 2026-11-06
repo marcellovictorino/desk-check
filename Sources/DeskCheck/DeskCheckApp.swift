@@ -14,7 +14,7 @@ struct DeskCheckApp: App {
             let wrote = try ConfigLocation.ensureStarterFile()
             log.notice("config file \(ConfigLocation.file.path, privacy: .public) ready, created=\(wrote, privacy: .public)")
         } catch {
-            log.error("config file not writable: \(error.localizedDescription, privacy: .public)")
+            log.error("config setup failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -39,7 +39,7 @@ struct DeskCheckApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `open DeskCheck.app --args --check` runs one check at launch, the same as pressing
-    /// Check posture; the numbers go to the unified log (subsystem io.github.marcellovictorino.desk-check).
+    /// Check desk; the numbers go to the unified log (subsystem io.github.marcellovictorino.desk-check).
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             PostureChecker.shared.refreshPermission()

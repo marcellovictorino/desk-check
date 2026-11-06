@@ -326,8 +326,8 @@ final class TOMLLayoutTests: XCTestCase {
     }
 }
 
-/// Intent source: the Desk Check rename (DESK-10): settings kept under the old Desk Undo name must carry over,
-/// so nobody loses their setups, tape measurements and webcam calibration.
+/// Intent source: the Desk Check rename requires existing Desk Undo settings to carry over,
+/// so users keep their setups, tape measurements and webcam calibration.
 final class ConfigMigrationTests: XCTestCase {
     func scratch() throws -> URL {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("desk-check-migration-\(UUID().uuidString)")
@@ -340,21 +340,24 @@ final class ConfigMigrationTests: XCTestCase {
         let root = try scratch()
         let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
         try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
-        try "# my own comment\nuser_height_cm = 181\n".write(to: old.appendingPathComponent("config.toml"), atomically: false, encoding: .utf8)
+        try DeskConfig.starterContents.write(to: old.appendingPathComponent("config.toml"), atomically: false, encoding: .utf8)
         XCTAssertFalse(try ConfigLocation.ensureStarterFile(in: new, legacy: old))
-        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), "# my own comment\nuser_height_cm = 181\n")
+        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), DeskConfig.starterContents)
         XCTAssertTrue(FileManager.default.fileExists(atPath: old.appendingPathComponent("config.toml").path))
     }
 
     func testNewSettingsAreNeverOverwrittenByOldOnes() throws {
         let root = try scratch()
         let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
-        for (dir, text) in [(old, "old\n"), (new, "new\n")] {
+        let oldConfig = DeskConfig(text: DeskConfig.starterContents)
+        var newConfig = DeskConfig(text: DeskConfig.starterContents)
+        newConfig.autoSwitch = true
+        for (dir, config) in [(old, oldConfig), (new, newConfig)] {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            try text.write(to: dir.appendingPathComponent("config.toml"), atomically: false, encoding: .utf8)
+            try config.document.text.write(to: dir.appendingPathComponent("config.toml"), atomically: false, encoding: .utf8)
         }
         try ConfigLocation.ensureStarterFile(in: new, legacy: old)
-        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), "new\n")
+        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), newConfig.document.text)
     }
 
     func testNoOldSettingsWritesTheStarterFile() throws {
@@ -362,5 +365,27 @@ final class ConfigMigrationTests: XCTestCase {
         let new = root.appendingPathComponent("desk-check")
         XCTAssertTrue(try ConfigLocation.ensureStarterFile(in: new, legacy: root.appendingPathComponent("desk-undo")))
         XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), DeskConfig.starterContents)
+    }
+
+    /// Intent source: the captain asked Desk Check to retry rather than replace unreadable legacy settings.
+    func testUnreadableLegacySettingsAreNotReplacedByStarterFile() throws {
+        let root = try scratch()
+        let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
+        try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+        let oldFile = old.appendingPathComponent("config.toml")
+        try DeskConfig.starterContents.write(to: oldFile, atomically: false, encoding: .utf8)
+        let fm = FileManager.default
+        let originalPermissions = try fm.attributesOfItem(atPath: oldFile.path)[.posixPermissions] as? NSNumber
+        defer {
+            if let originalPermissions {
+                try? fm.setAttributes([.posixPermissions: originalPermissions], ofItemAtPath: oldFile.path)
+            }
+        }
+        try fm.setAttributes([.posixPermissions: 0], ofItemAtPath: oldFile.path)
+
+        XCTAssertThrowsError(try ConfigLocation.ensureStarterFile(in: new, legacy: old)) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Legacy settings exist but cannot be read"))
+        }
+        XCTAssertFalse(fm.fileExists(atPath: new.appendingPathComponent("config.toml").path))
     }
 }

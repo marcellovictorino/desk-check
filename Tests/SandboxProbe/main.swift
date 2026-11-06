@@ -1,6 +1,6 @@
 // Runs under Desk Check's own entitlements (see Tests/sandbox-probe.sh) and checks the
-// sandbox does what the README promises: the config folder works, every other folder
-// in the home folder is closed, and network connections are refused.
+// sandbox does what the README promises: current settings are writable, legacy settings
+// are readable but not writable, other home folders are closed, and network is refused.
 import Darwin
 import Foundation
 
@@ -40,6 +40,22 @@ let wroteOutside = (try? "x".write(to: outside, atomically: false, encoding: .ut
 if wroteOutside { try? fm.removeItem(at: outside) }
 expect(!wroteOutside, "writing beside the config folder is refused")
 expect((try? fm.contentsOfDirectory(atPath: home.path)) == nil, "listing the home folder is refused")
+
+let legacyConfig = ConfigLocation.legacyDirectory.appendingPathComponent("config.toml")
+do {
+    _ = try Data(contentsOf: legacyConfig)
+    expect(true, "legacy settings can be read for migration")
+} catch {
+    expect(false, "legacy settings can be read for migration (\(error.localizedDescription))")
+}
+let legacyWriteProbe = ConfigLocation.legacyDirectory.appendingPathComponent(".sandbox-probe-\(UUID().uuidString)")
+do {
+    try Data("probe".utf8).write(to: legacyWriteProbe)
+    try fm.removeItem(at: legacyWriteProbe)
+    expect(false, "writing to the legacy folder is refused")
+} catch {
+    expect(true, "writing to the legacy folder is refused")
+}
 
 // Network: connect to a port on this Mac, so a failed sandbox sends nothing outside.
 let fd = socket(AF_INET, SOCK_STREAM, 0)

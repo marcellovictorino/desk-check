@@ -1,7 +1,7 @@
 #!/bin/sh
 # Reads Desk Check's permissions back from a built DeskCheck.app and fails when the
 # privacy promises in the README do not hold: menu bar only, camera on request,
-# App Sandbox with no network access, and only ~/.config/desk-check/ outside the container.
+# App Sandbox with no network access, read/write ~/.config/desk-check/, and read-only ~/.config/desk-undo/.
 #
 # Usage: Tests/verify-app.sh <path to DeskCheck.app>
 set -eu
