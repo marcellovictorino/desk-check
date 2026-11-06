@@ -72,6 +72,9 @@ struct PopoverView: View {
 
     /// The Settings link alone opens the window behind the frontmost app; this brings the app and the window forward.
     private func showSettings() {
+        // A menu bar app has no Dock icon and is never frontmost by default, so macOS keeps another app in front.
+        // It becomes a regular app while Settings is open and goes back to menu bar only when Settings closes.
+        NSApp.setActivationPolicy(.regular)
         openSettings()
         NSApp.activate(ignoringOtherApps: true)
         DispatchQueue.main.async {
