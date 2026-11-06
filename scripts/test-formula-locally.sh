@@ -18,7 +18,7 @@ sha="$(shasum -a 256 "$tarball" | cut -d' ' -f1)"
 brew tap-info --installed 2>/dev/null | grep -q "^$tap:" || brew tap-new --no-git "$tap" >/dev/null
 formula="$(brew --repository "$tap")/Formula/desk-check.rb"
 sed -e "s|^  url .*|  url \"file://$tarball\"\\
-  sha256 \"$sha\"|" -e '/^  head /d' "$root/Formula/desk-check.rb" > "$formula"
+  sha256 \"$sha\"|" -e '/^  sha256 /d' -e '/^  head /d' "$root/Formula/desk-check.rb" > "$formula"
 
 if brew list --formula "$tap/desk-check" >/dev/null 2>&1; then
   brew upgrade --verbose "$tap/desk-check"
