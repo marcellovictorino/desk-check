@@ -8,7 +8,9 @@ struct PopoverView: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        Group {
+        // A stable container owns appearance: modifiers on a conditional Group attach to each branch, so swapping
+        // branches would count as the popover closing and stop Live the moment it started.
+        VStack(alignment: .leading, spacing: 0) {
             if live.isRunning { LiveView(live: live) } else { checkView }
         }
         .padding(14)
@@ -235,13 +237,26 @@ struct SettingsView: View {
             LabeledContent("Config file") {
                 HStack {
                     Text(ConfigLocation.file.path).textSelection(.enabled)
-                    Button("Open config file") { NSWorkspace.shared.open(ConfigLocation.file) }
+                    Button("Open config file") { openConfigFile() }
                 }
             }.font(.caption)
         }
         .formStyle(.grouped)
         .frame(width: 520)
         .onAppear { checker.reloadSetups(); checker.refreshPermission(); load() }
+    }
+
+    /// Opens the file in its default app; a plain text file has none when nothing handles TOML, so TextEdit is the fallback.
+    private func openConfigFile() {
+        let file = ConfigLocation.file
+        if NSWorkspace.shared.open(file) { return }
+        let config = NSWorkspace.OpenConfiguration()
+        guard let textEdit = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.TextEdit") else {
+            message = "No app could open the config file. Open \(file.path) yourself."; return
+        }
+        NSWorkspace.shared.open([file], withApplicationAt: textEdit, configuration: config) { _, error in
+            if error != nil { Task { @MainActor in message = "No app could open the config file. Open \(file.path) yourself." } }
+        }
     }
 
     private var defaults: Setup { Setup(builtIn: profile.camera == .builtIn) }

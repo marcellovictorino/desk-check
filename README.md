@@ -79,8 +79,9 @@ MacBook template) has a sit preset only.
 
 ### Live mode
 
-**Live** in the popover opens a small window that stays on top. The camera runs while it
-is open and turns off when you close it, press Stop, or after 10 minutes. Readings are
+**Live** in the popover swaps the popover to the live view, with Stop in its header. The
+camera runs while it shows and turns off when you press Stop, click away so the popover
+closes, or after 10 minutes. Readings are
 averaged over about a second, so the number follows your cranking without flicker.
 Each adjustment you can move gets a row with a colour, an arrow and the centimetres to move:
 
