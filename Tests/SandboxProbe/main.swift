@@ -23,7 +23,7 @@ expect(ConfigLocation.file.path == home.path + "/.config/desk-check/config.toml"
        "config path is in the real home folder, not the container")
 
 // Config folder: create it if needed, write, read back, remove the probe file.
-let probe = ConfigLocation.directory.appendingPathComponent(".sandbox-probe")
+let probe = ConfigLocation.directory.appendingPathComponent(".sandbox-probe-\(UUID().uuidString)")
 do {
     try fm.createDirectory(at: ConfigLocation.directory, withIntermediateDirectories: true)
     try "probe".write(to: probe, atomically: false, encoding: .utf8)
@@ -35,7 +35,7 @@ do {
 }
 
 // Anywhere else in the home folder is closed.
-let outside = home.appendingPathComponent(".config/desk-check-sandbox-probe-outside")
+let outside = home.appendingPathComponent(".config/desk-check-sandbox-probe-outside-\(UUID().uuidString)")
 let wroteOutside = (try? "x".write(to: outside, atomically: false, encoding: .utf8)) != nil
 if wroteOutside { try? fm.removeItem(at: outside) }
 expect(!wroteOutside, "writing beside the config folder is refused")
