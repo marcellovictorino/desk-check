@@ -45,6 +45,8 @@ let legacyConfig = ConfigLocation.legacyDirectory.appendingPathComponent("config
 do {
     _ = try Data(contentsOf: legacyConfig)
     expect(true, "legacy settings can be read for migration")
+} catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+    expect(true, "legacy settings file may be absent on a clean install")
 } catch {
     expect(false, "legacy settings can be read for migration (\(error.localizedDescription))")
 }
