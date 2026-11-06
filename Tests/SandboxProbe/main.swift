@@ -45,10 +45,15 @@ let legacyConfig = ConfigLocation.legacyDirectory.appendingPathComponent("config
 do {
     _ = try Data(contentsOf: legacyConfig)
     expect(true, "legacy settings can be read for migration")
-} catch let error as CocoaError where error.code == .fileReadNoSuchFile {
-    expect(true, "legacy settings file may be absent on a clean install")
 } catch {
-    expect(false, "legacy settings can be read for migration (\(error.localizedDescription))")
+    let nsError = error as NSError
+    let missing = (nsError.domain == NSCocoaErrorDomain && nsError.code == CocoaError.Code.fileReadNoSuchFile.rawValue)
+        || (nsError.domain == NSPOSIXErrorDomain && nsError.code == Int(ENOENT))
+    if missing {
+        expect(true, "legacy settings file may be absent on a clean install")
+    } else {
+        expect(false, "legacy settings can be read for migration (\(error.localizedDescription))")
+    }
 }
 let legacyWriteProbe = ConfigLocation.legacyDirectory.appendingPathComponent(".sandbox-probe-\(UUID().uuidString)")
 do {
