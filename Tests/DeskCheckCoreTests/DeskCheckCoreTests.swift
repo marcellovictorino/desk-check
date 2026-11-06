@@ -340,9 +340,12 @@ final class ConfigMigrationTests: XCTestCase {
         let root = try scratch()
         let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
         try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
-        try DeskConfig.starterContents.write(to: old.appendingPathComponent("config.toml"), atomically: false, encoding: .utf8)
+        var legacyConfig = DeskConfig(text: DeskConfig.starterContents)
+        legacyConfig.autoSwitch = true
+        let legacyText = legacyConfig.document.text
+        try legacyText.write(to: old.appendingPathComponent("config.toml"), atomically: false, encoding: .utf8)
         XCTAssertFalse(try ConfigLocation.ensureStarterFile(in: new, legacy: old))
-        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), DeskConfig.starterContents)
+        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), legacyText)
         XCTAssertTrue(FileManager.default.fileExists(atPath: old.appendingPathComponent("config.toml").path))
     }
 
