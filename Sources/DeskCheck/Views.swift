@@ -1,12 +1,24 @@
 import DeskCheckCore
+import AppKit
 import SwiftUI
 
 struct PopoverView: View {
     @ObservedObject var checker: PostureChecker
     @ObservedObject var live = LiveController.shared
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
+        Group {
+            if live.isRunning { LiveView(live: live) } else { checkView }
+        }
+        .padding(14)
+        .frame(width: 320)
+        .onAppear { checker.reloadSetups(); checker.refreshPermission() }
+        // Clicking away closes the popover, which turns the camera off.
+        .onDisappear { checker.clearPreview(); live.stop() }
+    }
+
+    private var checkView: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Desk Check").font(.headline)
@@ -30,6 +42,7 @@ struct PopoverView: View {
                 Text(String(format: "Eyes %.0f cm from the screen, %.0f cm above the desk.", r.distanceCm, r.eyeHeightAboveDeskCm))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Text(InstructionText.popover).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             presets
             if let note = checker.presetNote {
                 Text(note).font(.caption).fixedSize(horizontal: false, vertical: true)
@@ -43,18 +56,26 @@ struct PopoverView: View {
                 Button("Check desk") { checker.check() }
                     .disabled(checker.isRunning)
                     .keyboardShortcut(.defaultAction)
-                Button("Live") { openWindow(id: "live"); NSApp.activate(ignoringOtherApps: true) }
-                    .disabled(checker.isRunning || live.isRunning)
+                Button("Live") { live.start() }
+                    .disabled(checker.isRunning)
                 Spacer()
-                SettingsLink { Text("Settings…") }
+                Button("Settings…") { showSettings() }
                 Button("Quit") { NSApplication.shared.terminate(nil) }
+            }
+            if live.statusText != LiveController.offText {
+                Text(live.statusText).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Text("Camera permission: \(checker.permissionText)").font(.caption2).foregroundStyle(.tertiary)
         }
-        .padding(14)
-        .frame(width: 320)
-        .onAppear { checker.reloadSetups(); checker.refreshPermission() }
-        .onDisappear { checker.clearPreview() }
+    }
+
+    /// The Settings link alone opens the window behind the frontmost app; this brings the app and the window forward.
+    private func showSettings() {
+        openSettings()
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            NSApp.windows.first { $0.canBecomeKey && !($0 is NSPanel) && $0.styleMask.contains(.titled) }?.makeKeyAndOrderFront(nil)
+        }
     }
 }
 
@@ -129,6 +150,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Text(InstructionText.settings).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Section("Setup") {
                 Picker("Setup", selection: Binding(get: { checker.activeSetup }, set: { switchSetup(to: $0) })) {
                     ForEach(checker.setupNames, id: \.self) { Text($0).tag($0) }
@@ -210,7 +232,12 @@ struct SettingsView: View {
                 Button("Save") { save(); message = "Saved." }.keyboardShortcut(.defaultAction)
                 Text(message).font(.caption).foregroundStyle(.secondary)
             }
-            LabeledContent("Config file", value: ConfigLocation.file.path).font(.caption)
+            LabeledContent("Config file") {
+                HStack {
+                    Text(ConfigLocation.file.path).textSelection(.enabled)
+                    Button("Open config file") { NSWorkspace.shared.open(ConfigLocation.file) }
+                }
+            }.font(.caption)
         }
         .formStyle(.grouped)
         .frame(width: 520)

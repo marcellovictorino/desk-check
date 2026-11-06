@@ -149,3 +149,54 @@ final class PresetTests: XCTestCase {
         XCTAssertEqual(DeskPreset(deskHeightCm: 72).confirm(read(60, 2)), .notRemembered)
     }
 }
+
+/// Intent source: the captain's report that Stop needed two clicks (DESK-22). A Stop that arrives while the camera is
+/// off must not turn it on, and a reading or camera callback from a stopped session must not act on the next one.
+final class LiveRunTests: XCTestCase {
+    func testStopWhenIdleDoesNothingAndNeverStarts() {
+        var run = LiveRun()
+        XCTAssertFalse(run.stop())
+        XCTAssertFalse(run.isRunning)
+    }
+
+    func testSecondQuickStopIsANoOp() {
+        var run = LiveRun()
+        XCTAssertNotNil(run.start())
+        XCTAssertTrue(run.stop())
+        XCTAssertFalse(run.stop(), "the second click of a double click must find nothing to stop")
+        XCTAssertFalse(run.isRunning)
+    }
+
+    func testStartWhileRunningIsRefused() {
+        var run = LiveRun()
+        XCTAssertNotNil(run.start())
+        XCTAssertNil(run.start())
+    }
+
+    func testLateCallbackFromStoppedSessionIsRejectedAfterRestart() {
+        var run = LiveRun()
+        let first = run.start()!
+        XCTAssertTrue(run.isCurrent(first))
+        run.stop()
+        XCTAssertFalse(run.isCurrent(first))
+        let second = run.start()!
+        XCTAssertFalse(run.isCurrent(first), "a permission answer for the old session must not open the camera again")
+        XCTAssertTrue(run.isCurrent(second))
+    }
+}
+
+/// Intent source: Stop moved 130 pt when the bands came and went (DESK-22). The area reserved for the bands depends on
+/// the setup's adjustable rows, never on how many bands are showing, so the controls around it stay put.
+final class LiveLayoutTests: XCTestCase {
+    func testReservedHeightFitsExactlyTheSetupsRows() {
+        let one = LiveLayout.bandAreaHeight(rows: 1)
+        let three = LiveLayout.bandAreaHeight(rows: 3)
+        XCTAssertEqual(one, LiveLayout.rowHeight)
+        XCTAssertEqual(three, 3 * LiveLayout.rowHeight + 2 * LiveLayout.rowSpacing)
+    }
+
+    func testReservedHeightNeverCollapsesOrGrowsPastThreeRows() {
+        XCTAssertEqual(LiveLayout.bandAreaHeight(rows: 0), LiveLayout.bandAreaHeight(rows: 1))
+        XCTAssertEqual(LiveLayout.bandAreaHeight(rows: 9), LiveLayout.bandAreaHeight(rows: 3))
+    }
+}
