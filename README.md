@@ -136,7 +136,8 @@ After each `brew upgrade`, macOS asks for the camera once more; see
 ## Privacy
 
 - The camera runs only while a check runs. It is off the rest of the time.
-- No image is ever saved. The app keeps numbers only, on your Mac.
+- The app never saves camera images. It keeps numbers only, on your Mac. The offscreen
+  tests below save pictures of the interface with starter settings, not camera frames.
 - No network access at all. The App Sandbox denies every connection: the app does not
   have the network permission.
 - Desk Check writes settings to `~/.config/desk-check/config.toml`. On first launch it can also read
@@ -182,12 +183,40 @@ with `DEVELOPER_DIR=/Library/Developer/CommandLineTools`.
 
 ```sh
 Tests/verify-app.sh .build/app/DeskCheck.app   # reads the permissions back from the built app
-swift test                                     # geometry, advice and config tests (needs Xcode)
+swift test                                     # core tests and offscreen view pictures (needs Xcode)
 Tests/sandbox-probe.sh                         # runs a probe under the app's sandbox rules
 scripts/test-formula-locally.sh 0.3.0          # installs through a local test tap
 swift Tests/camera-in-use.swift                # lists cameras in use; exits 1 if any is on
 open "$(brew --prefix)/opt/desk-check/DeskCheck.app" --args --check   # one check at launch
 ```
+
+### Offscreen view pictures
+
+```sh
+pictures=$(mktemp -d /tmp/desk-check-pictures.XXXXXX)
+DESK_CHECK_IMAGE_DIR="$pictures" swift test --filter ViewImageTests
+```
+
+The view test saves `popover.png`, `live.png` and `settings.png` for review cards, plus
+`captures.json` with each picture's renderer and limitations. Every picture carries its
+own omission caption so the limits remain visible when it is attached to a card.
+
+These are **partial offscreen renders**, not desktop screenshots or proof of native glass
+fidelity. The popover and Live use SwiftUI's image renderer after hidden host layout;
+Settings uses a bitmap of the actual hosted view because the image renderer cannot draw
+its native form. The tests never activate the app, order a window on screen, control the
+mouse or start the camera. They use light appearance and starter settings, not your config.
+
+- Popover omits outer chrome and the desktop backdrop. Camera and permission checks do not run.
+- Live omits outer chrome and the desktop backdrop. Its camera-off state has no readings or coloured bands.
+- Settings omits native glass button surfaces and some icons. It shows the desk drawing
+  and initial form viewport, not the lower fields or outer popover chrome.
+
+Choose a fresh output folder: the test refuses to overwrite existing files. Without
+`DESK_CHECK_IMAGE_DIR`, it creates a unique temporary folder and prints its path.
+Assertions check dimensions, PNG read-back, non-uniform content before captioning and
+hidden/non-key windows. They do not assert complete controls, glass fidelity or interaction,
+and do not compare against reference pictures. No camera images are saved.
 
 `verify-app.sh` checks the app's Dock, camera, network and folder permissions. `sandbox-probe.sh`
 signs a small program with the app's entitlements and checks through the kernel that Desk Check
