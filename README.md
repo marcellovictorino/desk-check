@@ -28,6 +28,7 @@ A setup is one place you use Desk Check, for example a standing desk with an ext
 webcam and screen, and a MacBook on a normal desk. Each setup has its own camera, screen
 label, tape measurements, lens offset and list of what you can move. The popover shows a
 picker when there is more than one, and Desk Check remembers the one you used last.
+The popover's gear opens Settings and the power icon quits. On macOS 26 and later the buttons and rows use Liquid Glass; macOS 14 and 15 keep the standard look.
 **Settings** can add (from an external or a MacBook template), rename, duplicate and
 delete setups. The MacBook template is seated only: desk height and screen height are
 fixed, so it has no standing preset and advice reports screen height instead of telling
@@ -80,8 +81,8 @@ MacBook template) has a sit preset only.
 ### Live mode
 
 **Live** in the popover swaps the popover to the live view, with Stop in its header. The
-camera runs while it shows and turns off when you press Stop, click away so the popover
-closes, or after 10 minutes. Readings are
+camera runs while it shows and turns off when you press Stop or Esc (both return to the main view,
+where Esc or a click away closes the popover), when you click away so the popover closes, or after 10 minutes. Readings are
 averaged over about a second, so the number follows your cranking without flicker.
 Each adjustment you can move gets a row with a colour, an arrow and the centimetres to move:
 

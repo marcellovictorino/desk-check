@@ -13,7 +13,8 @@ struct LiveView: View {
                 Text("Live adjustment").font(.headline)
                 Text(live.setupName).font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Button("Stop") { live.stop() }.keyboardShortcut(.defaultAction)
+                // Esc stops Live and returns to the main view; Esc there, or a click away, closes the popover.
+                Button("Stop") { live.stop() }.keyboardShortcut(.cancelAction).glassButton(prominent: true)
             }
             Text(InstructionText.live).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             ZStack(alignment: .top) {
@@ -21,8 +22,10 @@ struct LiveView: View {
                     Text(live.isRunning ? "Waiting for a steady reading…" : LiveController.offText)
                         .foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    VStack(spacing: LiveLayout.rowSpacing) {
-                        ForEach(live.advice, id: \.adjustment) { BandRow(item: $0) }
+                    GlassGroup(spacing: LiveLayout.rowSpacing) {
+                        VStack(spacing: LiveLayout.rowSpacing) {
+                            ForEach(live.advice, id: \.adjustment) { BandRow(item: $0) }
+                        }
                     }
                 }
             }
@@ -66,7 +69,7 @@ struct BandRow: View {
         }
         .padding(.horizontal, 8)
         .frame(height: LiveLayout.rowHeight)
-        .background(colour.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+        .glassTile(tint: colour)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(item.adjustment.label): \(item.level == .green ? "green" : item.level == .yellow ? "yellow" : "red"). \(item.text)")
     }

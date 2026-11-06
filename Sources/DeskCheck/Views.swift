@@ -32,13 +32,25 @@ struct PopoverView: View {
                 } else {
                     Text(checker.activeSetup).font(.caption).foregroundStyle(.secondary)
                 }
+                Button { showSettings() } label: { Image(systemName: "gearshape") }
+                    .glassIconButton().help("Settings").accessibilityLabel("Settings")
+                Button { NSApplication.shared.terminate(nil) } label: { Image(systemName: "power") }
+                    .glassIconButton().help("Quit Desk Check").accessibilityLabel("Quit")
             }
             if let preview = checker.preview { PreviewView(frame: preview) }
             if let r = checker.reading {
-                ForEach(Array(checker.advice.enumerated()), id: \.offset) { _, item in
-                    Label(item.sentence, systemImage: item.status == .good ? "checkmark.circle.fill" : item.status == .fixed ? "lock.circle.fill" : "arrow.up.and.down.circle.fill")
-                        .foregroundStyle(item.status == .good ? Color.green : item.status == .fixed ? Color.secondary : Color.orange)
-                        .fixedSize(horizontal: false, vertical: true)
+                GlassGroup(spacing: 6) {
+                    VStack(spacing: 6) {
+                        ForEach(Array(checker.advice.enumerated()), id: \.offset) { _, item in
+                            let tint = item.status == .good ? Color.green : item.status == .fixed ? Color.gray : Color.orange
+                            Label(item.sentence, systemImage: item.status == .good ? "checkmark.circle.fill" : item.status == .fixed ? "lock.circle.fill" : "arrow.up.and.down.circle.fill")
+                                .foregroundStyle(item.status == .good ? Color.green : item.status == .fixed ? Color.secondary : Color.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 10).padding(.vertical, 7)
+                                .glassTile(tint: tint)
+                        }
+                    }
                 }
                 Text(String(format: "Eyes %.0f cm from the screen, %.0f cm above the desk.", r.distanceCm, r.eyeHeightAboveDeskCm))
                     .font(.caption).foregroundStyle(.secondary)
@@ -57,12 +69,13 @@ struct PopoverView: View {
                 Button("Check desk") { checker.check() }
                     .disabled(checker.isRunning)
                     .keyboardShortcut(.defaultAction)
+                    .glassButton(prominent: true)
                 Button("Live") { live.start() }
                     .disabled(checker.isRunning)
+                    .glassButton()
                 Spacer()
-                Button("Settings…") { showSettings() }
-                Button("Quit") { NSApplication.shared.terminate(nil) }
             }
+            .controlSize(.large)
             if live.statusText != LiveController.offText {
                 Text(live.statusText).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
@@ -96,7 +109,9 @@ extension PopoverView {
                         Text("\(posture.label): \(Int(preset.deskHeightCm.rounded())) cm on the tape").font(.callout)
                         Spacer()
                         Button("Confirm") { checker.confirmPreset(posture) }.disabled(checker.isRunning || preset.distanceCm == nil)
+                            .glassButton()
                         Button("Remember view") { checker.rememberView(posture) }.disabled(checker.isRunning)
+                            .glassButton()
                     }
                 }
             }
@@ -213,6 +228,7 @@ struct SettingsView: View {
                     Button("Delete", role: .destructive) { edit { $0.deleteSetup(checker.activeSetup) } }
                         .disabled(checker.setupNames.count < 2)
                 }
+                .glassButton()
                 Text("Rename, Duplicate and Add use the name above. Delete removes the selected setup; its webcam calibration stays.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Toggle("Switch setup when a webcam is plugged in or unplugged", isOn: $autoSwitch)
@@ -268,13 +284,14 @@ struct SettingsView: View {
                 HStack {
                     Button("Calibrate webcam") { save(); checker.calibrate() }
                         .disabled(checker.isRunning || checker.webcamName == nil)
+                        .glassButton()
                     if checker.isRunning { ProgressView().controlSize(.small) }
                 }
                 Text(checker.lastCalibrationText ?? calibrationSummary).font(.caption).foregroundStyle(.secondary)
                 Toggle("Show camera preview with eye points during a check", isOn: $showPreview)
             }
             HStack {
-                Button("Save") { save(); message = "Saved." }.keyboardShortcut(.defaultAction)
+                Button("Save") { save(); message = "Saved." }.keyboardShortcut(.defaultAction).glassButton(prominent: true)
                 Text(message).font(.caption).foregroundStyle(.secondary)
             }
             LabeledContent("Config file") {
