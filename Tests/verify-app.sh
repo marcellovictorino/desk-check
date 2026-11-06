@@ -24,7 +24,7 @@ check() { # description, command...
 
 exception=com.apple.security.temporary-exception.files.home-relative-path.read-write
 legacy=com.apple.security.temporary-exception.files.home-relative-path.read-only
-expected_keys="com.apple.security.app-sandbox com.apple.security.device.camera $exception $legacy"
+expected_keys="com.apple.security.app-sandbox com.apple.security.device.camera $legacy $exception"
 actual_keys="$(plutil -convert json -o - "$ents" | /usr/bin/python3 -I -c 'import json,sys; print(" ".join(sorted(json.load(sys.stdin))))')"
 
 check "signature is valid" codesign --verify --strict "$app"
