@@ -21,7 +21,7 @@ cat > "$work/Info.plist" <<PLIST
 <plist version="1.0"><dict><key>CFBundleIdentifier</key><string>$id</string></dict></plist>
 PLIST
 swiftc -O -o "$work/SandboxProbe" \
-  "$root/Tests/SandboxProbe/main.swift" "$root/Sources/DeskCheckCore/ConfigLocation.swift" \
+  "$root/Tests/SandboxProbe/main.swift" "$root"/Sources/DeskCheckCore/*.swift \
   -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __info_plist -Xlinker "$work/Info.plist"
 codesign --force --sign - --identifier "$id" --entitlements "$entitlements" "$work/SandboxProbe" 2>/dev/null
 
