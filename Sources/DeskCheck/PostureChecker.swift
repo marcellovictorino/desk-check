@@ -19,6 +19,8 @@ final class PostureChecker: NSObject, ObservableObject {
     /// Set by a calibration run so Settings can show what changed.
     @Published private(set) var lastCalibrationText: String?
 
+    /// True while the popover shows Settings in place of the main view.
+    @Published var showingSettings = false
     @Published private(set) var setupNames: [String] = []
     @Published private(set) var activeSetup = ""
     private var observers: [NSObjectProtocol] = []

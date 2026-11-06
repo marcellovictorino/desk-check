@@ -40,7 +40,7 @@ closing is not built yet.
 
 ### Settings
 
-Open **Settings…** from the popover. All lengths are in centimetres, and an empty field
+Click the gear in the popover. Settings replace the popover's content, with the desk drawing pinned above the fields; Esc or Back returns to the main view, and Esc again or a click away closes the popover. All lengths are in centimetres, and an empty field
 means the default estimate applies:
 
 | Setting | Meaning | Default |
@@ -122,8 +122,7 @@ Homebrew builds Desk Check on your Mac with Apple's command line tools, which Ho
 already needs; Xcode is not required. The app built this way is signed for your Mac
 only, so macOS opens it without a warning and no Apple developer account is involved.
 
-Desk Check lives in the menu bar and has no Dock icon, except while the Settings window is open: it then
-becomes a regular app so the window can come to the front, and the icon goes away when you close Settings. To find it in Spotlight too:
+Desk Check lives in the menu bar and has no Dock icon. To find it in Spotlight too:
 
 ```sh
 ln -sf "$(brew --prefix)/opt/desk-check/DeskCheck.app" ~/Applications/

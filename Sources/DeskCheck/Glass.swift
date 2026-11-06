@@ -47,14 +47,8 @@ struct GlassGroup<Content: View>: View {
 }
 
 extension View {
-    /// Settings window: the form floats on a translucent window instead of a flat grey one.
-    @ViewBuilder func glassWindowBackground() -> some View {
-        if #available(macOS 15, *) {
-            scrollContentBackground(.hidden).containerBackground(.regularMaterial, for: .window)
-        } else {
-            self
-        }
-    }
+    /// The form shows the popover's own material instead of an opaque grey background.
+    func clearFormBackground() -> some View { scrollContentBackground(.hidden) }
 
     /// Form sections drawn as translucent cards rather than opaque grey ones.
     func glassSection() -> some View {

@@ -5,18 +5,27 @@ import SwiftUI
 struct PopoverView: View {
     @ObservedObject var checker: PostureChecker
     @ObservedObject var live = LiveController.shared
-    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if live.isRunning { LiveView(live: live) } else { checkView }
+            if live.isRunning {
+                LiveView(live: live)
+            } else if checker.showingSettings {
+                settingsView
+            } else {
+                checkView
+            }
         }
         .padding(14)
-        .frame(width: 320)
+        .frame(width: checker.showingSettings && !live.isRunning ? 520 : 320)
         .onAppear { checker.reloadSetups(); checker.refreshPermission() }
         // Clicking away: the menu bar popover is hidden, not torn down, so onDisappear never fires for it.
         // The popover's window losing key status is the signal, and it turns the camera off.
-        .background(WindowHidden(visible: { live.popoverIsVisible = $0 }) { checker.clearPreview(); live.popoverHidden() })
+        .background(WindowHidden(visible: { live.popoverIsVisible = $0 }) {
+            checker.clearPreview(); live.popoverHidden()
+            // Next time the popover opens it starts on the main view, unless a calibration is still running.
+            if !checker.isRunning { checker.showingSettings = false }
+        })
     }
 
     private var checkView: some View {
@@ -32,7 +41,7 @@ struct PopoverView: View {
                 } else {
                     Text(checker.activeSetup).font(.caption).foregroundStyle(.secondary)
                 }
-                Button { showSettings() } label: { Image(systemName: "gearshape") }
+                Button { checker.showingSettings = true } label: { Image(systemName: "gearshape") }
                     .glassIconButton().help("Settings").accessibilityLabel("Settings")
                 Button { NSApplication.shared.terminate(nil) } label: { Image(systemName: "power") }
                     .glassIconButton().help("Quit Desk Check").accessibilityLabel("Quit")
@@ -83,15 +92,16 @@ struct PopoverView: View {
         }
     }
 
-    /// The Settings link alone opens the window behind the frontmost app; this brings the app and the window forward.
-    private func showSettings() {
-        // A menu bar app has no Dock icon and is never frontmost by default, so macOS keeps another app in front.
-        // It becomes a regular app while Settings is open and goes back to menu bar only when Settings closes.
-        NSApp.setActivationPolicy(.regular)
-        openSettings()
-        NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
-            NSApp.windows.first { $0.canBecomeKey && !($0 is NSPanel) && $0.styleMask.contains(.titled) }?.makeKeyAndOrderFront(nil)
+    /// Settings replace the popover content like Live does. Esc, or Back, returns to the main view.
+    private var settingsView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Button { checker.showingSettings = false } label: { Label("Back", systemImage: "chevron.left") }
+                    .keyboardShortcut(.cancelAction).glassButton()
+                Text("Settings").font(.headline)
+                Spacer()
+            }
+            SettingsView(checker: checker)
         }
     }
 }
@@ -209,6 +219,20 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        // The drawing stays above the scrolling form so it is visible while a value is typed.
+        VStack(spacing: 0) {
+            FieldGuideView(active: hovered ?? focused, laptop: profile.camera == .builtIn,
+                           select: { focused = $0 },
+                           hover: { field, inside in
+                               if inside { hovered = field } else if hovered == field { hovered = nil }
+                           })
+            form
+        }
+        .frame(width: 492, height: 600)
+        .onAppear { checker.reloadSetups(); checker.refreshPermission(); load() }
+    }
+
+    private var form: some View {
         Form {
             Text(InstructionText.settings).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Section("Setup") {
@@ -254,11 +278,6 @@ struct SettingsView: View {
                 }
             }.glassSection()
             Section("Tape measure (centimetres)") {
-                FieldGuideView(active: hovered ?? focused, laptop: profile.camera == .builtIn,
-                               select: { focused = $0 },
-                               hover: { field, inside in
-                                   if inside { hovered = field } else if hovered == field { hovered = nil }
-                               })
                 field(.distance, $fields.distance, hint: "for calibration")
                 field(.screenTop, $fields.screenTop, hint: "default \(fmt(defaults.screenTop))")
                 field(.lens, $fields.lens, hint: "default \(fmt(defaults.lensOffset))")
@@ -302,9 +321,7 @@ struct SettingsView: View {
             }.font(.caption)
         }
         .formStyle(.grouped)
-        .glassWindowBackground()
-        .frame(width: 520)
-        .onAppear { checker.reloadSetups(); checker.refreshPermission(); load() }
+        .clearFormBackground()
     }
 
     private func openConfigFile() {
