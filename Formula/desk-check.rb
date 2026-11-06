@@ -28,7 +28,7 @@ class DeskCheck < Formula
     <<~EOS
       Start Desk Check with:
         desk-check
-      It lives in the menu bar and has no Dock icon.
+      It lives in the menu bar and has no Dock icon, except while Settings is open.
 
       To find it in Spotlight and Launchpad as well:
         ln -sf "#{opt_prefix}/DeskCheck.app" ~/Applications/

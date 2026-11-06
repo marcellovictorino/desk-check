@@ -289,17 +289,9 @@ struct SettingsView: View {
         .onAppear { checker.reloadSetups(); checker.refreshPermission(); load() }
     }
 
-    /// Opens the file in its default app; a plain text file has none when nothing handles TOML, so TextEdit is the fallback.
     private func openConfigFile() {
         let file = ConfigLocation.file
-        if NSWorkspace.shared.open(file) { return }
-        let config = NSWorkspace.OpenConfiguration()
-        guard let textEdit = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.TextEdit") else {
-            message = "No app could open the config file. Open \(file.path) yourself."; return
-        }
-        NSWorkspace.shared.open([file], withApplicationAt: textEdit, configuration: config) { _, error in
-            if error != nil { Task { @MainActor in message = "No app could open the config file. Open \(file.path) yourself." } }
-        }
+        openWithTextEditFallback(file) { message = "No app could open the config file. Open \(file.path) yourself." }
     }
 
     private var defaults: Setup { Setup(builtIn: profile.camera == .builtIn) }
