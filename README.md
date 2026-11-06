@@ -171,7 +171,7 @@ one `[webcams."<camera name>"]` table per webcam.
 ## Build from source
 
 ```sh
-scripts/build-app.sh 0.2.0 .build/app     # builds and signs .build/app/DeskCheck.app
+scripts/build-app.sh 0.3.0 .build/app     # builds and signs .build/app/DeskCheck.app
 open .build/app/DeskCheck.app
 ```
 
@@ -184,7 +184,7 @@ with `DEVELOPER_DIR=/Library/Developer/CommandLineTools`.
 Tests/verify-app.sh .build/app/DeskCheck.app   # reads the permissions back from the built app
 swift test                                     # geometry, advice and config tests (needs Xcode)
 Tests/sandbox-probe.sh                         # runs a probe under the app's sandbox rules
-scripts/test-formula-locally.sh 0.2.0          # installs through a local test tap
+scripts/test-formula-locally.sh 0.3.0          # installs through a local test tap
 swift Tests/camera-in-use.swift                # lists cameras in use; exits 1 if any is on
 open "$(brew --prefix)/opt/desk-check/DeskCheck.app" --args --check   # one check at launch
 ```
