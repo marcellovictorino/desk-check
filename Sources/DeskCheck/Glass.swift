@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Liquid Glass on macOS 26 and later, with the plain look the app had on macOS 14 and 15.
+/// Liquid Glass on macOS 26 and later; macOS 14 and 15 get standard bordered buttons and plain tinted rows.
 /// The glass APIs exist only in the macOS 26 SDK, so every use sits behind an availability check.
 extension View {
     /// A glass push button; `prominent` is the one main action of a window.
