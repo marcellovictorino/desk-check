@@ -6,10 +6,13 @@ import UniformTypeIdentifiers
 struct PopoverView: View {
     @ObservedObject var checker: PostureChecker
     @ObservedObject var live: LiveController
+    /// The version build-app.sh stamps into Info.plist, shown under Check desk and Live; absent outside the app bundle.
+    let version: String?
 
-    init(checker: PostureChecker) {
+    init(checker: PostureChecker, version: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) {
         self.checker = checker
         self.live = checker.live
+        self.version = version
     }
 
     var body: some View {
@@ -100,6 +103,9 @@ struct PopoverView: View {
                 Spacer()
             }
             .controlSize(.large)
+            if let version {
+                Text("Version \(version)").font(.caption2).italic().foregroundStyle(.secondary)
+            }
             if live.statusText != LiveController.offText {
                 Text(live.statusText).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }

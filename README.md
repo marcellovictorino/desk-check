@@ -130,8 +130,12 @@ ln -sf "$(brew --prefix)/opt/desk-check/DeskCheck.app" ~/Applications/
 
 Requires macOS 14 or later on Apple silicon.
 
-After each `brew upgrade`, macOS asks for the camera once more; see
-[Camera permission and upgrades](#camera-permission-and-upgrades).
+`desk-check --version` prints the installed version, which the popover also shows below
+**Check desk** and **Live**.
+
+After each `brew upgrade`, run `desk-check` again: the old version keeps running until then,
+and `desk-check` quits it before opening the new one. macOS then asks for the camera once
+more; see [Camera permission and upgrades](#camera-permission-and-upgrades).
 
 ## Privacy
 
@@ -188,6 +192,7 @@ with `DEVELOPER_DIR=/Library/Developer/CommandLineTools`.
 
 ```sh
 Tests/verify-app.sh .build/app/DeskCheck.app   # reads the permissions back from the built app
+Tests/verify-wrapper.sh .build/app/DeskCheck.app 0.3.0 [older/DeskCheck.app]   # checks the desk-check command
 swift test                                     # core tests and offscreen view pictures (needs Xcode)
 Tests/sandbox-probe.sh                         # runs a probe under the app's sandbox rules
 scripts/test-formula-locally.sh 0.3.0          # installs through a local test tap
@@ -223,6 +228,11 @@ Choose a fresh output folder: the test refuses to overwrite existing files. With
 Assertions check dimensions, PNG read-back, non-uniform content before captioning and
 hidden/non-key windows. They do not assert complete controls, glass fidelity or interaction,
 and do not compare against reference pictures. No camera images are saved.
+
+`verify-wrapper.sh` installs `scripts/desk-check.sh` as the formula does and checks that `--version`
+prints the built version without opening the app. Given an older build, it starts that build, runs
+`desk-check`, and checks the older copy quit and only the new one runs; this also quits any other
+Desk Check you have running, so start yours again afterwards.
 
 `verify-app.sh` checks the app's Dock, camera, network, selected-file, bookmark and folder permissions. `sandbox-probe.sh`
 signs a small program with the app's entitlements and checks through the kernel that Desk Check
