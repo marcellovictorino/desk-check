@@ -18,10 +18,8 @@ class DeskCheck < Formula
     ENV["DEVELOPER_DIR"] = MacOS::CLT::PKG_PATH if MacOS::CLT.installed?
     system "scripts/build-app.sh", version.to_s, prefix
     pkgshare.install "Tests/verify-app.sh"
-    (bin/"desk-check").write <<~SH
-      #!/bin/sh
-      exec open "#{opt_prefix}/DeskCheck.app"
-    SH
+    # desk-check quits a copy left running by an older install, then opens this one; --version prints the version.
+    (bin/"desk-check").write File.read("scripts/desk-check.sh").gsub("@APP@", "#{opt_prefix}/DeskCheck.app")
   end
 
   def caveats
@@ -29,6 +27,7 @@ class DeskCheck < Formula
       Start Desk Check with:
         desk-check
       It lives in the menu bar and has no Dock icon.
+      After brew upgrade, run desk-check again: it quits the old version and opens the new one.
 
       To find it in Spotlight and Launchpad as well:
         ln -sf "#{opt_prefix}/DeskCheck.app" ~/Applications/
@@ -37,5 +36,6 @@ class DeskCheck < Formula
 
   test do
     system pkgshare/"verify-app.sh", prefix/"DeskCheck.app"
+    assert_equal version.to_s, shell_output("#{bin}/desk-check --version").strip
   end
 end
