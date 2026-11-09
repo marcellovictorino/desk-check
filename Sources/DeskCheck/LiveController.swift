@@ -33,11 +33,14 @@ final class LiveController: ObservableObject {
     private var timeout: Task<Void, Never>?
 
     func start() {
+        let config: DeskConfig
+        do { config = try ConfigLocation.settings.read() }
+        catch { statusText = ConfigLocation.settings.loadWarning ?? error.localizedDescription; return }
         guard let token = run.start() else { return }
         isRunning = true
         statusText = "Starting the camera…"
         // Which setup's rows to reserve space for is known before the camera opens.
-        let profile = ConfigLocation.load().activeProfile
+        let profile = config.activeProfile
         setupName = profile.name
         rowCount = Adjustment.allCases.filter { $0 != .chairHeight && !profile.fixed.contains($0) }.count
         awaitingPermission = true
@@ -55,7 +58,9 @@ final class LiveController: ObservableObject {
     }
 
     private func begin(_ token: Int) {
-        let config = ConfigLocation.load()
+        let config: DeskConfig
+        do { config = try ConfigLocation.settings.read() }
+        catch { fail(ConfigLocation.settings.loadWarning ?? error.localizedDescription); return }
         profile = config.activeProfile
         setupName = profile.name
         guard let device = FaceSampler.camera(for: profile.camera) else {

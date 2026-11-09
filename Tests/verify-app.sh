@@ -24,7 +24,7 @@ check() { # description, command...
 
 exception=com.apple.security.temporary-exception.files.home-relative-path.read-write
 legacy=com.apple.security.temporary-exception.files.home-relative-path.read-only
-expected_keys="com.apple.security.app-sandbox com.apple.security.device.camera $legacy $exception"
+expected_keys="com.apple.security.app-sandbox com.apple.security.device.camera com.apple.security.files.bookmarks.app-scope com.apple.security.files.user-selected.read-write $legacy $exception"
 actual_keys="$(plutil -convert json -o - "$ents" | /usr/bin/python3 -I -c 'import json,sys; print(" ".join(sorted(json.load(sys.stdin))))')"
 
 check "signature is valid" codesign --verify --strict "$app"
@@ -37,6 +37,9 @@ check "no network client entitlement" is "$(ent com.apple.security.network.clien
 check "no network server entitlement" is "$(ent com.apple.security.network.server '' || echo absent)" absent
 check "one folder exception, /.config/desk-check/" is "$(ent $exception '' || true)|$(ent $exception .0 || true)" "1|/.config/desk-check/"
 check "read-only access to the old folder, /.config/desk-undo/" is "$(ent $legacy '' || true)|$(ent $legacy .0 || true)" "1|/.config/desk-undo/"
+# Intent: choosing a settings file grants only user-selected access, remembered with an app-scoped bookmark.
+check "user-selected file read/write access" is "$(ent com.apple.security.files.user-selected.read-write '' || true)" true
+check "app-scoped bookmarks" is "$(ent com.apple.security.files.bookmarks.app-scope '' || true)" true
 check "no other entitlements" is "$actual_keys" "$expected_keys"
 
 exit $fail

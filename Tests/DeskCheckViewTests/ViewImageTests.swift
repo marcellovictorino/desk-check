@@ -22,7 +22,10 @@ final class ViewImageTests: XCTestCase {
         app.appearance = NSAppearance(named: .aqua)
         defer { app.appearance = appearance }
         let config = DeskConfig(text: DeskConfig.starterContents)
-        let checker = PostureChecker(loadConfig: { config })
+        let fixture = FileManager.default.temporaryDirectory.appendingPathComponent("desk-check-view-\(UUID().uuidString)/config.toml")
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "desk-check-view-tests.\(UUID().uuidString)"))
+        let settingsFile = SettingsFile(defaultFile: fixture, defaults: defaults)
+        let checker = PostureChecker(settings: settingsFile, loadConfig: { config })
         let live = LiveController()
         let directory: URL
         if let path = ProcessInfo.processInfo.environment["DESK_CHECK_IMAGE_DIR"] {
@@ -46,12 +49,25 @@ final class ViewImageTests: XCTestCase {
         checker.showingSettings = true
         try await save(PopoverView(checker: checker, live: live), capture: settings,
                        title: "Settings", width: 520, swiftUI: false, to: directory)
+        // Intent: a failed settings load is visible in both entry points, not hidden behind starter settings.
+        let warningChecker = PostureChecker(settings: settingsFile)
+        XCTAssertNotNil(warningChecker.settingsWarning)
+        let warning = Capture(file: "load-warning.png", renderer: "SwiftUI ImageRenderer",
+            limitation: popover.limitation)
+        try await save(PopoverView(checker: warningChecker, live: live).content, capture: warning,
+                       title: "Settings load warning", width: 320, swiftUI: true, to: directory)
+        warningChecker.showingSettings = true
+        let warningSettings = Capture(file: "settings-warning.png", renderer: "NSView cacheDisplay",
+            limitation: settings.limitation)
+        try await save(PopoverView(checker: warningChecker, live: live).content, capture: warningSettings,
+                       title: "Settings load warning", width: 520, swiftUI: false, to: directory)
+        XCTAssertFalse(warningChecker.isRunning)
         XCTAssertTrue(checker.showingSettings)
         XCTAssertFalse(checker.isRunning)
         XCTAssertFalse(live.isRunning)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try encoder.encode([popover, liveCapture, settings])
+        try encoder.encode([popover, liveCapture, settings, warning, warningSettings])
             .write(to: directory.appendingPathComponent("captures.json"), options: .withoutOverwriting)
         print("Desk Check partial view images: \(directory.path)")
     }

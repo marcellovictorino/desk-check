@@ -23,13 +23,18 @@ final class PostureChecker: NSObject, ObservableObject {
     @Published var showingSettings = false
     @Published private(set) var setupNames: [String] = []
     @Published private(set) var activeSetup = ""
+    @Published private(set) var settingsWarning: String?
+    @Published var choosingSettingsFile = false
     private var observers: [NSObjectProtocol] = []
 
     /// Supplies configuration reads so offscreen view tests need not read personal settings.
     let loadConfig: () -> DeskConfig
 
-    init(loadConfig: @escaping () -> DeskConfig = ConfigLocation.load) {
-        self.loadConfig = loadConfig
+    let settings: SettingsFile
+
+    init(settings: SettingsFile = ConfigLocation.settings, loadConfig: (() -> DeskConfig)? = nil) {
+        self.settings = settings
+        self.loadConfig = loadConfig ?? settings.load
         super.init()
         reloadSetups()
         for name in [AVCaptureDevice.wasConnectedNotification, AVCaptureDevice.wasDisconnectedNotification] {
@@ -42,8 +47,9 @@ final class PostureChecker: NSObject, ObservableObject {
     /// Re-reads the setup list and the setup in use from the config file.
     func reloadSetups() {
         let config = loadConfig()
-        setupNames = config.setupNames
-        activeSetup = config.activeSetupName
+        settingsWarning = settings.loadWarning
+        setupNames = settingsWarning == nil ? config.setupNames : []
+        activeSetup = settingsWarning == nil ? config.activeSetupName : "Settings unavailable"
         webcamName = FaceSampler.camera(for: config.activeProfile.camera)?.localizedName
     }
 
@@ -51,7 +57,8 @@ final class PostureChecker: NSObject, ObservableObject {
         var config = loadConfig()
         guard config.setupNames.contains(name) else { return }
         config.activeSetupName = name
-        try? ConfigLocation.save(config)
+        do { try settings.save(config) }
+        catch { settingsWarning = "Could not save settings: \(error.localizedDescription)"; return }
         reset()
         reloadSetups()
     }
@@ -103,6 +110,9 @@ final class PostureChecker: NSObject, ObservableObject {
 
     private func start(_ mode: Mode) {
         guard !isRunning else { return }
+        _ = loadConfig()
+        settingsWarning = settings.loadWarning
+        guard settingsWarning == nil else { return }
         isRunning = true
         preview = nil
         presetNote = nil
@@ -181,7 +191,7 @@ final class PostureChecker: NSObject, ObservableObject {
         p.presets[posture] = preset
         var updated = config
         updated.save(p)
-        do { try ConfigLocation.save(updated) } catch { return "Could not save: \(error.localizedDescription)" }
+        do { try settings.save(updated) } catch { return "Could not save: \(error.localizedDescription)" }
         presetNote = nil
         return "Remembered \(posture.label.lowercased()) at \(Int(preset.deskHeightCm.rounded())) cm for \(profile.name). The camera is off."
     }
@@ -221,7 +231,7 @@ final class PostureChecker: NSObject, ObservableObject {
         }
         config.setCalibration(calibration, forWebcam: result.cameraName)
         do {
-            try ConfigLocation.save(config)
+            try settings.save(config)
             lastCalibrationText = text
             log.notice("calibration saved \(text, privacy: .public)")
         } catch {

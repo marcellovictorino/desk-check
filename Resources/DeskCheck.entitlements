@@ -5,6 +5,11 @@
 	<!-- App Sandbox: no network keys, so all network access is denied. -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<!-- File picker grants read/write access; bookmarks restore that choice after relaunch. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
 	<key>com.apple.security.device.camera</key>
 	<true/>
 	<!-- Desk Check writes current settings in this folder. -->
