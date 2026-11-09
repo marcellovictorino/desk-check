@@ -1,0 +1,47 @@
+name: Release
+
+# Publishes a release for each merge to main that holds a feat, fix or breaking commit,
+# then starts the Homebrew tap's update run. The tap's six-hour run stays as the backup.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Work out the next version
+        id: version
+        run: |
+          version="$(scripts/next-version.sh)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ -z "$version" ]; then echo "No feat, fix or breaking commit since the last tag: nothing to release."; fi
+
+      - name: Publish the release
+        if: steps.version.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Desk Check $VERSION" --generate-notes --latest
+
+      - name: Start the Homebrew tap update
+        if: steps.version.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.TAP_DISPATCH_TOKEN }}
+        run: |
+          # The release is already out; if the token is missing or expired, the tap's six-hour run delivers it.
+          gh workflow run update.yml -R marcellovictorino/homebrew-tap \
+            || echo "::warning::Could not start the tap update (TAP_DISPATCH_TOKEN missing or expired). The tap's scheduled run will pick up the release."
