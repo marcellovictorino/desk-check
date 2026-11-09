@@ -11,7 +11,7 @@ app="$(cd "${1:?path to DeskCheck.app}" && pwd -P)"
 version="${2:?version the app was built as}"
 old="${3:-}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
-tmp="$(mktemp -d)"
+tmp="$(cd "$(mktemp -d)" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
 cmd="$tmp/desk-check"
 sed "s|@APP@|$app|g" "$root/scripts/desk-check.sh" > "$cmd"
@@ -30,6 +30,18 @@ check "--version opens nothing" [ "$(running "$app")" = "$before" ]
 
 if [ -n "$old" ]; then
   old="$(cd "$old" && pwd -P)"
+  # An older copy that ignores SIGTERM stands in for one that will not quit: desk-check must not open a second copy.
+  # A copy of sleep inside a DeskCheck.app path runs with the exact name and path of an old Desk Check.
+  stubborn="$tmp/stubborn/DeskCheck.app/Contents/MacOS/DeskCheck"
+  mkdir -p "$(dirname "$stubborn")"
+  cp /bin/sleep "$stubborn"
+  sh -c 'trap "" TERM; exec "$1" 600' _ "$stubborn" &
+  stubborn_pid=$!
+  i=0; while [ "$(running "$tmp/stubborn/DeskCheck.app")" = 0 ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
+  check "desk-check fails when an older copy will not quit" sh -c '! "$1" 2>/dev/null' _ "$cmd"
+  check "desk-check did not open a second copy" [ "$(running "$app")" = 0 ]
+  check "the copy that would not quit is still running" [ "$(running "$tmp/stubborn/DeskCheck.app")" = 1 ]
+  kill -9 "$stubborn_pid"; wait "$stubborn_pid" 2>/dev/null || true
   open "$old"
   i=0; while [ "$(running "$old")" = 0 ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
   check "older copy started" [ "$(running "$old")" = 1 ]
