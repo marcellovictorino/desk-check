@@ -163,7 +163,7 @@ upgrading to 0.1.1 the permission read "not asked yet" again and macOS asked aga
 
 Settings default to `~/.config/desk-check/config.toml`, a plain text file that allows
 comments. The app writes a commented starter file on first launch when no file has been chosen.
-Use **Choose settings file…** at the top of Settings to pick an existing file elsewhere, or change the choice later.
+Use **Choose settings file…** at the top of Settings to pick an existing `.toml` file elsewhere, or change the choice later.
 If your default file is a symlink managed by a dotfiles project, choose its actual target file in that project: the default folder permission cannot grant access outside that folder.
 Desk Check remembers the permission and uses the chosen file for setup edits, calibration and Live.
 Changing files discards unsaved form edits; cancelling the picker leaves the current choice unchanged.

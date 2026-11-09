@@ -1,10 +1,16 @@
 import DeskCheckCore
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct PopoverView: View {
     @ObservedObject var checker: PostureChecker
-    @ObservedObject var live = LiveController.shared
+    @ObservedObject var live: LiveController
+
+    init(checker: PostureChecker) {
+        self.checker = checker
+        self.live = checker.live
+    }
 
     var body: some View {
         content
@@ -118,7 +124,7 @@ struct PopoverView: View {
 extension PopoverView {
     /// Sit and stand desk heights read from the tape on the desk leg; a seated-only setup has no standing preset.
     @ViewBuilder var presets: some View {
-        let profile = checker.loadConfig().profile(named: checker.activeSetup)
+        let profile = checker.settings.load().profile(named: checker.activeSetup)
         let shown = Posture.allCases.filter { $0 == .sit || profile.supportsStandingPreset }
         if shown.contains(where: { profile.presets[$0] != nil }) {
             Divider()
@@ -321,7 +327,6 @@ struct SettingsView: View {
             }.glassSection()
             HStack {
                 Button("Save") { if save() { message = "Saved." } }.keyboardShortcut(.defaultAction).glassButton(prominent: true)
-                Text(message).font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -358,6 +363,12 @@ struct SettingsView: View {
         panel.message = "Choose an existing TOML settings file. Desk Check will remember permission to read and edit it."
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
+        guard let toml = UTType(filenameExtension: "toml") else {
+            message = "The TOML file type is unavailable. The settings file has not changed."
+            return
+        }
+        panel.allowedContentTypes = [toml]
+        panel.allowsOtherFileTypes = false
         panel.directoryURL = checker.settings.file.deletingLastPathComponent()
         checker.choosingSettingsFile = true
         defer { checker.choosingSettingsFile = false }
@@ -387,7 +398,7 @@ struct SettingsView: View {
 
     private var calibrationSummary: String {
         guard let name = checker.webcamName else { return "" }
-        let c = checker.loadConfig().calibration(forWebcam: name)
+        let c = checker.settings.load().calibration(forWebcam: name)
         guard let f = c.focalWidths else { return "Not calibrated: distances assume a typical 70 degree field of view." }
         return String(format: "Calibrated: focal length %.3f image widths, tilt %.1f°.", f, c.pitchDegrees ?? 0)
     }
@@ -405,7 +416,7 @@ struct SettingsView: View {
     }
 
     private func load() {
-        let config = checker.loadConfig()
+        let config = checker.settings.load()
         profile = config.activeProfile
         let s = profile.measurements
         func str(_ v: Double?) -> String { v.map { String(format: "%g", $0) } ?? "" }
@@ -422,7 +433,7 @@ struct SettingsView: View {
     private func save() -> Bool {
         guard checker.settingsWarning == nil else { return false }
         func num(_ s: String) -> Double? { Double(s.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) }
-        var config = checker.loadConfig()
+        var config = checker.settings.load()
         var p = profile
         p.measurements = Setup(screenDistanceCm: num(fields.distance), screenTopHeightCm: num(fields.screenTop),
                                lensOffsetCm: num(fields.lens), userHeightCm: num(fields.height),
@@ -455,7 +466,7 @@ struct SettingsView: View {
     /// Saves the form, applies one setup-list change, and reloads. The change says whether it applied.
     private func edit(_ change: (inout DeskConfig) -> Bool) {
         guard save() else { return }
-        var config = checker.loadConfig()
+        var config = checker.settings.load()
         let before = config.activeSetupName
         guard change(&config) else {
             message = "Not changed: the name must be new and not empty, and the last setup cannot be deleted."

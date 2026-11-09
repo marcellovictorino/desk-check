@@ -25,8 +25,10 @@ final class ViewImageTests: XCTestCase {
         let fixture = FileManager.default.temporaryDirectory.appendingPathComponent("desk-check-view-\(UUID().uuidString)/config.toml")
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "desk-check-view-tests.\(UUID().uuidString)"))
         let settingsFile = SettingsFile(defaultFile: fixture, defaults: defaults)
-        let checker = PostureChecker(settings: settingsFile, loadConfig: { config })
-        let live = LiveController()
+        try FileManager.default.createDirectory(at: fixture.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try config.document.text.write(to: fixture, atomically: false, encoding: .utf8)
+        let checker = PostureChecker(settings: settingsFile)
+        let live = checker.live
         let directory: URL
         if let path = ProcessInfo.processInfo.environment["DESK_CHECK_IMAGE_DIR"] {
             directory = URL(fileURLWithPath: path, isDirectory: true)
@@ -42,24 +44,25 @@ final class ViewImageTests: XCTestCase {
             limitation: "No outer popover chrome or desktop backdrop; native glass fidelity is unverified. Camera off: no live readings or coloured bands.")
         let settings = Capture(file: "settings.png", renderer: "NSView cacheDisplay",
             limitation: "Native glass button surfaces and some icons are omitted. Initial scroll position only: lower fields and outer popover chrome are omitted.")
-        try await save(PopoverView(checker: checker, live: live).content, capture: popover,
+        try await save(PopoverView(checker: checker).content, capture: popover,
                        title: "Popover", width: 320, swiftUI: true, to: directory)
         try await save(LiveView(live: live).padding(14).frame(width: 320), capture: liveCapture,
                        title: "Live", width: 320, swiftUI: true, to: directory)
         checker.showingSettings = true
-        try await save(PopoverView(checker: checker, live: live), capture: settings,
+        try await save(PopoverView(checker: checker), capture: settings,
                        title: "Settings", width: 520, swiftUI: false, to: directory)
         // Intent: a failed settings load is visible in both entry points, not hidden behind starter settings.
-        let warningChecker = PostureChecker(settings: settingsFile)
+        let missingFile = SettingsFile(defaultFile: fixture.deletingLastPathComponent().appendingPathComponent("missing.toml"), defaults: defaults)
+        let warningChecker = PostureChecker(settings: missingFile)
         XCTAssertNotNil(warningChecker.settingsWarning)
         let warning = Capture(file: "load-warning.png", renderer: "SwiftUI ImageRenderer",
             limitation: popover.limitation)
-        try await save(PopoverView(checker: warningChecker, live: live).content, capture: warning,
+        try await save(PopoverView(checker: warningChecker).content, capture: warning,
                        title: "Settings load warning", width: 320, swiftUI: true, to: directory)
         warningChecker.showingSettings = true
         let warningSettings = Capture(file: "settings-warning.png", renderer: "NSView cacheDisplay",
             limitation: settings.limitation)
-        try await save(PopoverView(checker: warningChecker, live: live).content, capture: warningSettings,
+        try await save(PopoverView(checker: warningChecker).content, capture: warningSettings,
                        title: "Settings load warning", width: 520, swiftUI: false, to: directory)
         XCTAssertFalse(warningChecker.isRunning)
         XCTAssertTrue(checker.showingSettings)

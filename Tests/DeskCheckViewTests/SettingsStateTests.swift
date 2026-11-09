@@ -17,6 +17,11 @@ final class SettingsStateTests: XCTestCase {
         checker.check()
         XCTAssertFalse(checker.isRunning)
         XCTAssertNotNil(checker.settingsWarning)
+        // Live must read this same failed fixture, never the global settings or the camera.
+        checker.live.start()
+        XCTAssertFalse(checker.live.isRunning)
+        XCTAssertFalse(checker.live.awaitingPermission)
+        XCTAssertEqual(checker.live.statusText, settings.loadWarning)
         let recovered = root.appendingPathComponent("recovered.toml")
         var config = DeskConfig(text: DeskConfig.starterContents)
         XCTAssertTrue(config.renameSetup(config.activeSetupName, to: "Recovered desk"))

@@ -8,21 +8,25 @@ public final class SettingsFile {
     private let prepareDefault: () throws -> Void
     private static let bookmarkKey = "settingsFileBookmark"
     public private(set) var loadWarning: String?
+    /// Last resolved location for display. Reading this property performs no bookmark or preference work.
+    public private(set) var file: URL
     private var loaded = false
 
     public init(defaultFile: URL, defaults: UserDefaults, prepareDefault: @escaping () throws -> Void = {}) {
         self.defaultFile = defaultFile
+        self.file = defaultFile
         self.defaults = defaults
         self.prepareDefault = prepareDefault
     }
 
-    public var file: URL { (try? resolve()) ?? defaultFile }
     public var hasSelection: Bool { defaults.object(forKey: Self.bookmarkKey) != nil }
 
     public func read() throws -> DeskConfig {
         do {
             if !hasSelection { try prepareDefault() }
-            let config = try access(resolve()) { DeskConfig(text: try String(contentsOf: $0, encoding: .utf8)) }
+            let location = try resolve()
+            file = location
+            let config = try access(location) { DeskConfig(text: try String(contentsOf: $0, encoding: .utf8)) }
             loaded = true
             loadWarning = nil
             return config
@@ -56,6 +60,7 @@ public final class SettingsFile {
             let config = DeskConfig(text: try String(contentsOf: file, encoding: .utf8))
             let bookmark = try file.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
             defaults.set(bookmark, forKey: Self.bookmarkKey)
+            self.file = file
             loaded = true
             loadWarning = nil
             return config

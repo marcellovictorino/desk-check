@@ -6,7 +6,9 @@ import SwiftUI
 /// over about a second, and the bands update as the desk or screen is moved. Stop, or closing the popover, turns the camera off.
 @MainActor
 final class LiveController: ObservableObject {
-    static let shared = LiveController()
+    private let settings: SettingsFile
+
+    init(settings: SettingsFile) { self.settings = settings }
     /// The camera never stays on forever if the window is forgotten.
     static let maximumSeconds = 600.0
     nonisolated static let offText = "The camera is off."
@@ -34,8 +36,8 @@ final class LiveController: ObservableObject {
 
     func start() {
         let config: DeskConfig
-        do { config = try ConfigLocation.settings.read() }
-        catch { statusText = ConfigLocation.settings.loadWarning ?? error.localizedDescription; return }
+        do { config = try settings.read() }
+        catch { statusText = settings.loadWarning ?? error.localizedDescription; return }
         guard let token = run.start() else { return }
         isRunning = true
         statusText = "Starting the camera…"
@@ -59,8 +61,8 @@ final class LiveController: ObservableObject {
 
     private func begin(_ token: Int) {
         let config: DeskConfig
-        do { config = try ConfigLocation.settings.read() }
-        catch { fail(ConfigLocation.settings.loadWarning ?? error.localizedDescription); return }
+        do { config = try settings.read() }
+        catch { fail(settings.loadWarning ?? error.localizedDescription); return }
         profile = config.activeProfile
         setupName = profile.name
         guard let device = FaceSampler.camera(for: profile.camera) else {

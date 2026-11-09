@@ -85,8 +85,14 @@ final class SettingsFileTests: XCTestCase {
         let (root, defaults) = try fixture()
         let file = root.appendingPathComponent("config.toml")
         try DeskConfig.starterContents.write(to: file, atomically: false, encoding: .utf8)
-        defaults.set(Data("invalid bookmark".utf8), forKey: "settingsFileBookmark")
+        let selected = root.appendingPathComponent("selected.toml")
+        try DeskConfig.starterContents.write(to: selected, atomically: false, encoding: .utf8)
         let store = SettingsFile(defaultFile: file, defaults: defaults)
+        try store.choose(selected)
+        let location = store.file
+        defaults.set(Data("invalid bookmark".utf8), forKey: "settingsFileBookmark")
+        // Review defect: rendering the last loaded location must not resolve bookmarks or change preferences.
+        XCTAssertEqual(store.file, location)
         _ = store.load()
         XCTAssertNotNil(store.loadWarning)
         XCTAssertThrowsError(try store.save(DeskConfig(text: "")))

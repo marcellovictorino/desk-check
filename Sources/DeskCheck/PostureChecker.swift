@@ -27,14 +27,12 @@ final class PostureChecker: NSObject, ObservableObject {
     @Published var choosingSettingsFile = false
     private var observers: [NSObjectProtocol] = []
 
-    /// Supplies configuration reads so offscreen view tests need not read personal settings.
-    let loadConfig: () -> DeskConfig
-
     let settings: SettingsFile
+    let live: LiveController
 
-    init(settings: SettingsFile = ConfigLocation.settings, loadConfig: (() -> DeskConfig)? = nil) {
+    init(settings: SettingsFile = ConfigLocation.settings) {
         self.settings = settings
-        self.loadConfig = loadConfig ?? settings.load
+        self.live = LiveController(settings: settings)
         super.init()
         reloadSetups()
         for name in [AVCaptureDevice.wasConnectedNotification, AVCaptureDevice.wasDisconnectedNotification] {
@@ -46,7 +44,7 @@ final class PostureChecker: NSObject, ObservableObject {
 
     /// Re-reads the setup list and the setup in use from the config file.
     func reloadSetups() {
-        let config = loadConfig()
+        let config = settings.load()
         settingsWarning = settings.loadWarning
         setupNames = settingsWarning == nil ? config.setupNames : []
         activeSetup = settingsWarning == nil ? config.activeSetupName : "Settings unavailable"
@@ -54,7 +52,7 @@ final class PostureChecker: NSObject, ObservableObject {
     }
 
     func selectSetup(_ name: String) {
-        var config = loadConfig()
+        var config = settings.load()
         guard config.setupNames.contains(name) else { return }
         config.activeSetupName = name
         do { try settings.save(config) }
@@ -65,7 +63,7 @@ final class PostureChecker: NSObject, ObservableObject {
 
     /// With auto switching on, a webcam plugged in or out moves to the setup that fits what is connected.
     private func camerasChanged() {
-        let config = loadConfig()
+        let config = settings.load()
         if config.autoSwitch {
             let cameras = FaceSampler.connectedCameras()
             let external = cameras.filter { $0.deviceType == .external }.map(\.localizedName)
@@ -88,7 +86,7 @@ final class PostureChecker: NSObject, ObservableObject {
     func refreshPermission() {
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         permissionText = Self.describe(status)
-        webcamName = FaceSampler.camera(for: loadConfig().activeProfile.camera)?.localizedName
+        webcamName = FaceSampler.camera(for: settings.load().activeProfile.camera)?.localizedName
         log.notice("camera permission \(self.permissionText, privacy: .public)")
     }
 
@@ -110,7 +108,7 @@ final class PostureChecker: NSObject, ObservableObject {
 
     private func start(_ mode: Mode) {
         guard !isRunning else { return }
-        _ = loadConfig()
+        _ = settings.load()
         settingsWarning = settings.loadWarning
         guard settingsWarning == nil else { return }
         isRunning = true
@@ -130,7 +128,7 @@ final class PostureChecker: NSObject, ObservableObject {
 
     private func begin(_ mode: Mode) {
         let calibrating = mode == .calibrate
-        let config = loadConfig()
+        let config = settings.load()
         let profile = config.activeProfile
         guard let device = FaceSampler.camera(for: profile.camera) else {
             finish(profile.camera == .auto ? "No camera found." : "The camera for setup \(profile.name) is not connected.")
@@ -156,7 +154,7 @@ final class PostureChecker: NSObject, ObservableObject {
     }
 
     private func finishCheck(_ result: SampleResult, mode: Mode) {
-        let config = loadConfig()
+        let config = settings.load()
         let camera = config.camera(forWebcam: result.cameraName, fieldOfViewDegrees: result.fieldOfViewDegrees)
         let profile = config.activeProfile
         let readings = result.samples.compactMap { Geometry.reading($0, camera: camera, setup: profile.measurements) }
@@ -207,7 +205,7 @@ final class PostureChecker: NSObject, ObservableObject {
     }
 
     private func finishCalibration(_ result: SampleResult) {
-        var config = loadConfig()
+        var config = settings.load()
         let setup = config.activeProfile.measurements
         guard let tape = setup.screenDistanceCm else { finish("Enter your tape-measured screen distance first."); return }
         let focals = result.samples.compactMap { Geometry.calibrateFocal($0, tapeDistanceCm: tape) }
