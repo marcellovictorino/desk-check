@@ -44,7 +44,8 @@ final class ViewImageTests: XCTestCase {
             limitation: "No outer popover chrome or desktop backdrop; native glass fidelity is unverified. Camera off: no live readings or coloured bands.")
         let settings = Capture(file: "settings.png", renderer: "NSView cacheDisplay",
             limitation: "Native glass button surfaces and some icons are omitted. Initial scroll position only: lower fields and outer popover chrome are omitted.")
-        try await save(PopoverView(checker: checker).content, capture: popover,
+        // Intent: the popover shows the installed version, small and italic, below Check desk and Live.
+        try await save(PopoverView(checker: checker, version: "0.3.2").content, capture: popover,
                        title: "Popover", width: 320, swiftUI: true, to: directory)
         try await save(LiveView(live: live).padding(14).frame(width: 320), capture: liveCapture,
                        title: "Live", width: 320, swiftUI: true, to: directory)
@@ -57,7 +58,7 @@ final class ViewImageTests: XCTestCase {
         XCTAssertNotNil(warningChecker.settingsWarning)
         let warning = Capture(file: "load-warning.png", renderer: "SwiftUI ImageRenderer",
             limitation: popover.limitation)
-        try await save(PopoverView(checker: warningChecker).content, capture: warning,
+        try await save(PopoverView(checker: warningChecker, version: "0.3.2").content, capture: warning,
                        title: "Settings load warning", width: 320, swiftUI: true, to: directory)
         warningChecker.showingSettings = true
         let warningSettings = Capture(file: "settings-warning.png", renderer: "NSView cacheDisplay",
