@@ -363,11 +363,7 @@ struct SettingsView: View {
         panel.message = "Choose an existing TOML settings file. Desk Check will remember permission to read and edit it."
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        guard let toml = UTType(filenameExtension: "toml") else {
-            message = "The TOML file type is unavailable. The settings file has not changed."
-            return
-        }
-        panel.allowedContentTypes = [toml]
+        panel.allowedContentTypes = [UTType(filenameExtension: "toml")!]
         panel.allowsOtherFileTypes = false
         panel.directoryURL = checker.settings.file.deletingLastPathComponent()
         checker.choosingSettingsFile = true
