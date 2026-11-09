@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   release:
+    # A manual run from another branch must not publish that branch's unmerged commits.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +27,14 @@ jobs:
       - name: Work out the next version
         id: version
         run: |
+          # Runs can start out of order. A run that is no longer at the tip of main stands down:
+          # the newer run counts every commit since the last tag, so nothing is lost and latest never goes backwards.
+          git fetch --quiet origin main
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            echo "main has moved past this commit: a newer run releases it."
+            echo "version=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           version="$(scripts/next-version.sh)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [ -z "$version" ]; then echo "No feat, fix or breaking commit since the last tag: nothing to release."; fi
