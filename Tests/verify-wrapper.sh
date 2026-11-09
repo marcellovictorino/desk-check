@@ -35,13 +35,14 @@ if [ -n "$old" ]; then
   stubborn="$tmp/stubborn/DeskCheck.app/Contents/MacOS/DeskCheck"
   mkdir -p "$(dirname "$stubborn")"
   cp /bin/sleep "$stubborn"
+  codesign --force --sign - "$stubborn" 2>/dev/null # a moved system binary is killed unless signed again
   sh -c 'trap "" TERM; exec "$1" 600' _ "$stubborn" &
   stubborn_pid=$!
   i=0; while [ "$(running "$tmp/stubborn/DeskCheck.app")" = 0 ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
   check "desk-check fails when an older copy will not quit" sh -c '! "$1" 2>/dev/null' _ "$cmd"
   check "desk-check did not open a second copy" [ "$(running "$app")" = 0 ]
   check "the copy that would not quit is still running" [ "$(running "$tmp/stubborn/DeskCheck.app")" = 1 ]
-  kill -9 "$stubborn_pid"; wait "$stubborn_pid" 2>/dev/null || true
+  kill -9 "$stubborn_pid" 2>/dev/null || true; wait "$stubborn_pid" 2>/dev/null || true
   open "$old"
   i=0; while [ "$(running "$old")" = 0 ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
   check "older copy started" [ "$(running "$old")" = 1 ]
