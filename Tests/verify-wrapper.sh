@@ -30,6 +30,8 @@ check "--version opens nothing" [ "$(running "$app")" = "$before" ]
 
 if [ -n "$old" ]; then
   old="$(cd "$old" && pwd -P)"
+  # The checks below count copies of this app, so it must not be running yet.
+  if [ "$(running "$app")" != 0 ]; then echo "FAIL $app is already running; quit it and run this test again"; exit 1; fi
   # An older copy that ignores SIGTERM stands in for one that will not quit: desk-check must not open a second copy.
   # A copy of sleep inside a DeskCheck.app path runs with the exact name and path of an old Desk Check.
   stubborn="$tmp/stubborn/DeskCheck.app/Contents/MacOS/DeskCheck"
