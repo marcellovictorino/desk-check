@@ -64,27 +64,45 @@ final class ViewImageTests: XCTestCase {
             limitation: settings.limitation)
         try await save(PopoverView(checker: warningChecker).content, capture: warningSettings,
                        title: "Settings load warning", width: 520, swiftUI: false, to: directory)
+        // Intent: selecting a settings file must keep the Settings controls readable in both native appearances.
+        var selectedConfig = config
+        XCTAssertTrue(selectedConfig.renameSetup(selectedConfig.activeSetupName, to: "Chosen desk"))
+        try selectedConfig.document.text.write(to: fixture, atomically: false, encoding: .utf8)
+        try settingsFile.choose(fixture)
+        checker.reloadSetups()
+        XCTAssertEqual(checker.activeSetup, selectedConfig.activeSetupName)
+        let selectedLight = Capture(file: "selected-settings-light.png", renderer: settings.renderer, limitation: settings.limitation)
+        let selectedDark = Capture(file: "selected-settings-dark.png", renderer: settings.renderer, limitation: settings.limitation)
+        try await save(PopoverView(checker: checker).content, capture: selectedLight,
+                       title: "Chosen settings, light appearance", width: 520, swiftUI: false, to: directory)
+        try await save(PopoverView(checker: checker).content, capture: selectedDark,
+                       title: "Chosen settings, dark appearance", width: 520, swiftUI: false, to: directory, scheme: .dark)
         XCTAssertFalse(warningChecker.isRunning)
         XCTAssertTrue(checker.showingSettings)
         XCTAssertFalse(checker.isRunning)
         XCTAssertFalse(live.isRunning)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try encoder.encode([popover, liveCapture, settings, warning, warningSettings])
+        try encoder.encode([popover, liveCapture, settings, warning, warningSettings, selectedLight, selectedDark])
             .write(to: directory.appendingPathComponent("captures.json"), options: .withoutOverwriting)
         print("Desk Check partial view images: \(directory.path)")
     }
 
     @MainActor
     private func save<V: View>(_ view: V, capture: Capture, title: String, width: CGFloat,
-                               swiftUI: Bool, to directory: URL) async throws {
-        let content = view.environment(\.colorScheme, .light).background(Color.white)
+                               swiftUI: Bool, to directory: URL, scheme: ColorScheme = .light) async throws {
+        let appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+        let previousAppearance = NSApplication.shared.appearance
+        NSApplication.shared.appearance = appearance
+        defer { NSApplication.shared.appearance = previousAppearance }
+        let content = view.environment(\.colorScheme, scheme)
+            .background(scheme == .dark ? Color(nsColor: .windowBackgroundColor) : Color.white)
         let host = NSHostingView(rootView: content)
         // A real backing store, kept ordered out, initialises native controls without touching the screen.
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: 800),
                               styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        window.appearance = NSAppearance(named: .aqua)
+        window.appearance = appearance
         window.contentView = host
         window.orderOut(nil)
         defer { window.close() }

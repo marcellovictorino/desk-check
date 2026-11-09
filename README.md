@@ -202,15 +202,16 @@ pictures=$(mktemp -d /tmp/desk-check-pictures.XXXXXX)
 DESK_CHECK_IMAGE_DIR="$pictures" swift test --filter ViewImageTests
 ```
 
-The view test saves `popover.png`, `live.png`, `settings.png`, `load-warning.png` and
-`settings-warning.png` for review cards, plus `captures.json` with each picture's renderer and limitations. Every picture carries its
+The view test saves `popover.png`, `live.png`, `settings.png`, `load-warning.png`,
+`settings-warning.png`, `selected-settings-light.png` and `selected-settings-dark.png` for review cards, plus `captures.json` with each picture's renderer and limitations. Every picture carries its
 own omission caption so the limits remain visible when it is attached to a card.
 
 These are **partial offscreen renders**, not desktop screenshots or proof of native glass
 fidelity. The popover and Live use SwiftUI's image renderer after hidden host layout;
 Settings uses a bitmap of the actual hosted view because the image renderer cannot draw
 its native form. The tests never activate the app, order a window on screen, control the
-mouse or start the camera. They use light appearance and starter settings, not your config.
+mouse or start the camera. They use disposable starter-derived settings, not your config.
+The chosen-file Settings pictures cover both light and dark appearance; the other pictures use light appearance.
 
 - Popover omits outer chrome and the desktop backdrop. Camera and permission checks do not run.
 - Live omits outer chrome and the desktop backdrop. Its camera-off state has no readings or coloured bands.

@@ -30,7 +30,6 @@ struct SettingsSandboxApp: App {
     var body: some Scene {
         WindowGroup("Settings sandbox test") {
             PopoverView(checker: checker).content
-                .environment(\.colorScheme, .light)
         }
         .windowResizability(.contentSize)
     }
