@@ -11,12 +11,8 @@ struct DeskCheckApp: App {
     @StateObject private var checker = PostureChecker.shared
 
     init() {
-        do {
-            let wrote = try ConfigLocation.ensureStarterFile()
-            log.notice("config file \(ConfigLocation.file.path, privacy: .public) ready, created=\(wrote, privacy: .public)")
-        } catch {
-            log.error("config setup failed: \(error.localizedDescription, privacy: .public)")
-        }
+        _ = ConfigLocation.load() // Creates only the default file when no file has been chosen.
+        if let warning = ConfigLocation.settings.loadWarning { log.error("\(warning, privacy: .public)") }
     }
 
     var body: some Scene {

@@ -1,10 +1,16 @@
 import DeskCheckCore
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct PopoverView: View {
     @ObservedObject var checker: PostureChecker
-    @ObservedObject var live = LiveController.shared
+    @ObservedObject var live: LiveController
+
+    init(checker: PostureChecker) {
+        self.checker = checker
+        self.live = checker.live
+    }
 
     var body: some View {
         content
@@ -14,7 +20,7 @@ struct PopoverView: View {
             .background(WindowHidden(visible: { live.popoverIsVisible = $0 }) {
                 checker.clearPreview(); live.popoverHidden()
                 // Next time the popover opens it starts on the main view, unless a calibration is still running.
-                if !checker.isRunning { checker.showingSettings = false }
+                if !checker.isRunning && !checker.choosingSettingsFile { checker.showingSettings = false }
             })
     }
 
@@ -51,6 +57,10 @@ struct PopoverView: View {
                 Button { NSApplication.shared.terminate(nil) } label: { Image(systemName: "power") }
                     .glassIconButton().help("Quit Desk Check").accessibilityLabel("Quit")
             }
+            if let warning = checker.settingsWarning {
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
             if let preview = checker.preview { PreviewView(frame: preview) }
             if let r = checker.reading {
                 GlassGroup(spacing: 6) {
@@ -81,11 +91,11 @@ struct PopoverView: View {
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button("Check desk") { checker.check() }
-                    .disabled(checker.isRunning)
+                    .disabled(checker.isRunning || checker.settingsWarning != nil)
                     .keyboardShortcut(.defaultAction)
                     .glassButton(prominent: true)
                 Button("Live") { live.start() }
-                    .disabled(checker.isRunning)
+                    .disabled(checker.isRunning || checker.settingsWarning != nil)
                     .glassButton()
                 Spacer()
             }
@@ -114,7 +124,7 @@ struct PopoverView: View {
 extension PopoverView {
     /// Sit and stand desk heights read from the tape on the desk leg; a seated-only setup has no standing preset.
     @ViewBuilder var presets: some View {
-        let profile = checker.loadConfig().profile(named: checker.activeSetup)
+        let profile = checker.settings.load().profile(named: checker.activeSetup)
         let shown = Posture.allCases.filter { $0 == .sit || profile.supportsStandingPreset }
         if shown.contains(where: { profile.presets[$0] != nil }) {
             Divider()
@@ -226,6 +236,7 @@ struct SettingsView: View {
     var body: some View {
         // The drawing stays above the scrolling form so it is visible while a value is typed.
         VStack(spacing: 0) {
+            settingsFileControls
             FieldGuideView(active: hovered ?? focused, laptop: profile.camera == .builtIn,
                            select: { focused = $0 },
                            hover: { field, inside in
@@ -306,7 +317,7 @@ struct SettingsView: View {
                 Text("Sit as you normally do with your eyes at the tape distance, then calibrate. Calibration belongs to the webcam, so every setup using it shares it.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack {
-                    Button("Calibrate webcam") { save(); checker.calibrate() }
+                    Button("Calibrate webcam") { if save() { checker.calibrate() } }
                         .disabled(checker.isRunning || checker.webcamName == nil)
                         .glassButton()
                     if checker.isRunning { ProgressView().controlSize(.small) }
@@ -315,22 +326,60 @@ struct SettingsView: View {
                 Toggle("Show camera preview with eye points during a check", isOn: $showPreview)
             }.glassSection()
             HStack {
-                Button("Save") { save(); message = "Saved." }.keyboardShortcut(.defaultAction).glassButton(prominent: true)
-                Text(message).font(.caption).foregroundStyle(.secondary)
+                Button("Save") { if save() { message = "Saved." } }.keyboardShortcut(.defaultAction).glassButton(prominent: true)
             }
-            LabeledContent("Config file") {
-                HStack {
-                    Text(ConfigLocation.file.path).textSelection(.enabled)
-                    Button("Open config file") { openConfigFile() }.glassButton()
-                }
-            }.font(.caption)
         }
         .formStyle(.grouped)
         .clearFormBackground()
+        .disabled(checker.settingsWarning != nil)
+    }
+
+    private var settingsFileControls: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Settings file").font(.headline)
+            Text(checker.settings.hasSelection && checker.settingsWarning != nil
+                 ? "Chosen settings file is unavailable" : checker.settings.file.path)
+                .font(.caption).textSelection(.enabled).lineLimit(2)
+            HStack {
+                Button("Choose settings file…") { chooseSettingsFile() }.glassButton()
+                    .disabled(checker.isRunning)
+                Button("Open config file") { openConfigFile() }.glassButton()
+                    .disabled(checker.settingsWarning != nil)
+            }
+            Text("Choose the actual file in your dotfiles folder if the default is a symlink. Changing files discards unsaved edits.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if let warning = checker.settingsWarning {
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
+            if !message.isEmpty { Text(message).font(.caption).fixedSize(horizontal: false, vertical: true) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 8)
+    }
+
+    private func chooseSettingsFile() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose settings file"
+        panel.message = "Choose an existing TOML settings file. Desk Check will remember permission to read and edit it."
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [UTType(filenameExtension: "toml")!]
+        panel.allowsOtherFileTypes = false
+        panel.directoryURL = checker.settings.file.deletingLastPathComponent()
+        checker.choosingSettingsFile = true
+        defer { checker.choosingSettingsFile = false }
+        guard panel.runModal() == .OK, let file = panel.url else { return }
+        do {
+            try checker.settings.choose(file)
+            checker.reset()
+            checker.reloadSetups()
+            load()
+            message = "Settings file loaded."
+        } catch { message = "Could not choose settings file: \(error.localizedDescription)" }
     }
 
     private func openConfigFile() {
-        let file = ConfigLocation.file
+        let file = checker.settings.file
         openWithTextEditFallback(file) { message = "No app could open the config file. Open \(file.path) yourself." }
     }
 
@@ -345,7 +394,7 @@ struct SettingsView: View {
 
     private var calibrationSummary: String {
         guard let name = checker.webcamName else { return "" }
-        let c = checker.loadConfig().calibration(forWebcam: name)
+        let c = checker.settings.load().calibration(forWebcam: name)
         guard let f = c.focalWidths else { return "Not calibrated: distances assume a typical 70 degree field of view." }
         return String(format: "Calibrated: focal length %.3f image widths, tilt %.1f°.", f, c.pitchDegrees ?? 0)
     }
@@ -363,7 +412,7 @@ struct SettingsView: View {
     }
 
     private func load() {
-        let config = checker.loadConfig()
+        let config = checker.settings.load()
         profile = config.activeProfile
         let s = profile.measurements
         func str(_ v: Double?) -> String { v.map { String(format: "%g", $0) } ?? "" }
@@ -376,9 +425,11 @@ struct SettingsView: View {
     }
 
     /// Writes the form into the config file under the setup being edited.
-    private func save() {
+    @discardableResult
+    private func save() -> Bool {
+        guard checker.settingsWarning == nil else { return false }
         func num(_ s: String) -> Double? { Double(s.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) }
-        var config = checker.loadConfig()
+        var config = checker.settings.load()
         var p = profile
         p.measurements = Setup(screenDistanceCm: num(fields.distance), screenTopHeightCm: num(fields.screenTop),
                                lensOffsetCm: num(fields.lens), userHeightCm: num(fields.height),
@@ -394,23 +445,24 @@ struct SettingsView: View {
         config.save(p)
         config.showPreview = showPreview
         config.autoSwitch = autoSwitch
-        write(config)
+        return write(config)
     }
 
-    private func write(_ config: DeskConfig) {
-        do { try ConfigLocation.save(config) } catch { message = "Could not save: \(error.localizedDescription)" }
+    private func write(_ config: DeskConfig) -> Bool {
+        do { try checker.settings.save(config); return true }
+        catch { message = "Could not save: \(error.localizedDescription)"; return false }
     }
 
     private func switchSetup(to name: String) {
-        save()
+        guard save() else { return }
         checker.selectSetup(name)
         load()
     }
 
     /// Saves the form, applies one setup-list change, and reloads. The change says whether it applied.
     private func edit(_ change: (inout DeskConfig) -> Bool) {
-        save()
-        var config = checker.loadConfig()
+        guard save() else { return }
+        var config = checker.settings.load()
         let before = config.activeSetupName
         guard change(&config) else {
             message = "Not changed: the name must be new and not empty, and the last setup cannot be deleted."
@@ -418,7 +470,7 @@ struct SettingsView: View {
         }
         // A new setup becomes the one in use, so it can be filled in right away.
         if let added = config.setupNames.last, added == nameField, config.activeSetupName == before { config.activeSetupName = added }
-        write(config)
+        guard write(config) else { return }
         checker.reset()
         checker.reloadSetups()
         load()

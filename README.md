@@ -140,8 +140,8 @@ After each `brew upgrade`, macOS asks for the camera once more; see
   tests below save pictures of the interface with starter settings, not camera frames.
 - No network access at all. The App Sandbox denies every connection: the app does not
   have the network permission.
-- Desk Check writes settings to `~/.config/desk-check/config.toml`. On first launch it can also read
-  `~/.config/desk-undo/config.toml` to migrate settings; it never writes to the old folder.
+- Desk Check defaults to `~/.config/desk-check/config.toml`. **Choose settings file…** in Settings grants read/write access to another file; an app-scoped bookmark remembers that permission after relaunch. You can change the chosen file later.
+- On first launch with no chosen file, Desk Check can also read `~/.config/desk-undo/config.toml` to migrate settings; it never writes to the old folder.
 
 You can read these permissions back from the installed app yourself:
 
@@ -161,9 +161,14 @@ upgrading to 0.1.1 the permission read "not asked yet" again and macOS asked aga
 
 ## Configuration
 
-Settings live in `~/.config/desk-check/config.toml`, a plain text file that allows
-comments, so it can sit in your dotfiles. The app writes a commented starter file on
-first launch. Desk Check was called Desk Undo before version 0.2. If `~/.config/desk-undo/config.toml`
+Settings default to `~/.config/desk-check/config.toml`, a plain text file that allows
+comments. The app writes a commented starter file on first launch when no file has been chosen.
+Use **Choose settings file…** at the top of Settings to pick an existing `.toml` file elsewhere, or change the choice later.
+If your default file is a symlink managed by a dotfiles project, choose its actual target file in that project: the default folder permission cannot grant access outside that folder.
+Desk Check remembers the permission and uses the chosen file for setup edits, calibration and Live.
+Changing files discards unsaved form edits; cancelling the picker leaves the current choice unchanged.
+If the file or its saved permission cannot be read, Settings and the main view show a warning.
+Saving and camera checks remain unavailable until settings load; choose the file again to recover. Desk Check was called Desk Undo before version 0.2. If `~/.config/desk-undo/config.toml`
 exists and the new file does not, the first launch copies it across and leaves the old folder alone,
 so you can delete it yourself once you are happy. Settings edits only the lines it changes, so your own comments stay. Each setup is a
 `[setups."<name>"]` table, which you can also copy by hand. Webcam calibration lives in
@@ -197,15 +202,16 @@ pictures=$(mktemp -d /tmp/desk-check-pictures.XXXXXX)
 DESK_CHECK_IMAGE_DIR="$pictures" swift test --filter ViewImageTests
 ```
 
-The view test saves `popover.png`, `live.png` and `settings.png` for review cards, plus
-`captures.json` with each picture's renderer and limitations. Every picture carries its
+The view test saves `popover.png`, `live.png`, `settings.png`, `load-warning.png`,
+`settings-warning.png`, `selected-settings-light.png` and `selected-settings-dark.png` for review cards, plus `captures.json` with each picture's renderer and limitations. Every picture carries its
 own omission caption so the limits remain visible when it is attached to a card.
 
 These are **partial offscreen renders**, not desktop screenshots or proof of native glass
 fidelity. The popover and Live use SwiftUI's image renderer after hidden host layout;
 Settings uses a bitmap of the actual hosted view because the image renderer cannot draw
 its native form. The tests never activate the app, order a window on screen, control the
-mouse or start the camera. They use light appearance and starter settings, not your config.
+mouse or start the camera. They use disposable starter-derived settings, not your config.
+The chosen-file Settings pictures cover both light and dark appearance; the other pictures use light appearance.
 
 - Popover omits outer chrome and the desktop backdrop. Camera and permission checks do not run.
 - Live omits outer chrome and the desktop backdrop. Its camera-off state has no readings or coloured bands.
@@ -218,11 +224,28 @@ Assertions check dimensions, PNG read-back, non-uniform content before captionin
 hidden/non-key windows. They do not assert complete controls, glass fidelity or interaction,
 and do not compare against reference pictures. No camera images are saved.
 
-`verify-app.sh` checks the app's Dock, camera, network and folder permissions. `sandbox-probe.sh`
+`verify-app.sh` checks the app's Dock, camera, network, selected-file, bookmark and folder permissions. `sandbox-probe.sh`
 signs a small program with the app's entitlements and checks through the kernel that Desk Check
 can write its current settings folder, read the legacy folder without writing to it, and cannot
 access other home folders or the network. The probe creates `~/.config/desk-check/` if needed;
 macOS keeps an empty container for it in `~/Library/Containers/`.
+
+### Isolated settings permission check
+
+```sh
+# Requires consent for ad hoc signing; use a fresh output folder.
+sh Tests/build-settings-sandbox-app.sh /tmp/desk-check-settings-test-new
+open /tmp/desk-check-settings-test-new/SettingsSandbox.app
+```
+
+This harness uses the real Settings controls and configuration owner in a normal test window,
+with a unique app identity, isolated preferences and a container-local default file.
+It does not open personal settings or start the camera. Choose a disposable TOML file outside
+its container, rename a setup and save, quit and relaunch the same test app, then check the name
+and save again. Choose a second file and cancel a subsequent choice; verify that only the selected
+file changes. Make the chosen file unreadable and relaunch: the warning must appear and saving
+must be unavailable. Choose a readable file to recover. This checks native sandbox permission;
+the unit tests alone do not.
 
 ## Credits
 

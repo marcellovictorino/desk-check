@@ -24,18 +24,13 @@ public enum ConfigLocation {
         realHomeDirectory.appendingPathComponent(".config/desk-check", isDirectory: true)
     }
 
-    public static var file: URL {
-        directory.appendingPathComponent("config.toml")
+    public static var defaultFile: URL { directory.appendingPathComponent("config.toml") }
+    public static let settings = SettingsFile(defaultFile: defaultFile, defaults: .standard) {
+        try ensureStarterFile()
     }
-
-    public static func load() -> DeskConfig {
-        DeskConfig(text: (try? String(contentsOf: file, encoding: .utf8)) ?? DeskConfig.starterContents)
-    }
-
-    public static func save(_ config: DeskConfig) throws {
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try config.document.text.write(to: file, atomically: false, encoding: .utf8)  // not atomic, so a config symlinked from dotfiles stays a symlink
-    }
+    public static var file: URL { settings.file }
+    public static func load() -> DeskConfig { settings.load() }
+    public static func save(_ config: DeskConfig) throws { try settings.save(config) }
 
     /// Writes a commented starter file when none exists. Returns true when it wrote one.
     @discardableResult
@@ -50,7 +45,9 @@ public enum ConfigLocation {
     static func ensureStarterFile(in directory: URL, legacy: URL) throws -> Bool {
         let fm = FileManager.default
         let target = directory.appendingPathComponent("config.toml")
-        if fm.fileExists(atPath: target.path) { return false }
+        // lstat also sees a dangling symlink. Never replace it with starter settings.
+        var info = stat()
+        if lstat(target.path, &info) == 0 { return false }
         try fm.createDirectory(at: directory, withIntermediateDirectories: true)
         let old = legacy.appendingPathComponent("config.toml")
         do {
