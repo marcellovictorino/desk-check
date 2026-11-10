@@ -45,10 +45,11 @@ a{color:var(--ink)}
 .stat b{display:block;font:600 30px var(--mono)}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px}
 .cols>div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
-.scrolly{height:240vh}.scrolly .sticky{position:sticky;top:12vh}
+body.b #hero>.wrap{min-height:260vh}body.b .hero-grid{position:sticky;top:48px}
 ul{padding-left:20px;margin:0 0 12px}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
+<script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 </head>
 <body>
 <div class="review" role="group" aria-label="Review switch (removed before release)">
@@ -138,7 +139,6 @@ ul{padding-left:20px;margin:0 0 12px}
 <script>
 (function(){
  var root=document.documentElement;
- try{var t=localStorage.getItem("theme");if(t)root.setAttribute("data-theme",t)}catch(e){}
  var tb=document.getElementById("theme");
  function label(){var t=root.getAttribute("data-theme");tb.textContent="Theme: "+(t||"auto")}
  label();
@@ -148,13 +148,14 @@ ul{padding-left:20px;margin:0 0 12px}
  document.getElementById("copy").onclick=function(){var b=this;
   (navigator.clipboard?navigator.clipboard.writeText(document.getElementById("cmd").textContent):Promise.reject()).then(function(){b.textContent="Copied"},function(){b.textContent="Select and copy"});};
  var A=document.getElementById("heroA"),B=document.getElementById("heroB"),vA=document.getElementById("vA"),vB=document.getElementById("vB");
- function pick(b){A.hidden=b;B.hidden=!b;vA.setAttribute("aria-pressed",!b);vB.setAttribute("aria-pressed",b)}
+ function pick(b){document.body.classList.toggle("b",b);A.hidden=b;B.hidden=!b;vA.setAttribute("aria-pressed",!b);vB.setAttribute("aria-pressed",b)}
  vA.onclick=function(){pick(false)};vB.onclick=function(){pick(true)};
  var frames=[["bad","Screen ↓ 8 cm","bad","Distance → 15 cm","bad","Desk ✗"],["warn","Screen ↓ 3 cm","bad","Distance → 9 cm","ok","Desk ✓"],["ok","Screen ✓","warn","Distance → 3 cm","ok","Desk ✓"],["ok","Screen ✓","ok","Distance ✓","ok","Desk ✓"]];
  var rows=document.getElementById("stepRows"),step=document.getElementById("step");
  function show(i){var f=frames[i];rows.innerHTML="";for(var k=0;k<6;k+=2){var d=document.createElement("div");d.className="row "+f[k];d.textContent=f[k+1];rows.appendChild(d)}step.textContent=(i+1)+"/4"}
  show(0);
- addEventListener("scroll",function(){if(B.hidden)return;var max=document.documentElement.scrollHeight-innerHeight;var p=max>0?scrollY/max:0;show(Math.min(3,Math.floor(p*4)))},{passive:true});
+ var hero=document.getElementById("hero");
+ addEventListener("scroll",function(){if(B.hidden)return;var r=hero.getBoundingClientRect();var max=r.height-innerHeight;var p=max>0?Math.min(1,Math.max(0,-r.top/max)):0;show(Math.min(3,Math.floor(p*4)))},{passive:true});
 })();
 </script>
 </body>
