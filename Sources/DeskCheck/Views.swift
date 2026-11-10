@@ -352,7 +352,7 @@ struct SettingsView: View {
                 Button("Open config file") { openConfigFile() }.glassButton()
                     .disabled(checker.settingsWarning != nil)
             }
-            Text("Choose the actual file in your dotfiles folder if the default is a symlink. Changing files discards unsaved edits.")
+            Text("If the default is a link into your dotfiles, the panel opens on the real file: click Open. Changing files discards unsaved edits.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if let warning = checker.settingsWarning {
                 Label(warning, systemImage: "exclamationmark.triangle.fill")
@@ -371,7 +371,10 @@ struct SettingsView: View {
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = [UTType(filenameExtension: "toml")!]
         panel.allowsOtherFileTypes = false
-        panel.directoryURL = checker.settings.file.deletingLastPathComponent()
+        // Dotfile folders such as stow/desk-check/.config are hidden; the panel must show them.
+        panel.showsHiddenFiles = true
+        // A file URL opens its folder with the file selected, so a linked default is one click from allowed.
+        panel.directoryURL = checker.settings.panelStart
         checker.choosingSettingsFile = true
         defer { checker.choosingSettingsFile = false }
         guard panel.runModal() == .OK, let file = panel.url else { return }
