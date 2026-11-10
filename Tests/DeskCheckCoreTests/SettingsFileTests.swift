@@ -155,4 +155,17 @@ final class SettingsFileTests: XCTestCase {
         XCTAssertThrowsError(try store.read())
         XCTAssertTrue(try XCTUnwrap(store.loadWarning).hasPrefix("Could not load settings:"))
     }
+
+    /// Intent (review finding): a readable linked file that fails to load for another reason keeps its diagnosis,
+    /// since choosing it and clicking Open cannot fix it.
+    func testLinkedDefaultWithUnreadableTextKeepsItsOwnDiagnosis() throws {
+        let (root, defaults) = try fixture()
+        let target = root.appendingPathComponent("stowed.toml")
+        try Data([0x5B, 0xFF, 0xFE, 0x5D]).write(to: target)
+        let link = root.appendingPathComponent("config.toml")
+        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: target.path)
+        let store = SettingsFile(defaultFile: link, defaults: defaults)
+        XCTAssertThrowsError(try store.read())
+        XCTAssertTrue(try XCTUnwrap(store.loadWarning).hasPrefix("Could not load settings:"))
+    }
 }

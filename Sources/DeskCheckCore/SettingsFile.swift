@@ -43,7 +43,7 @@ public final class SettingsFile {
             return config
         } catch {
             loaded = false
-            if !hasSelection, let target = defaultLinkTarget, !Self.isMissingFile(error) {
+            if !hasSelection, let target = defaultLinkTarget, Self.isAccessDenied(error) {
                 loadWarning = "Your settings file links to \(target.path). macOS lets Desk Check open it once you allow it: in Settings, click Choose settings file…, then Open."
             } else {
                 loadWarning = "Could not load settings: \(error.localizedDescription) Choose your settings file in Settings. Saving and camera checks are unavailable until settings load."
@@ -82,10 +82,11 @@ public final class SettingsFile {
         }
     }
 
-    private static func isMissingFile(_ error: Error) -> Bool {
+    /// Only a refused read is fixed by choosing the file; other failures keep their own diagnosis.
+    private static func isAccessDenied(_ error: Error) -> Bool {
         let error = error as NSError
-        return (error.domain == NSCocoaErrorDomain && error.code == CocoaError.Code.fileReadNoSuchFile.rawValue)
-            || (error.domain == NSPOSIXErrorDomain && error.code == Int(ENOENT))
+        return (error.domain == NSCocoaErrorDomain && error.code == CocoaError.Code.fileReadNoPermission.rawValue)
+            || (error.domain == NSPOSIXErrorDomain && (error.code == Int(EACCES) || error.code == Int(EPERM)))
     }
 
     private func resolve() throws -> URL {
