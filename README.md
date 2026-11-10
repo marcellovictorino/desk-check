@@ -168,7 +168,7 @@ upgrading to 0.1.1 the permission read "not asked yet" again and macOS asked aga
 Settings default to `~/.config/desk-check/config.toml`, a plain text file that allows
 comments. The app writes a commented starter file on first launch when no file has been chosen.
 Use **Choose settings file…** at the top of Settings to pick an existing `.toml` file elsewhere, or change the choice later.
-If your default file is a symlink managed by a dotfiles project, choose its actual target file in that project: the default folder permission cannot grant access outside that folder.
+If your default file is a symlink managed by a dotfiles project (for example a Stow package's `.config/desk-check/config.toml`), macOS will not let the sandboxed app follow it until you allow the real file once. Settings then names the file the link points to, and **Choose settings file…** opens on that file with hidden folders shown: click **Open**.
 Desk Check remembers the permission and uses the chosen file for setup edits, calibration and Live.
 Changing files discards unsaved form edits; cancelling the picker leaves the current choice unchanged.
 If the file or its saved permission cannot be read, Settings and the main view show a warning.
@@ -255,7 +255,10 @@ its container, rename a setup and save, quit and relaunch the same test app, the
 and save again. Choose a second file and cancel a subsequent choice; verify that only the selected
 file changes. Make the chosen file unreadable and relaunch: the warning must appear and saving
 must be unavailable. Choose a readable file to recover. This checks native sandbox permission;
-the unit tests alone do not.
+the unit tests alone do not. To check a dotfiles-style default, replace the container's default
+`config.toml` with a symlink to a file outside the container: the warning must name the link's
+target, and **Choose settings file…** must open on that file. Sending the test app `SIGUSR1`
+saves a picture of its window to `SettingsSandboxTest/snapshots` in its container.
 
 ## Credits
 

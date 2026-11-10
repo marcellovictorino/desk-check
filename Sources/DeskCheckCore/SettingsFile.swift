@@ -21,6 +21,17 @@ public final class SettingsFile {
 
     public var hasSelection: Bool { defaults.object(forKey: Self.bookmarkKey) != nil }
 
+    /// When the default file is a symlink, as dotfile managers such as Stow make it, the file it points to.
+    /// The sandbox follows the link only after that file is chosen once in the file panel.
+    public var defaultLinkTarget: URL? {
+        guard let destination = try? FileManager.default.destinationOfSymbolicLink(atPath: defaultFile.path) else { return nil }
+        return URL(fileURLWithPath: destination, relativeTo: defaultFile.deletingLastPathComponent())
+            .standardizedFileURL.resolvingSymlinksInPath()
+    }
+
+    /// Where the file panel opens, with this file selected: the chosen file, else the real file behind a linked default.
+    public var panelStart: URL { hasSelection ? file : (defaultLinkTarget ?? defaultFile) }
+
     public func read() throws -> DeskConfig {
         do {
             if !hasSelection { try prepareDefault() }
@@ -32,7 +43,11 @@ public final class SettingsFile {
             return config
         } catch {
             loaded = false
-            loadWarning = "Could not load settings: \(error.localizedDescription) Choose your settings file in Settings. Saving and camera checks are unavailable until settings load."
+            if !hasSelection, let target = defaultLinkTarget, !Self.isMissingFile(error) {
+                loadWarning = "Your settings file links to \(target.path). macOS lets Desk Check open it once you allow it: in Settings, click Choose settings file…, then Open."
+            } else {
+                loadWarning = "Could not load settings: \(error.localizedDescription) Choose your settings file in Settings. Saving and camera checks are unavailable until settings load."
+            }
             throw error
         }
     }
@@ -65,6 +80,12 @@ public final class SettingsFile {
             loadWarning = nil
             return config
         }
+    }
+
+    private static func isMissingFile(_ error: Error) -> Bool {
+        let error = error as NSError
+        return (error.domain == NSCocoaErrorDomain && error.code == CocoaError.Code.fileReadNoSuchFile.rawValue)
+            || (error.domain == NSPOSIXErrorDomain && error.code == Int(ENOENT))
     }
 
     private func resolve() throws -> URL {

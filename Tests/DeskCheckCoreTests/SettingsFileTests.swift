@@ -113,4 +113,46 @@ final class SettingsFileTests: XCTestCase {
         XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: file.path), missing.path)
         XCTAssertFalse(FileManager.default.fileExists(atPath: missing.path))
     }
+
+    /// Intent (bug report): a Stow-linked default the sandbox will not follow must name the real file
+    /// and open the panel on it, so one Open click makes the settings work.
+    func testLinkedDefaultThatCannotBeReadNamesItsTargetAndOpensThePanelThere() throws {
+        let (root, defaults) = try fixture()
+        let stowed = root.appendingPathComponent("mac-nix-config/stow/desk-check/.config/desk-check", isDirectory: true)
+        try FileManager.default.createDirectory(at: stowed, withIntermediateDirectories: true)
+        let target = stowed.appendingPathComponent("config.toml")
+        var config = DeskConfig(text: DeskConfig.starterContents)
+        XCTAssertTrue(config.renameSetup(config.activeSetupName, to: "Main Home"))
+        try config.document.text.write(to: target, atomically: false, encoding: .utf8)
+        let home = root.appendingPathComponent(".config/desk-check", isDirectory: true)
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        let link = home.appendingPathComponent("config.toml")
+        // Stow writes relative links.
+        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: "../../mac-nix-config/stow/desk-check/.config/desk-check/config.toml")
+        let store = SettingsFile(defaultFile: link, defaults: defaults)
+        XCTAssertEqual(store.panelStart.path, target.resolvingSymlinksInPath().path)
+
+        // Stand-in for the sandbox refusing the link target: the same permission error the app reports.
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: target.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: target.path) }
+        XCTAssertThrowsError(try store.read())
+        let warning = try XCTUnwrap(store.loadWarning)
+        XCTAssertTrue(warning.contains(target.resolvingSymlinksInPath().path), warning)
+        XCTAssertTrue(warning.contains("Choose settings file"), warning)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: target.path)
+        XCTAssertEqual(try store.choose(store.panelStart).activeSetupName, "Main Home")
+        XCTAssertNil(store.loadWarning)
+        XCTAssertEqual(store.panelStart.path, target.resolvingSymlinksInPath().path)
+    }
+
+    /// Intent: a link to a file that is gone must not claim the file only needs permission.
+    func testDanglingLinkedDefaultKeepsTheMissingFileWarning() throws {
+        let (root, defaults) = try fixture()
+        let link = root.appendingPathComponent("config.toml")
+        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: root.appendingPathComponent("gone.toml").path)
+        let store = SettingsFile(defaultFile: link, defaults: defaults)
+        XCTAssertThrowsError(try store.read())
+        XCTAssertTrue(try XCTUnwrap(store.loadWarning).hasPrefix("Could not load settings:"))
+    }
 }
