@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desk Check: Undo. Redo. For your desk.</title>
+<meta name="description" content="A macOS menu bar app that uses your webcam to tell you, in centimetres, how to move your screen and desk, and remembers your sitting and standing desk heights.">
+<meta name="color-scheme" content="light dark">
+<style>
+:root{--paper:#F6F1E7;--ink:#1F1B16;--muted:#5B5247;--card:#FBF8F1;--line:#D9CFBC;--tape:#F2C230;--btn:#1F1B16;--btnfg:#F6F1E7;--ok:#2E7D32;--warn:#B26A00;--bad:#C62828;
+ --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--paper:#1A1714;--ink:#F6F1E7;--muted:#B5AA9A;--card:#242019;--line:#3A342B;--btn:#F6F1E7;--btnfg:#1A1714;--ok:#66BB6A;--warn:#E0A030;--bad:#EF6B6B}}
+:root[data-theme=dark]{--paper:#1A1714;--ink:#F6F1E7;--muted:#B5AA9A;--card:#242019;--line:#3A342B;--btn:#F6F1E7;--btnfg:#1A1714;--ok:#66BB6A;--warn:#E0A030;--bad:#EF6B6B}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+section,footer{position:relative;padding:56px 0 48px}
+section::before,footer::before{content:"";position:absolute;left:0;right:0;top:0;height:12px;background:var(--tape);
+ background-image:repeating-linear-gradient(90deg,#1F1B16 0 1px,transparent 1px 12px);background-size:100% 6px;background-repeat:no-repeat;background-position:bottom}
+h1{font-size:clamp(40px,8vw,76px);line-height:1;letter-spacing:-.03em;margin:0 0 16px}
+h2{font-size:28px;letter-spacing:-.02em;margin:0 0 16px}
+h3{font-size:18px;margin:0 0 4px}
+p{margin:0 0 12px}
+.muted{color:var(--muted)}
+kbd{display:inline-block;font:600 15px var(--mono);border:1px solid var(--ink);border-bottom-width:3px;border-radius:6px;padding:2px 9px;background:var(--card);margin-right:6px}
+code,.mono{font-family:var(--mono)}
+.install{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0}
+.cmd{font:15px var(--mono);background:var(--btn);color:var(--btnfg);padding:11px 16px;border-radius:8px;user-select:all;overflow-wrap:anywhere}
+button{font:inherit;cursor:pointer}
+.copy{border:1px solid var(--ink);background:transparent;color:var(--ink);border-radius:8px;padding:10px 14px;font-size:15px}
+a{color:var(--ink)}
+.top{position:absolute;top:22px;right:20px;display:flex;gap:8px;z-index:2}
+.top button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;font-size:14px}
+.review{background:var(--card);border-bottom:1px dashed var(--line);font-size:14px;padding:8px 20px;text-align:center}
+.review button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:6px;padding:3px 10px;margin:0 3px}
+.review button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.frame{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:18px;max-width:380px}
+.frame .tag{font:11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;font:15px var(--mono);padding:9px 12px;border-radius:8px;margin-top:8px;color:#fff}
+.row.ok{background:var(--ok)}.row.warn{background:var(--warn)}.row.bad{background:var(--bad)}
+.hero-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:36px;align-items:center}
+@media(max-width:760px){.hero-grid{grid-template-columns:1fr}}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:20px 0}
+.stat{border-left:4px solid var(--tape);padding-left:14px}
+.stat b{display:block;font:600 30px var(--mono)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px}
+.cols>div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.scrolly{height:240vh}.scrolly .sticky{position:sticky;top:12vh}
+ul{padding-left:20px;margin:0 0 12px}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="review" role="group" aria-label="Review switch (removed before release)">
+ Review only: hero
+ <button id="vA" aria-pressed="true">A. Recording</button>
+ <button id="vB" aria-pressed="false">B. Scroll screenshots</button>
+</div>
+
+<header>
+<section id="hero" class="wrap" style="padding-top:64px;max-width:none">
+ <div class="wrap" style="position:relative">
+  <div class="top"><button id="theme" type="button" aria-label="Switch between light and dark">Theme: auto</button></div>
+  <div class="hero-grid">
+   <div>
+    <h1>Undo. Redo.<br>For your desk.</h1>
+    <p><kbd>⌘Z</kbd><kbd>⇧⌘Z</kbd></p>
+    <p style="font-size:20px">Stand up, sit down, and come back to the exact setup you saved. Your webcam tells you, in centimetres, what to move.</p>
+    <div class="install"><span class="cmd" id="cmd">brew install marcellovictorino/tap/desk-check</span><button class="copy" id="copy" type="button">Copy</button></div>
+    <p class="muted" style="font-size:15px">macOS 14 or later, Apple silicon. Early: <a href="#early">what is in place</a>.</p>
+   </div>
+   <div>
+    <div id="heroA" class="frame" aria-label="Placeholder for a 10-second Live mode recording">
+     <div class="tag">Placeholder: Live recording, 10 s, silent</div>
+     <div class="row bad"><span>Screen ↓ 8 cm</span><span>✗</span></div>
+     <div class="row warn"><span>Distance → 15 cm</span><span>~</span></div>
+     <div class="row ok"><span>Desk</span><span>✓</span></div>
+    </div>
+    <div id="heroB" class="frame" hidden aria-label="Placeholder for four Live screenshots that swap as you scroll">
+     <div class="tag">Placeholder: scroll swaps four real screenshots <span id="step">1/4</span></div>
+     <div id="stepRows"></div>
+    </div>
+   </div>
+  </div>
+ </div>
+</section>
+</header>
+
+<main>
+<section id="privacy"><div class="wrap">
+ <h2>Your camera, kept short and kept local</h2>
+ <div class="stats">
+  <div class="stat"><b>~2 s</b>camera on per check</div>
+  <div class="stat"><b>0</b>images saved</div>
+  <div class="stat"><b>0</b>network connections: the App Sandbox denies them all</div>
+ </div>
+ <p>The camera runs only during a check or Live. Don't take our word for it; read the permissions back yourself:</p>
+ <p><code style="font-size:14px;overflow-wrap:anywhere">codesign -d --entitlements - "$(brew --prefix)/opt/desk-check/DeskCheck.app"</code></p>
+</div></section>
+
+<section id="how"><div class="wrap">
+ <h2>How it works</h2>
+ <div class="cols">
+  <div><h3>Check desk</h3><p>The camera opens for about two seconds, finds your eyes and gives one sentence per adjustment, such as “Screen: lower 8 cm.”</p></div>
+  <div><h3>Live</h3><p>Keep the camera on while you crank the desk. A green, amber or red row shows the centimetres still to move.</p></div>
+  <div><h3>Remember sit and stand</h3><p>Presets keep the heights you read off the desk leg and confirm the view matches when you return. That is your undo and redo.</p></div>
+ </div>
+</div></section>
+
+<section id="early"><div class="wrap">
+ <h2>Early, and already useful</h2>
+ <p>Desk Check is early. This is general guidance, not medical advice.</p>
+ <p><b>In place:</b></p>
+ <ul>
+  <li>Tape measurements per setup, for accurate readings.</li>
+  <li>Webcam calibration for tilt and field of view.</li>
+  <li>A choice, per setup, of what can move.</li>
+  <li>Settings in a commented TOML file you can keep in your dotfiles.</li>
+ </ul>
+ <p><b>Not yet:</b> chair advice, and switching setup on lid close.</p>
+</div></section>
+
+<section id="install"><div class="wrap">
+ <h2>Install</h2>
+ <div class="install"><span class="cmd">brew install marcellovictorino/tap/desk-check</span></div>
+ <div class="install"><span class="cmd">desk-check</span></div>
+ <p>Requires macOS 14 or later on Apple silicon. Homebrew builds the app on your Mac with Apple's command line tools; Xcode and a developer account are not needed.</p>
+ <p>After each <code>brew upgrade</code>, run <code>desk-check</code> again to replace the running copy. macOS asks for the camera once more, because the permission is tied to the exact build.</p>
+</div></section>
+</main>
+
+<footer><div class="wrap muted" style="font-size:15px">
+ <a href="https://github.com/marcellovictorino/desk-check">GitHub</a> · MIT licence · <a href="https://github.com/marcellovictorino/desk-check/releases">Releases</a>
+ <p style="margin-top:8px">Inspired by Posturr (now Dorso) by tldev. Shares no code with it.</p>
+</div></footer>
+
+
+<script>
+(function(){
+ var root=document.documentElement;
+ try{var t=localStorage.getItem("theme");if(t)root.setAttribute("data-theme",t)}catch(e){}
+ var tb=document.getElementById("theme");
+ function label(){var t=root.getAttribute("data-theme");tb.textContent="Theme: "+(t||"auto")}
+ label();
+ tb.onclick=function(){var cur=root.getAttribute("data-theme");var next=cur==="light"?"dark":cur==="dark"?null:"light";
+  if(next)root.setAttribute("data-theme",next);else root.removeAttribute("data-theme");
+  try{next?localStorage.setItem("theme",next):localStorage.removeItem("theme")}catch(e){}label()};
+ document.getElementById("copy").onclick=function(){var b=this;
+  (navigator.clipboard?navigator.clipboard.writeText(document.getElementById("cmd").textContent):Promise.reject()).then(function(){b.textContent="Copied"},function(){b.textContent="Select and copy"});};
+ var A=document.getElementById("heroA"),B=document.getElementById("heroB"),vA=document.getElementById("vA"),vB=document.getElementById("vB");
+ function pick(b){A.hidden=b;B.hidden=!b;vA.setAttribute("aria-pressed",!b);vB.setAttribute("aria-pressed",b)}
+ vA.onclick=function(){pick(false)};vB.onclick=function(){pick(true)};
+ var frames=[["bad","Screen ↓ 8 cm","bad","Distance → 15 cm","bad","Desk ✗"],["warn","Screen ↓ 3 cm","bad","Distance → 9 cm","ok","Desk ✓"],["ok","Screen ✓","warn","Distance → 3 cm","ok","Desk ✓"],["ok","Screen ✓","ok","Distance ✓","ok","Desk ✓"]];
+ var rows=document.getElementById("stepRows"),step=document.getElementById("step");
+ function show(i){var f=frames[i];rows.innerHTML="";for(var k=0;k<6;k+=2){var d=document.createElement("div");d.className="row "+f[k];d.textContent=f[k+1];rows.appendChild(d)}step.textContent=(i+1)+"/4"}
+ show(0);
+ addEventListener("scroll",function(){if(B.hidden)return;var max=document.documentElement.scrollHeight-innerHeight;var p=max>0?scrollY/max:0;show(Math.min(3,Math.floor(p*4)))},{passive:true});
+})();
+</script>
+</body>
+</html>

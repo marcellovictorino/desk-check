@@ -1,5 +1,7 @@
 # Desk Check
 
+**Undo. Redo. For your desk.** ([landing page](https://marcellovictorino.github.io/desk-check/))
+
 A macOS menu bar app that uses your webcam to tell you, in centimetres, how to move your
 screen and desk, and remembers your sitting and standing desk heights.
 
