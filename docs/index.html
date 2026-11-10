@@ -7,10 +7,10 @@
 <meta name="description" content="A macOS menu bar app that uses your webcam to tell you, in centimetres, how to move your screen and desk, and remembers your sitting and standing desk heights.">
 <meta name="color-scheme" content="light dark">
 <style>
-:root{--paper:#F6F1E7;--ink:#1F1B16;--muted:#5B5247;--card:#FBF8F1;--line:#D9CFBC;--tape:#F2C230;--btn:#1F1B16;--btnfg:#F6F1E7;--ok:#2E7D32;--warn:#B26A00;--bad:#C62828;
+:root{--paper:#F6F1E7;--ink:#1F1B16;--muted:#5B5247;--card:#FBF8F1;--line:#D9CFBC;--tape:#F2C230;--btn:#1F1B16;--btnfg:#F6F1E7;--ok:#2E7D32;--warn:#B26A00;--bad:#C62828;--rowfg:#fff;
  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,monospace}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--paper:#1A1714;--ink:#F6F1E7;--muted:#B5AA9A;--card:#242019;--line:#3A342B;--btn:#F6F1E7;--btnfg:#1A1714;--ok:#66BB6A;--warn:#E0A030;--bad:#EF6B6B}}
-:root[data-theme=dark]{--paper:#1A1714;--ink:#F6F1E7;--muted:#B5AA9A;--card:#242019;--line:#3A342B;--btn:#F6F1E7;--btnfg:#1A1714;--ok:#66BB6A;--warn:#E0A030;--bad:#EF6B6B}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--paper:#1A1714;--ink:#F6F1E7;--muted:#B5AA9A;--card:#242019;--line:#3A342B;--btn:#F6F1E7;--btnfg:#1A1714;--ok:#66BB6A;--warn:#E0A030;--bad:#EF6B6B;--rowfg:#1A1714}}
+:root[data-theme=dark]{--paper:#1A1714;--ink:#F6F1E7;--muted:#B5AA9A;--card:#242019;--line:#3A342B;--btn:#F6F1E7;--btnfg:#1A1714;--ok:#66BB6A;--warn:#E0A030;--bad:#EF6B6B;--rowfg:#1A1714}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
 .wrap{max-width:960px;margin:0 auto;padding:0 20px}
@@ -36,7 +36,7 @@ a{color:var(--ink)}
 .review button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
 .frame{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:18px;max-width:380px}
 .frame .tag{font:11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-.row{display:flex;justify-content:space-between;font:15px var(--mono);padding:9px 12px;border-radius:8px;margin-top:8px;color:#fff}
+.row{display:flex;justify-content:space-between;font:15px var(--mono);padding:9px 12px;border-radius:8px;margin-top:8px;color:var(--rowfg)}
 .row.ok{background:var(--ok)}.row.warn{background:var(--warn)}.row.bad{background:var(--bad)}
 .hero-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:36px;align-items:center}
 @media(max-width:760px){.hero-grid{grid-template-columns:1fr}}
@@ -46,6 +46,7 @@ a{color:var(--ink)}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px}
 .cols>div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
 body.b #hero>.wrap{min-height:260vh}body.b .hero-grid{position:sticky;top:48px}
+@media(max-width:760px){body.b .hero-grid,body.b .hero-grid>div{display:contents}body.b .hero-grid{position:static}body.b #heroB{position:sticky;top:8px;z-index:1}}
 ul{padding-left:20px;margin:0 0 12px}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
@@ -61,7 +62,7 @@ ul{padding-left:20px;margin:0 0 12px}
 <header>
 <section id="hero" class="wrap" style="padding-top:64px;max-width:none">
  <div class="wrap" style="position:relative">
-  <div class="top"><button id="theme" type="button" aria-label="Switch between light and dark">Theme: auto</button></div>
+  <div class="top"><button id="theme" type="button">Theme: auto</button></div>
   <div class="hero-grid">
    <div>
     <h1>Undo. Redo.<br>For your desk.</h1>
@@ -71,13 +72,13 @@ ul{padding-left:20px;margin:0 0 12px}
     <p class="muted" style="font-size:15px">macOS 14 or later, Apple silicon. Early: <a href="#early">what is in place</a>.</p>
    </div>
    <div>
-    <div id="heroA" class="frame" aria-label="Placeholder for a 10-second Live mode recording">
+    <div id="heroA" class="frame" role="group" aria-label="Placeholder for a 10-second Live mode recording">
      <div class="tag">Placeholder: Live recording, 10 s, silent</div>
      <div class="row bad"><span>Screen ↓ 8 cm</span><span>✗</span></div>
      <div class="row warn"><span>Distance → 15 cm</span><span>~</span></div>
      <div class="row ok"><span>Desk</span><span>✓</span></div>
     </div>
-    <div id="heroB" class="frame" hidden aria-label="Placeholder for four Live screenshots that swap as you scroll">
+    <div id="heroB" class="frame" hidden role="group" aria-label="Placeholder for four Live screenshots that swap as you scroll">
      <div class="tag">Placeholder: scroll swaps four real screenshots <span id="step">1/4</span></div>
      <div id="stepRows"></div>
     </div>
