@@ -1,11 +1,15 @@
+# Desk Check's Homebrew formula has one source: this file in the desk-check repository.
+# The tap (marcellovictorino/homebrew-tap) copies it at each release tag and fills in its own
+# url, sha256 and revision. Here the url and checksum are placeholders; change install,
+# test and caveats in desk-check, never in the tap.
 # Desk Check is built on the person's own Mac during `brew install`, with Apple's
 # command line tools. Built here, it is signed ad hoc for this Mac and opens without
 # a macOS warning, so no Apple developer account is needed.
 class DeskCheck < Formula
   desc "Menu bar posture coach that tells you how to move your screen and desk"
   homepage "https://github.com/marcellovictorino/desk-check"
-  url "https://github.com/marcellovictorino/desk-check/archive/refs/tags/v0.3.0.tar.gz"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000" # pending v0.3.0 release checksum
+  url "https://github.com/marcellovictorino/desk-check/archive/refs/tags/v0.0.0.tar.gz"
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "MIT"
   head "https://github.com/marcellovictorino/desk-check.git", branch: "main"
 
