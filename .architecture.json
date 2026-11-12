@@ -1,0 +1,107 @@
+{
+  "name": "Desk Check",
+  "about": "A macOS menu bar app that reads where your eyes are through the webcam and says, in centimetres, how to move your screen and desk.",
+  "groups": [
+    { "name": "The app", "why": "Runs in the menu bar on the person's Mac" },
+    { "name": "Build and release", "why": "Turns the code into an app installed with Homebrew" },
+    { "name": "Checks", "why": "Run by developers and by brew test, never shipped in the app" }
+  ],
+  "parts": [
+    { "name": "app", "path": "Sources/DeskCheck", "about": "The menu bar popover, Live, Settings and the camera sessions behind them", "group": "The app" },
+    { "name": "core", "path": "Sources/DeskCheckCore", "about": "Eye geometry, advice, Live bands, setups, presets and the TOML settings file, with no camera or UI", "group": "The app" },
+    { "name": "app resources", "path": "Resources", "about": "The app's Info.plist and its App Sandbox entitlements", "group": "Build and release" },
+    { "name": "build scripts", "path": "scripts", "about": "Builds and signs DeskCheck.app, the desk-check command, the next-version rule and a local formula test", "group": "Build and release" },
+    { "name": "Homebrew formula", "path": "Formula", "about": "Builds the app on the person's Mac during brew install", "group": "Build and release" },
+    { "name": "release workflow", "path": ".github/workflows", "about": "Publishes a release for each merge to main that holds a feat, fix or breaking commit", "group": "Build and release" },
+    { "name": "tests", "path": "Tests", "about": "Core unit tests, offscreen view pictures, a sandbox probe and checks of the built app and command", "group": "Checks" }
+  ],
+  "outside": [
+    { "name": "camera", "about": "The Mac's cameras through AVFoundation, with Vision finding the face and eyes" },
+    { "name": "settings file", "about": "config.toml in ~/.config/desk-check, and the old ~/.config/desk-undo folder read once to migrate" },
+    { "name": "macOS preferences", "about": "Keeps the bookmark that lets the sandboxed app reopen a chosen settings file" },
+    { "name": "GitHub releases", "about": "The project's tagged releases where it lives on GitHub" },
+    { "name": "Homebrew tap", "about": "The separate tap project whose formula brew install reads" }
+  ],
+  "links": [
+    { "from": "app", "to": "core", "why": "loads settings, turns eye points into readings, advice and Live bands" },
+    { "from": "app", "to": "camera", "why": "asks permission, samples frames and finds the eyes" },
+    { "from": "app", "to": "settings file", "why": "opens it in the person's editor and lets them choose another" },
+    { "from": "core", "to": "settings file", "why": "reads and edits it, keeping comments, and writes the starter file" },
+    { "from": "core", "to": "macOS preferences", "why": "keeps and resolves the chosen file's bookmark" },
+    { "from": "build scripts", "to": "app", "why": "builds and signs it with Swift" },
+    { "from": "build scripts", "to": "app resources", "why": "fills in the version and signs with the entitlements" },
+    { "from": "build scripts", "to": "Homebrew formula", "why": "installs it through a local test tap and runs brew test" },
+    { "from": "Homebrew formula", "to": "build scripts", "why": "runs the app build and installs desk-check.sh as the command that opens or replaces the app" },
+    { "from": "Homebrew formula", "to": "tests", "why": "brew test runs the built-app permission check" },
+    { "from": "release workflow", "to": "build scripts", "why": "works out the next version from commits" },
+    { "from": "release workflow", "to": "GitHub releases", "why": "publishes the release with generated notes" },
+    { "from": "release workflow", "to": "Homebrew tap", "why": "starts the tap's update run" },
+    { "from": "Homebrew tap", "to": "GitHub releases", "why": "picks up new releases on its own schedule as a backup" },
+    { "from": "tests", "to": "core", "why": "unit tests of geometry, advice, Live, presets and settings" },
+    { "from": "tests", "to": "app", "why": "draws the views offscreen and builds a sandboxed Settings test app" },
+    { "from": "tests", "to": "app resources", "why": "checks the entitlements through the kernel and in the built app" },
+    { "from": "tests", "to": "build scripts", "why": "checks the desk-check command against built apps" },
+    { "from": "tests", "to": "camera", "why": "lists any camera still in use" }
+  ],
+  "machines": [
+    {
+      "name": "a desk check",
+      "in": "app",
+      "about": "One press of Check desk, Calibrate webcam, Remember view or Confirm: the camera opens, reads the eyes and closes",
+      "states": ["camera off", "asking permission", "reading"],
+      "moves": [
+        { "from": "camera off", "to": "asking permission", "why": "a check, calibration, remember or confirm is pressed with settings loaded", "by": "app" },
+        { "from": "asking permission", "to": "reading", "why": "the camera is allowed and the setup's camera is connected", "by": "app" },
+        { "from": "asking permission", "to": "camera off", "why": "the camera is denied or not connected", "by": "app" },
+        { "from": "reading", "to": "camera off", "why": "the frames are read and the result or a reason is shown", "by": "app" }
+      ]
+    },
+    {
+      "name": "a live session",
+      "in": "app",
+      "about": "Live keeps the camera on while the desk or screen moves; a token tells a stale answer from the current session",
+      "states": ["off", "asking permission", "camera on"],
+      "moves": [
+        { "from": "off", "to": "asking permission", "why": "Live is pressed and settings load", "by": "app" },
+        { "from": "asking permission", "to": "camera on", "why": "the camera is allowed while the popover is still open", "by": "app" },
+        { "from": "asking permission", "to": "off", "why": "denied, no camera, Stop or the popover closed", "by": "app" },
+        { "from": "camera on", "to": "off", "why": "Stop, the popover closes, the camera fails or ten minutes pass", "by": "app" }
+      ]
+    },
+    {
+      "name": "a desk preset",
+      "in": "core",
+      "about": "A sit or stand desk height from the tape on the desk leg, and what the camera saw there",
+      "states": ["no preset", "tape height", "view remembered"],
+      "moves": [
+        { "from": "no preset", "to": "tape height", "why": "a desk height is entered in Settings", "by": "app" },
+        { "from": "tape height", "to": "view remembered", "why": "Remember view saves what the camera sees", "by": "app" },
+        { "from": "view remembered", "to": "tape height", "why": "the desk height changes, so the old view is forgotten", "by": "app" },
+        { "from": "tape height", "to": "no preset", "why": "the desk height is cleared in Settings", "by": "app" },
+        { "from": "view remembered", "to": "no preset", "why": "the desk height is cleared in Settings", "by": "app" }
+      ]
+    },
+    {
+      "name": "settings access",
+      "in": "core",
+      "about": "Whether the settings file has loaded; saving and camera checks stay off until it has",
+      "states": ["not loaded", "loaded", "unavailable"],
+      "moves": [
+        { "from": "not loaded", "to": "loaded", "why": "the default or chosen file reads", "by": "core" },
+        { "from": "not loaded", "to": "unavailable", "why": "the file cannot be read, so a warning shows", "by": "core" },
+        { "from": "unavailable", "to": "loaded", "why": "the person chooses a readable file, or a later read of the file succeeds", "by": "core" },
+        { "from": "loaded", "to": "unavailable", "why": "a later read fails", "by": "core" }
+      ]
+    },
+    {
+      "name": "a release",
+      "in": "release workflow",
+      "about": "A merge to main on its way to brew upgrade",
+      "states": ["merged", "released", "in the tap"],
+      "moves": [
+        { "from": "merged", "to": "released", "why": "a feat, fix or breaking commit since the last tag, at the tip of main", "by": "release workflow" },
+        { "from": "released", "to": "in the tap", "why": "the tap's update run picks up the release", "by": "Homebrew tap" }
+      ]
+    }
+  ]
+}
