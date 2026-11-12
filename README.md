@@ -74,6 +74,11 @@ pictures of the popover, Live and Settings. The Settings test app saves a pictur
 window to `SettingsSandboxTest/snapshots` in its container when sent `SIGUSR1`.
 Each script's header explains its use.
 
+The tests use Swift Testing, so `swift test` works with the command line tools alone. With the
+command line tools, an incremental build can sometimes fail with "plugin for module 'TestingMacros'
+not found"; run the command again, or pass
+`-Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`.
+
 ## Credits
 
 Inspired by [Posturr](https://github.com/tldev/dorso) (now Dorso) by tldev. Desk Check shares

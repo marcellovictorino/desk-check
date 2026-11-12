@@ -1,11 +1,12 @@
-import XCTest
+import Foundation
+import Testing
 @testable import DeskCheckCore
 
 /// Intent source: piece 3 of the Desk Check brief (SCR-705): sit and stand presets read from a desk-leg tape and
 /// confirmed by the camera; live mode bands of top of screen 2 cm below eye level (green 3, yellow 6),
 /// distance 62 cm (12, 20) and desk 3 cm below the elbow (3, 6); readings averaged about a second;
 /// all of it per setup, with a MacBook-only seated setup having no desk-height preset.
-final class LiveBandTests: XCTestCase {
+@Suite struct LiveBandTests {
     let measured = Setup(userHeightCm: 175, eyeToElbowCm: 50)
 
     func reading(distance: Double = 62, eyeAboveTop: Double = 2, eyeAboveDesk: Double = 53) -> PostureReading {
@@ -16,187 +17,194 @@ final class LiveBandTests: XCTestCase {
         Dictionary(uniqueKeysWithValues: LiveEngine.advise(r, setup: measured, fixed: fixed).map { ($0.adjustment, $0.level) })
     }
 
-    func testOnTargetIsGreenEverywhere() {
-        XCTAssertEqual(levels(reading()), [.screenDistance: .green, .screenHeight: .green, .deskHeight: .green])
+    @Test func onTargetIsGreenEverywhere() {
+        #expect(levels(reading()) == [.screenDistance: .green, .screenHeight: .green, .deskHeight: .green])
     }
 
-    func testScreenHeightBandsAreCentredTwoCmBelowEyes() {
-        XCTAssertEqual(levels(reading(eyeAboveTop: 5))[.screenHeight], .green)    // 3 off
-        XCTAssertEqual(levels(reading(eyeAboveTop: 5.5))[.screenHeight], .yellow)
-        XCTAssertEqual(levels(reading(eyeAboveTop: 8))[.screenHeight], .yellow)   // 6 off
-        XCTAssertEqual(levels(reading(eyeAboveTop: 8.5))[.screenHeight], .red)
-        XCTAssertEqual(levels(reading(eyeAboveTop: -1))[.screenHeight], .green)
-        XCTAssertEqual(levels(reading(eyeAboveTop: -5))[.screenHeight], .red)
+    @Test func screenHeightBandsAreCentredTwoCmBelowEyes() {
+        #expect(levels(reading(eyeAboveTop: 5))[.screenHeight] == .green)    // 3 off
+        #expect(levels(reading(eyeAboveTop: 5.5))[.screenHeight] == .yellow)
+        #expect(levels(reading(eyeAboveTop: 8))[.screenHeight] == .yellow)   // 6 off
+        #expect(levels(reading(eyeAboveTop: 8.5))[.screenHeight] == .red)
+        #expect(levels(reading(eyeAboveTop: -1))[.screenHeight] == .green)
+        #expect(levels(reading(eyeAboveTop: -5))[.screenHeight] == .red)
     }
 
-    func testDistanceBandsAround62() {
-        XCTAssertEqual(levels(reading(distance: 50))[.screenDistance], .green)
-        XCTAssertEqual(levels(reading(distance: 74))[.screenDistance], .green)
-        XCTAssertEqual(levels(reading(distance: 45))[.screenDistance], .yellow)
-        XCTAssertEqual(levels(reading(distance: 82))[.screenDistance], .yellow)
-        XCTAssertEqual(levels(reading(distance: 83))[.screenDistance], .red)
-        XCTAssertEqual(levels(reading(distance: 41))[.screenDistance], .red)
+    @Test func distanceBandsAround62() {
+        #expect(levels(reading(distance: 50))[.screenDistance] == .green)
+        #expect(levels(reading(distance: 74))[.screenDistance] == .green)
+        #expect(levels(reading(distance: 45))[.screenDistance] == .yellow)
+        #expect(levels(reading(distance: 82))[.screenDistance] == .yellow)
+        #expect(levels(reading(distance: 83))[.screenDistance] == .red)
+        #expect(levels(reading(distance: 41))[.screenDistance] == .red)
     }
 
-    func testDeskBandsAreCentredThreeCmBelowTheElbow() {
+    @Test func deskBandsAreCentredThreeCmBelowTheElbow() {
         // Elbow is 50 cm below the eyes, so the desk is right when the eyes are 53 cm above it.
-        XCTAssertEqual(levels(reading(eyeAboveDesk: 56))[.deskHeight], .green)
-        XCTAssertEqual(levels(reading(eyeAboveDesk: 58))[.deskHeight], .yellow)
-        XCTAssertEqual(levels(reading(eyeAboveDesk: 60))[.deskHeight], .red)
+        #expect(levels(reading(eyeAboveDesk: 56))[.deskHeight] == .green)
+        #expect(levels(reading(eyeAboveDesk: 58))[.deskHeight] == .yellow)
+        #expect(levels(reading(eyeAboveDesk: 60))[.deskHeight] == .red)
     }
 
-    func testArrowsPointTheWayToMoveWithTheNumber() {
+    @Test func arrowsPointTheWayToMoveWithTheNumber() {
         let a = LiveEngine.advise(reading(distance: 80, eyeAboveTop: 10, eyeAboveDesk: 45), setup: measured, fixed: [])
         func get(_ x: Adjustment) -> LiveAdvice { a.first { $0.adjustment == x }! }
-        XCTAssertEqual(get(.screenDistance).direction, .closer)
-        XCTAssertEqual(get(.screenDistance).moveCm, 18)
-        XCTAssertEqual(get(.screenHeight).direction, .up)       // eyes well above the screen top: raise the screen
-        XCTAssertEqual(get(.screenHeight).moveCm, 8)
-        XCTAssertEqual(get(.deskHeight).direction, .down)       // eyes only 45 above desk: desk too high
-        XCTAssertEqual(get(.deskHeight).moveCm, 8)
-        XCTAssertEqual(LiveEngine.advise(reading(distance: 45), setup: measured, fixed: []).first!.direction, .further)
+        #expect(get(.screenDistance).direction == .closer)
+        #expect(get(.screenDistance).moveCm == 18)
+        #expect(get(.screenHeight).direction == .up)       // eyes well above the screen top: raise the screen
+        #expect(get(.screenHeight).moveCm == 8)
+        #expect(get(.deskHeight).direction == .down)       // eyes only 45 above desk: desk too high
+        #expect(get(.deskHeight).moveCm == 8)
+        #expect(LiveEngine.advise(reading(distance: 45), setup: measured, fixed: []).first!.direction == .further)
     }
 
-    func testMacBookSeatedSetupShowsOnlyDistance() {
+    @Test func macBookSeatedSetupShowsOnlyDistance() {
         let laptop = SetupProfile.laptop(name: "Sofa")
         let advice = LiveEngine.advise(reading(distance: 80), setup: laptop.measurements, fixed: laptop.fixed)
-        XCTAssertEqual(advice.map(\.adjustment), [.screenDistance])
+        #expect(advice.map(\.adjustment) == [.screenDistance])
     }
 
-    func testEyeToElbowDefaultsFromHeight() {
-        XCTAssertEqual(Setup(userHeightCm: 180).eyeToElbow, 54, accuracy: 0.01)
-        XCTAssertEqual(Setup(userHeightCm: 180, eyeToElbowCm: 49).eyeToElbow, 49)
+    @Test func eyeToElbowDefaultsFromHeight() {
+        #expect(abs((Setup(userHeightCm: 180).eyeToElbow) - 54) <= 0.01)
+        #expect(Setup(userHeightCm: 180, eyeToElbowCm: 49).eyeToElbow == 49)
     }
 }
 
-final class RollingAverageTests: XCTestCase {
+@Suite struct RollingAverageTests {
     func r(_ d: Double) -> PostureReading { PostureReading(distanceCm: d, eyeAboveScreenTopCm: 0, eyeHeightAboveDeskCm: 0) }
 
-    func testAveragesAboutOneSecondAndDropsOlderFrames() {
+    @Test func averagesAboutOneSecondAndDropsOlderFrames() {
         var avg = RollingAverage(window: 1.0, minimumCount: 3)
         for (i, d) in [100.0, 60, 62, 61].enumerated() { avg.add(r(d), at: 5.0 + Double(i) * 0.35) }
         // The 100 cm frame at t=5.0 is more than a second older than t=6.05.
-        XCTAssertEqual(avg.average?.distanceCm ?? 0, 61, accuracy: 0.01)
+        #expect(abs((avg.average?.distanceCm ?? 0) - 61) <= 0.01)
     }
 
-    func testShowsNothingUntilEnoughFrames() {
+    @Test func showsNothingUntilEnoughFrames() {
         var avg = RollingAverage()
         avg.add(r(60), at: 0); avg.add(r(60), at: 0.1)
-        XCTAssertNil(avg.average)
+        #expect(avg.average == nil)
         avg.add(r(60), at: 0.2)
-        XCTAssertNotNil(avg.average)
+        #expect(avg.average != nil)
         avg.reset()
-        XCTAssertNil(avg.average)
+        #expect(avg.average == nil)
     }
 
-    func testSmoothsFrameJitterAcrossABandEdge() {
+    @Test func smoothsFrameJitterAcrossABandEdge() {
         var avg = RollingAverage()
         // Frames flicker either side of 74 cm, the edge of green; the averaged number sits in the middle.
         for (i, d) in [73.0, 75, 73, 75, 73, 75].enumerated() { avg.add(r(d), at: Double(i) * 0.15) }
-        XCTAssertEqual(avg.average?.distanceCm ?? 0, 74, accuracy: 0.5)
+        #expect(abs((avg.average?.distanceCm ?? 0) - 74) <= 0.5)
     }
 }
 
-final class PresetTests: XCTestCase {
-    func testPresetsAreStoredPerSetupAndSurviveASave() {
+@Suite struct PresetTests {
+    @Test func presetsAreStoredPerSetupAndSurviveASave() {
         var c = DeskConfig(text: DeskConfig.starterContents)
         var desk = c.profile(named: "Standing desk")
         desk.presets[.sit] = DeskPreset(deskHeightCm: 72, distanceCm: 60, eyeAboveScreenTopCm: -1.5)
         desk.presets[.stand] = DeskPreset(deskHeightCm: 112)
         c.save(desk)
-        XCTAssertTrue(c.addSetup(.laptop(name: "Sofa")))
+        let added = c.addSetup(.laptop(name: "Sofa"))
+        #expect(added)
         var reread = DeskConfig(text: c.document.text)
-        XCTAssertEqual(reread.profile(named: "Standing desk").presets[.sit],
-                       DeskPreset(deskHeightCm: 72, distanceCm: 60, eyeAboveScreenTopCm: -1.5))
-        XCTAssertEqual(reread.profile(named: "Standing desk").presets[.stand]?.deskHeightCm, 112)
-        XCTAssertTrue(reread.profile(named: "Sofa").presets.isEmpty, "another setup keeps its own presets")
+        #expect(reread.profile(named: "Standing desk").presets[.sit] == DeskPreset(deskHeightCm: 72, distanceCm: 60, eyeAboveScreenTopCm: -1.5))
+        #expect(reread.profile(named: "Standing desk").presets[.stand]?.deskHeightCm == 112)
+        #expect(reread.profile(named: "Sofa").presets.isEmpty, "another setup keeps its own presets")
         reread.save(reread.profile(named: "Standing desk"))
-        XCTAssertEqual(reread.profile(named: "Standing desk").presets[.sit]?.eyeAboveScreenTopCm, -1.5)
+        #expect(reread.profile(named: "Standing desk").presets[.sit]?.eyeAboveScreenTopCm == -1.5)
     }
 
-    func testSeatedOnlySetupCannotKeepAStandingPreset() {
+    @Test func seatedOnlySetupCannotKeepAStandingPreset() {
         var c = DeskConfig(text: DeskConfig.starterContents)
         var p = SetupProfile.laptop(name: "Sofa")
         p.presets[.sit] = DeskPreset(deskHeightCm: 74)
         p.presets[.stand] = DeskPreset(deskHeightCm: 110)
-        XCTAssertTrue(c.addSetup(p))
+        let added = c.addSetup(p)
+        #expect(added)
         let back = c.profile(named: "Sofa")
-        XCTAssertNotNil(back.presets[.sit])
-        XCTAssertNil(back.presets[.stand])
-        XCTAssertFalse(back.supportsStandingPreset)
+        #expect(back.presets[.sit] != nil)
+        #expect(back.presets[.stand] == nil)
+        #expect(!(back.supportsStandingPreset))
     }
 
-    func testRemovingAPresetFromTheProfileRemovesItsKeys() {
+    @Test func removingAPresetFromTheProfileRemovesItsKeys() {
         var c = DeskConfig(text: DeskConfig.starterContents)
         var p = c.profile(named: "Standing desk")
         p.presets[.stand] = DeskPreset(deskHeightCm: 112, distanceCm: 55, eyeAboveScreenTopCm: 3)
         c.save(p)
         p.presets[.stand] = nil
         c.save(p)
-        XCTAssertFalse(c.document.text.contains("stand_desk_height_cm = "))
-        XCTAssertFalse(c.document.text.contains("stand_distance_cm = "))
+        #expect(!(c.document.text.contains("stand_desk_height_cm = ")))
+        #expect(!(c.document.text.contains("stand_distance_cm = ")))
     }
 
-    func testCameraConfirmsTheDeskIsBackAtTheSavedHeight() {
+    @Test func cameraConfirmsTheDeskIsBackAtTheSavedHeight() {
         let saved = DeskPreset(deskHeightCm: 112, distanceCm: 58, eyeAboveScreenTopCm: 4)
         func read(_ d: Double, _ h: Double) -> PostureReading { PostureReading(distanceCm: d, eyeAboveScreenTopCm: h, eyeHeightAboveDeskCm: 0) }
-        XCTAssertEqual(saved.confirm(read(59.5, 5.5)), .confirmed)
+        #expect(saved.confirm(read(59.5, 5.5)) == .confirmed)
         // The desk was left 6 cm too low: the eyes read 6 cm lower against the screen.
-        guard case .differs(let why) = saved.confirm(read(58, -2)) else { return XCTFail("should not confirm") }
-        XCTAssertTrue(why.contains("6 cm lower"), why)
-        guard case .differs(let far) = saved.confirm(read(66, 4)) else { return XCTFail("should not confirm") }
-        XCTAssertTrue(far.contains("8 cm further"), far)
-        XCTAssertEqual(DeskPreset(deskHeightCm: 72).confirm(read(60, 2)), .notRemembered)
+        guard case .differs(let why) = saved.confirm(read(58, -2)) else { Issue.record("should not confirm"); return }
+        #expect(why.contains("6 cm lower"), Comment(rawValue: why))
+        guard case .differs(let far) = saved.confirm(read(66, 4)) else { Issue.record("should not confirm"); return }
+        #expect(far.contains("8 cm further"), Comment(rawValue: far))
+        #expect(DeskPreset(deskHeightCm: 72).confirm(read(60, 2)) == .notRemembered)
     }
 }
 
 /// Intent source: the captain's report that Stop needed two clicks (DESK-22). A Stop that arrives while the camera is
 /// off must not turn it on, and a reading or camera callback from a stopped session must not act on the next one.
-final class LiveRunTests: XCTestCase {
-    func testStopWhenIdleDoesNothingAndNeverStarts() {
+@Suite struct LiveRunTests {
+    @Test func stopWhenIdleDoesNothingAndNeverStarts() {
         var run = LiveRun()
-        XCTAssertFalse(run.stop())
-        XCTAssertFalse(run.isRunning)
+        let stopped = run.stop()
+        #expect(!(stopped))
+        #expect(!(run.isRunning))
     }
 
-    func testSecondQuickStopIsANoOp() {
+    @Test func secondQuickStopIsANoOp() {
         var run = LiveRun()
-        XCTAssertNotNil(run.start())
-        XCTAssertTrue(run.stop())
-        XCTAssertFalse(run.stop(), "the second click of a double click must find nothing to stop")
-        XCTAssertFalse(run.isRunning)
+        let started = run.start()
+        #expect(started != nil)
+        let stopped = run.stop()
+        #expect(stopped)
+        let stopped2 = run.stop()
+        #expect(!(stopped2), "the second click of a double click must find nothing to stop")
+        #expect(!(run.isRunning))
     }
 
-    func testStartWhileRunningIsRefused() {
+    @Test func startWhileRunningIsRefused() {
         var run = LiveRun()
-        XCTAssertNotNil(run.start())
-        XCTAssertNil(run.start())
+        let started = run.start()
+        #expect(started != nil)
+        let started2 = run.start()
+        #expect(started2 == nil)
     }
 
-    func testLateCallbackFromStoppedSessionIsRejectedAfterRestart() {
+    @Test func lateCallbackFromStoppedSessionIsRejectedAfterRestart() {
         var run = LiveRun()
         let first = run.start()!
-        XCTAssertTrue(run.isCurrent(first))
+        #expect(run.isCurrent(first))
         run.stop()
-        XCTAssertFalse(run.isCurrent(first))
+        #expect(!(run.isCurrent(first)))
         let second = run.start()!
-        XCTAssertFalse(run.isCurrent(first), "a permission answer for the old session must not open the camera again")
-        XCTAssertTrue(run.isCurrent(second))
+        #expect(!(run.isCurrent(first)), "a permission answer for the old session must not open the camera again")
+        #expect(run.isCurrent(second))
     }
 }
 
 /// Intent source: Stop moved 130 pt when the bands came and went (DESK-22). The area reserved for the bands depends on
 /// the setup's adjustable rows, never on how many bands are showing, so the controls around it stay put.
-final class LiveLayoutTests: XCTestCase {
-    func testReservedHeightFitsExactlyTheSetupsRows() {
+@Suite struct LiveLayoutTests {
+    @Test func reservedHeightFitsExactlyTheSetupsRows() {
         let one = LiveLayout.bandAreaHeight(rows: 1)
         let three = LiveLayout.bandAreaHeight(rows: 3)
-        XCTAssertEqual(one, LiveLayout.rowHeight)
-        XCTAssertEqual(three, 3 * LiveLayout.rowHeight + 2 * LiveLayout.rowSpacing)
+        #expect(one == LiveLayout.rowHeight)
+        #expect(three == 3 * LiveLayout.rowHeight + 2 * LiveLayout.rowSpacing)
     }
 
-    func testReservedHeightNeverCollapsesOrGrowsPastThreeRows() {
-        XCTAssertEqual(LiveLayout.bandAreaHeight(rows: 0), LiveLayout.bandAreaHeight(rows: 1))
-        XCTAssertEqual(LiveLayout.bandAreaHeight(rows: 9), LiveLayout.bandAreaHeight(rows: 3))
+    @Test func reservedHeightNeverCollapsesOrGrowsPastThreeRows() {
+        #expect(LiveLayout.bandAreaHeight(rows: 0) == LiveLayout.bandAreaHeight(rows: 1))
+        #expect(LiveLayout.bandAreaHeight(rows: 9) == LiveLayout.bandAreaHeight(rows: 3))
     }
 }

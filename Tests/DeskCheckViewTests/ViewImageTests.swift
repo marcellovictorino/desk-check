@@ -1,13 +1,14 @@
 import AppKit
 import QuartzCore
 import SwiftUI
-import XCTest
+import Foundation
+import Testing
 import DeskCheckCore
 @testable import DeskCheck
 
 /// Intent source: save offscreen pictures of the popover, Live and Settings for cards.
 /// The follow-up explicitly permits partial pictures if each labels its omissions.
-final class ViewImageTests: XCTestCase {
+@Suite struct ViewImageTests {
     private struct Capture: Codable {
         let file: String
         let renderer: String
@@ -15,7 +16,7 @@ final class ViewImageTests: XCTestCase {
     }
 
     @MainActor
-    func testSaveLabelledPartialViewImagesOffscreen() async throws {
+    @Test func saveLabelledPartialViewImagesOffscreen() async throws {
         // Never activate the app, create a menu bar item, order a window in, or start the camera.
         let app = NSApplication.shared
         let appearance = app.appearance
@@ -23,7 +24,7 @@ final class ViewImageTests: XCTestCase {
         defer { app.appearance = appearance }
         let config = DeskConfig(text: DeskConfig.starterContents)
         let fixture = FileManager.default.temporaryDirectory.appendingPathComponent("desk-check-view-\(UUID().uuidString)/config.toml")
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "desk-check-view-tests.\(UUID().uuidString)"))
+        let defaults = try #require(UserDefaults(suiteName: "desk-check-view-tests.\(UUID().uuidString)"))
         let settingsFile = SettingsFile(defaultFile: fixture, defaults: defaults)
         try FileManager.default.createDirectory(at: fixture.deletingLastPathComponent(), withIntermediateDirectories: true)
         try config.document.text.write(to: fixture, atomically: false, encoding: .utf8)
@@ -55,7 +56,7 @@ final class ViewImageTests: XCTestCase {
         // Intent: a failed settings load is visible in both entry points, not hidden behind starter settings.
         let missingFile = SettingsFile(defaultFile: fixture.deletingLastPathComponent().appendingPathComponent("missing.toml"), defaults: defaults)
         let warningChecker = PostureChecker(settings: missingFile)
-        XCTAssertNotNil(warningChecker.settingsWarning)
+        #expect(warningChecker.settingsWarning != nil)
         let warning = Capture(file: "load-warning.png", renderer: "SwiftUI ImageRenderer",
             limitation: popover.limitation)
         try await save(PopoverView(checker: warningChecker, version: "0.3.2").content, capture: warning,
@@ -67,21 +68,22 @@ final class ViewImageTests: XCTestCase {
                        title: "Settings load warning", width: 520, swiftUI: false, to: directory)
         // Intent: selecting a settings file must keep the Settings controls readable in both native appearances.
         var selectedConfig = config
-        XCTAssertTrue(selectedConfig.renameSetup(selectedConfig.activeSetupName, to: "Chosen desk"))
+        let renamed = selectedConfig.renameSetup(selectedConfig.activeSetupName, to: "Chosen desk")
+        #expect(renamed)
         try selectedConfig.document.text.write(to: fixture, atomically: false, encoding: .utf8)
         try settingsFile.choose(fixture)
         checker.reloadSetups()
-        XCTAssertEqual(checker.activeSetup, selectedConfig.activeSetupName)
+        #expect(checker.activeSetup == selectedConfig.activeSetupName)
         let selectedLight = Capture(file: "selected-settings-light.png", renderer: settings.renderer, limitation: settings.limitation)
         let selectedDark = Capture(file: "selected-settings-dark.png", renderer: settings.renderer, limitation: settings.limitation)
         try await save(PopoverView(checker: checker).content, capture: selectedLight,
                        title: "Chosen settings, light appearance", width: 520, swiftUI: false, to: directory)
         try await save(PopoverView(checker: checker).content, capture: selectedDark,
                        title: "Chosen settings, dark appearance", width: 520, swiftUI: false, to: directory, scheme: .dark)
-        XCTAssertFalse(warningChecker.isRunning)
-        XCTAssertTrue(checker.showingSettings)
-        XCTAssertFalse(checker.isRunning)
-        XCTAssertFalse(live.isRunning)
+        #expect(!(warningChecker.isRunning))
+        #expect(checker.showingSettings)
+        #expect(!(checker.isRunning))
+        #expect(!(live.isRunning))
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode([popover, liveCapture, settings, warning, warningSettings, selectedLight, selectedDark])
@@ -109,8 +111,8 @@ final class ViewImageTests: XCTestCase {
         defer { window.close() }
         host.layoutSubtreeIfNeeded()
         let size = host.fittingSize
-        XCTAssertEqual(size.width, width, accuracy: 1)
-        XCTAssertGreaterThan(size.height, 100)
+        #expect(abs(size.width - width) <= 1)
+        #expect(size.height > 100)
         host.setFrameSize(size)
         window.setContentSize(size)
         host.layoutSubtreeIfNeeded()
@@ -122,9 +124,9 @@ final class ViewImageTests: XCTestCase {
         if swiftUI {
             let renderer = ImageRenderer(content: content.frame(width: size.width, height: size.height))
             renderer.scale = 2
-            bitmap = NSBitmapImageRep(cgImage: try XCTUnwrap(renderer.cgImage))
+            bitmap = NSBitmapImageRep(cgImage: try #require(renderer.cgImage))
         } else {
-            bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
             host.cacheDisplay(in: host.bounds, to: bitmap)
         }
         // This only rejects a uniform/blank content area, not missing controls or incorrect glass.
@@ -134,17 +136,17 @@ final class ViewImageTests: XCTestCase {
                 bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB)?.description
             }
         })
-        XCTAssertGreaterThan(colours.count, 16, "\(title): expected non-uniform partial content, not full visual fidelity")
+        #expect(colours.count > 16, "\(title): expected non-uniform partial content, not full visual fidelity")
         let labelled = try label(bitmap, size: size, text: "Partial offscreen render: \(title)\n\(capture.limitation)")
         let file = directory.appendingPathComponent(capture.file)
-        try XCTUnwrap(labelled.representation(using: .png, properties: [:]))
+        try #require(labelled.representation(using: .png, properties: [:]))
             .write(to: file, options: .withoutOverwriting)
-        let saved = try XCTUnwrap(NSBitmapImageRep(data: Data(contentsOf: file)))
-        XCTAssertEqual(saved.pixelsWide, bitmap.pixelsWide)
-        XCTAssertEqual(saved.pixelsHigh, labelled.pixelsHigh)
-        XCTAssertGreaterThan(saved.pixelsHigh, bitmap.pixelsHigh, "Every partial picture carries its omission caption")
-        XCTAssertFalse(window.isVisible, "Rendering must never show a window")
-        XCTAssertFalse(window.isKeyWindow, "Rendering must never take keyboard focus")
+        let saved = try #require(NSBitmapImageRep(data: Data(contentsOf: file)))
+        #expect(saved.pixelsWide == bitmap.pixelsWide)
+        #expect(saved.pixelsHigh == labelled.pixelsHigh)
+        #expect(saved.pixelsHigh > bitmap.pixelsHigh, "Every partial picture carries its omission caption")
+        #expect(!(window.isVisible), "Rendering must never show a window")
+        #expect(!(window.isKeyWindow), "Rendering must never take keyboard focus")
         print("\(capture.file): \(capture.limitation)")
     }
 
@@ -157,11 +159,11 @@ final class ViewImageTests: XCTestCase {
                                                      options: .usesLineFragmentOrigin).height)
         let footerHeight = captionHeight + 24
         let scale = CGFloat(bitmap.pixelsWide) / size.width
-        let labelled = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil,
+        let labelled = try #require(NSBitmapImageRep(bitmapDataPlanes: nil,
             pixelsWide: bitmap.pixelsWide, pixelsHigh: Int(ceil((size.height + footerHeight) * scale)),
             bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
             colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
-        let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: labelled))
+        let context = try #require(NSGraphicsContext(bitmapImageRep: labelled))
         NSGraphicsContext.saveGraphicsState()
         defer { NSGraphicsContext.restoreGraphicsState() }
         NSGraphicsContext.current = context
