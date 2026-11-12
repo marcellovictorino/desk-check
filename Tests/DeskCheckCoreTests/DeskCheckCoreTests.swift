@@ -1,10 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 @testable import DeskCheckCore
 
 /// Intent sources: the piece 2 brief (SCR-705) asks for distance and height readings within
 /// 3 cm and 2 cm, tape-measure inputs with defaults until measured, per-webcam calibration,
 /// one sentence of advice with a number per adjustment, and a config file that allows comments.
-final class GeometryTests: XCTestCase {
+@Suite struct GeometryTests {
     /// A Logitech C920 frame, 1920 x 1080, with a person 62 cm away whose eyes sit 4 cm above the lens axis.
     /// The pixel numbers come from the pinhole model for a 70.4 degree field of view; the A/B desk test
     /// with a real webcam is the check against the real world.
@@ -14,129 +15,129 @@ final class GeometryTests: XCTestCase {
                   imageWidth: 1920, imageHeight: 1080, yaw: yaw)
     }
 
-    func testDistanceAndHeightFromEyePoints() throws {
+    @Test func distanceAndHeightFromEyePoints() throws {
         let focalPx = camera.focalWidths * 1920
         let span = focalPx * 6.3 / 62
         let midY = 540 + focalPx * (4.0 / 62)
-        let r = try XCTUnwrap(Geometry.reading(eyes(span: span, midY: midY), camera: camera,
+        let r = try #require(Geometry.reading(eyes(span: span, midY: midY), camera: camera,
                                                setup: Setup(screenTopHeightCm: 50, lensOffsetCm: 1.5)))
-        XCTAssertEqual(r.distanceCm, 62, accuracy: 0.1)
-        XCTAssertEqual(r.eyeAboveScreenTopCm, 5.5, accuracy: 0.2)   // 1.5 lens offset + 4 above the lens
-        XCTAssertEqual(r.eyeHeightAboveDeskCm, 55.5, accuracy: 0.2)
+        #expect(abs((r.distanceCm) - (62)) <= 0.1)
+        #expect(abs((r.eyeAboveScreenTopCm) - (5.5)) <= 0.2)   // 1.5 lens offset + 4 above the lens
+        #expect(abs((r.eyeHeightAboveDeskCm) - (55.5)) <= 0.2)
     }
 
-    func testMovingTheScreen5cmChangesTheReadingBy5cm() throws {
+    @Test func movingTheScreen5cmChangesTheReadingBy5cm() throws {
         let focalPx = camera.focalWidths * 1920
         func read(_ d: Double) -> Double {
             Geometry.reading(eyes(span: focalPx * 6.3 / d, midY: 540), camera: camera, setup: Setup())!.distanceCm
         }
-        XCTAssertEqual(read(67) - read(62), 5, accuracy: 0.1)
+        #expect(abs((read(67) - read(62)) - (5)) <= 0.1)
     }
 
-    func testTurnedHeadDoesNotReadAsFarther() throws {
+    @Test func turnedHeadDoesNotReadAsFarther() throws {
         let focalPx = camera.focalWidths * 1920
         let yaw = 0.35
         let span = focalPx * 6.3 / 60 * cos(yaw)
-        let r = try XCTUnwrap(Geometry.reading(eyes(span: span, midY: 540, yaw: yaw), camera: camera, setup: Setup()))
-        XCTAssertEqual(r.distanceCm, 60, accuracy: 0.1)
+        let r = try #require(Geometry.reading(eyes(span: span, midY: 540, yaw: yaw), camera: camera, setup: Setup()))
+        #expect(abs((r.distanceCm) - (60)) <= 0.1)
     }
 
-    func testFocalCalibrationFixesAWrongFieldOfView() throws {
+    @Test func focalCalibrationFixesAWrongFieldOfView() throws {
         // The real lens is 78 degrees wide but the default assumes 65.
         let real = CameraModel(fieldOfViewDegrees: 78)
         let span = real.focalWidths * 1920 * 6.3 / 55           // person sits 55 cm away by tape
         let frame = eyes(span: span, midY: 540)
-        let before = try XCTUnwrap(Geometry.reading(frame, camera: CameraModel(fieldOfViewDegrees: 60), setup: Setup()))
-        XCTAssertGreaterThan(abs(before.distanceCm - 55), 3, "uncalibrated reading is off by more than the limit")
-        let focal = try XCTUnwrap(Geometry.calibrateFocal(frame, tapeDistanceCm: 55))
-        let after = try XCTUnwrap(Geometry.reading(frame, camera: CameraModel(focalWidths: focal), setup: Setup()))
-        XCTAssertEqual(after.distanceCm, 55, accuracy: 0.1)
+        let before = try #require(Geometry.reading(frame, camera: CameraModel(fieldOfViewDegrees: 60), setup: Setup()))
+        #expect(abs(before.distanceCm - 55) > 3, "uncalibrated reading is off by more than the limit")
+        let focal = try #require(Geometry.calibrateFocal(frame, tapeDistanceCm: 55))
+        let after = try #require(Geometry.reading(frame, camera: CameraModel(focalWidths: focal), setup: Setup()))
+        #expect(abs((after.distanceCm) - (55)) <= 0.1)
         // And the calibrated camera reads a different distance correctly.
         let moved = eyes(span: real.focalWidths * 1920 * 6.3 / 70, midY: 540)
-        let reading = try XCTUnwrap(Geometry.reading(moved, camera: CameraModel(focalWidths: focal), setup: Setup()))
-        XCTAssertEqual(reading.distanceCm, 70, accuracy: 0.1)
+        let reading = try #require(Geometry.reading(moved, camera: CameraModel(focalWidths: focal), setup: Setup()))
+        #expect(abs((reading.distanceCm) - (70)) <= 0.1)
     }
 
-    func testPitchCalibrationRecoversTiltedLens() throws {
+    @Test func pitchCalibrationRecoversTiltedLens() throws {
         // Lens tilted up 6 degrees; eyes truly 3 cm above the lens axis height... measure at 60 cm.
         let tilt = 6.0 * .pi / 180
         let focalPx = camera.focalWidths * 1920
         let trueAngle = atan(8.0 / 60)                      // eyes 8 cm above the lens
         let midY = 540 + focalPx * tan(trueAngle - tilt)    // a lens tilted up sees the eyes lower
         let frame = eyes(span: focalPx * 6.3 / 60, midY: midY)
-        let pitch = try XCTUnwrap(Geometry.calibratePitch(frame, focalWidths: camera.focalWidths, tapeDistanceCm: 60,
+        let pitch = try #require(Geometry.calibratePitch(frame, focalWidths: camera.focalWidths, tapeDistanceCm: 60,
                                                          lensHeightAboveDeskCm: 40, eyeHeightAboveDeskCm: 48))
-        XCTAssertEqual(pitch, tilt, accuracy: 0.002)
-        let r = try XCTUnwrap(Geometry.reading(frame, camera: CameraModel(focalWidths: camera.focalWidths, pitch: pitch),
+        #expect(abs((pitch) - (tilt)) <= 0.002)
+        let r = try #require(Geometry.reading(frame, camera: CameraModel(focalWidths: camera.focalWidths, pitch: pitch),
                                                setup: Setup(screenTopHeightCm: 39, lensOffsetCm: 1)))
-        XCTAssertEqual(r.eyeHeightAboveDeskCm, 48, accuracy: 0.3)
+        #expect(abs((r.eyeHeightAboveDeskCm) - (48)) <= 0.3)
     }
 
-    func testMedianIgnoresOneBadFrame() {
+    @Test func medianIgnoresOneBadFrame() {
         let good = PostureReading(distanceCm: 60, eyeAboveScreenTopCm: 4, eyeHeightAboveDeskCm: 50)
         let bad = PostureReading(distanceCm: 120, eyeAboveScreenTopCm: -30, eyeHeightAboveDeskCm: 10)
-        XCTAssertEqual(Geometry.median([good, good, bad, good, good])?.distanceCm, 60)
+        #expect(Geometry.median([good, good, bad, good, good])?.distanceCm == 60)
     }
 
-    func testNoReadingWithoutEyes() {
-        XCTAssertNil(Geometry.reading(eyes(span: 0, midY: 540), camera: camera, setup: Setup()))
+    @Test func noReadingWithoutEyes() {
+        #expect(Geometry.reading(eyes(span: 0, midY: 540), camera: camera, setup: Setup()) == nil)
     }
 }
 
-final class AdviceTests: XCTestCase {
+@Suite struct AdviceTests {
     func reading(_ d: Double, _ h: Double) -> PostureReading {
         PostureReading(distanceCm: d, eyeAboveScreenTopCm: h, eyeHeightAboveDeskCm: 0)
     }
 
-    func testEachAdjustmentGetsOneSentenceWithANumber() {
+    @Test func eachAdjustmentGetsOneSentenceWithANumber() {
         let advice = AdviceEngine.advise(reading(45, 15))
-        XCTAssertEqual(advice.map(\.sentence), [
+        #expect(advice.map(\.sentence) == [
             "Distance: move the screen 15 cm further away.",
             "Screen: raise 10 cm.",
         ])
     }
 
-    func testTooFarAndScreenTooHigh() {
+    @Test func tooFarAndScreenTooHigh() {
         let advice = AdviceEngine.advise(reading(80, -3))
-        XCTAssertEqual(advice[0].sentence, "Distance: move the screen 20 cm closer.")
-        XCTAssertEqual(advice[1].sentence, "Screen: lower 8 cm.")
+        #expect(advice[0].sentence == "Distance: move the screen 20 cm closer.")
+        #expect(advice[1].sentence == "Screen: lower 8 cm.")
     }
 
-    func testGoodPostureNeedsNoAdjustment() {
+    @Test func goodPostureNeedsNoAdjustment() {
         let advice = AdviceEngine.advise(reading(62, 4))
-        XCTAssertEqual(advice.map(\.status), [.good, .good])
+        #expect(advice.map(\.status) == [.good, .good])
     }
 }
 
-final class ConfigTests: XCTestCase {
-    func testStarterFileHasOneStandingDeskSetupWithDefaults() {
+@Suite struct ConfigTests {
+    @Test func starterFileHasOneStandingDeskSetupWithDefaults() {
         let c = DeskConfig(text: DeskConfig.starterContents)
-        XCTAssertEqual(c.setupNames, ["Standing desk"])
-        XCTAssertEqual(c.activeSetupName, "Standing desk")
+        #expect(c.setupNames == ["Standing desk"])
+        #expect(c.activeSetupName == "Standing desk")
         let p = c.activeProfile
-        XCTAssertEqual(p.camera, .auto)
-        XCTAssertEqual(p.measurements.screenTop, 45)
-        XCTAssertTrue(p.supportsStandingPreset)
-        XCTAssertFalse(c.showPreview)
-        XCTAssertFalse(c.autoSwitch)
+        #expect(p.camera == .auto)
+        #expect(p.measurements.screenTop == 45)
+        #expect(p.supportsStandingPreset)
+        #expect(!(c.showPreview))
+        #expect(!(c.autoSwitch))
     }
 
-    func testAFileWithNoSetupsShowsADefaultSetup() {
+    @Test func aFileWithNoSetupsShowsADefaultSetup() {
         let c = DeskConfig(text: "# old file\n[preferences]\npreview = true\n")
-        XCTAssertEqual(c.setupNames, ["Standing desk"])
+        #expect(c.setupNames == ["Standing desk"])
     }
 
-    func testMeasuredValuesReplaceDefaultsAndSurviveASave() {
+    @Test func measuredValuesReplaceDefaultsAndSurviveASave() {
         var c = DeskConfig(text: DeskConfig.starterContents)
         var p = c.activeProfile
         p.measurements = Setup(screenDistanceCm: 58.5, screenTopHeightCm: 47, lensOffsetCm: 2, userHeightCm: 181, seatedEyeHeightCm: 41)
         c.save(p)
         let reread = DeskConfig(text: c.document.text).activeProfile
-        XCTAssertEqual(reread.measurements, p.measurements)
-        XCTAssertTrue(c.document.text.contains("# Delete a measurement line to go back to the default estimate"))
+        #expect(reread.measurements == p.measurements)
+        #expect(c.document.text.contains("# Delete a measurement line to go back to the default estimate"))
     }
 
-    func testHandWrittenCommentsAndOtherKeysSurviveAnEdit() {
+    @Test func handWrittenCommentsAndOtherKeysSurviveAnEdit() {
         let text = """
         # my own note
         [setups."Desk"]
@@ -151,11 +152,11 @@ final class ConfigTests: XCTestCase {
         p.measurements.screenTopHeightCm = 50
         p.measurements.lensOffsetCm = 2
         c.save(p)
-        XCTAssertTrue(c.document.text.contains("# my own note"))
-        XCTAssertTrue(c.document.text.contains("screen_top_height_cm = 50 # tape, Monday"))
-        XCTAssertTrue(c.document.text.contains("custom_key = \"keep me\""))
-        XCTAssertEqual(c.profile(named: "Desk").measurements.lensOffsetCm, 2)
-        XCTAssertTrue(c.showPreview)
+        #expect(c.document.text.contains("# my own note"))
+        #expect(c.document.text.contains("screen_top_height_cm = 50 # tape, Monday"))
+        #expect(c.document.text.contains("custom_key = \"keep me\""))
+        #expect(c.profile(named: "Desk").measurements.lensOffsetCm == 2)
+        #expect(c.showPreview)
     }
 
     // MARK: Setups (captain's requirement: a standing desk with an external camera and a MacBook on a normal desk)
@@ -168,175 +169,189 @@ final class ConfigTests: XCTestCase {
         c.save(desk)
         var mac = SetupProfile.laptop(name: "MacBook")
         mac.measurements = Setup(screenDistanceCm: 45, screenTopHeightCm: 22)
-        XCTAssertTrue(c.addSetup(mac))
+        let outcome1 = c.addSetup(mac)
+        #expect(outcome1)
         return c
     }
 
-    func testTwoSetupsKeepTheirOwnCameraScreenAndMeasurements() {
+    @Test func twoSetupsKeepTheirOwnCameraScreenAndMeasurements() {
         let c = DeskConfig(text: twoSetups().document.text)
-        XCTAssertEqual(c.setupNames, ["Standing desk", "MacBook"])
+        #expect(c.setupNames == ["Standing desk", "MacBook"])
         let desk = c.profile(named: "Standing desk"), mac = c.profile(named: "MacBook")
-        XCTAssertEqual(desk.camera, .named("HD Pro Webcam C920"))
-        XCTAssertEqual(desk.measurements.screenTopHeightCm, 50)
-        XCTAssertEqual(mac.camera, .builtIn)
-        XCTAssertEqual(mac.screen, "MacBook")
-        XCTAssertEqual(mac.measurements.screenTopHeightCm, 22)
-        XCTAssertEqual(mac.measurements.lensOffset, 0.5, "built-in camera defaults apply until measured")
-        XCTAssertEqual(desk.measurements.lensOffset, 2)
+        #expect(desk.camera == .named("HD Pro Webcam C920"))
+        #expect(desk.measurements.screenTopHeightCm == 50)
+        #expect(mac.camera == .builtIn)
+        #expect(mac.screen == "MacBook")
+        #expect(mac.measurements.screenTopHeightCm == 22)
+        #expect(mac.measurements.lensOffset == 0.5, "built-in camera defaults apply until measured")
+        #expect(desk.measurements.lensOffset == 2)
     }
 
-    func testSeatedOnlySetupHasNoStandingPresetAndFixedAdjustments() {
+    @Test func seatedOnlySetupHasNoStandingPresetAndFixedAdjustments() {
         let c = DeskConfig(text: twoSetups().document.text)
         let mac = c.profile(named: "MacBook")
-        XCTAssertFalse(mac.supportsStandingPreset)
-        XCTAssertEqual(mac.fixed, [.deskHeight, .screenHeight])
-        XCTAssertTrue(c.profile(named: "Standing desk").supportsStandingPreset)
-        XCTAssertTrue(c.document.text.contains("desk_height = \"fixed\""))
+        #expect(!(mac.supportsStandingPreset))
+        #expect(mac.fixed == [.deskHeight, .screenHeight])
+        #expect(c.profile(named: "Standing desk").supportsStandingPreset)
+        #expect(c.document.text.contains("desk_height = \"fixed\""))
     }
 
-    func testFixedAdjustmentIsReportedNotAdvised() {
+    @Test func fixedAdjustmentIsReportedNotAdvised() {
         let r = PostureReading(distanceCm: 45, eyeAboveScreenTopCm: 15, eyeHeightAboveDeskCm: 0)
         let advice = AdviceEngine.advise(r, fixed: [.screenHeight])
-        XCTAssertEqual(advice[0].status, .adjust)
-        XCTAssertEqual(advice[1].status, .fixed)
-        XCTAssertEqual(advice[1].sentence, "Screen height is fixed in this setup; your eyes are 15 cm above its top edge.")
+        #expect(advice[0].status == .adjust)
+        #expect(advice[1].status == .fixed)
+        #expect(advice[1].sentence == "Screen height is fixed in this setup; your eyes are 15 cm above its top edge.")
     }
 
-    func testLastUsedSetupIsRemembered() {
+    @Test func lastUsedSetupIsRemembered() {
         var c = twoSetups()
         c.activeSetupName = "MacBook"
-        XCTAssertEqual(DeskConfig(text: c.document.text).activeSetupName, "MacBook")
+        #expect(DeskConfig(text: c.document.text).activeSetupName == "MacBook")
         c.activeSetupName = "Gone"   // a setup that no longer exists falls back to the first
-        XCTAssertEqual(DeskConfig(text: c.document.text).activeSetupName, "Standing desk")
+        #expect(DeskConfig(text: c.document.text).activeSetupName == "Standing desk")
     }
 
-    func testRenameDuplicateAndDelete() {
+    @Test func renameDuplicateAndDelete() {
         var c = twoSetups()
         c.activeSetupName = "MacBook"
-        XCTAssertTrue(c.renameSetup("MacBook", to: "Sofa"))
-        XCTAssertEqual(c.activeSetupName, "Sofa", "renaming the active setup keeps it active")
-        XCTAssertEqual(c.profile(named: "Sofa").camera, .builtIn)
-        XCTAssertTrue(c.duplicateSetup("Standing desk", as: "Standing desk 2"))
-        XCTAssertEqual(c.setupNames, ["Standing desk", "Standing desk 2", "Sofa"])
-        XCTAssertEqual(c.profile(named: "Standing desk 2"), SetupProfile(name: "Standing desk 2", camera: .named("HD Pro Webcam C920"), screen: "external", measurements: c.profile(named: "Standing desk").measurements))
-        XCTAssertTrue(c.deleteSetup("Sofa"))
-        XCTAssertEqual(c.activeSetupName, "Standing desk")
-        XCTAssertEqual(c.setupNames, ["Standing desk", "Standing desk 2"])
-        XCTAssertTrue(c.deleteSetup("Standing desk 2"))
-        XCTAssertFalse(c.deleteSetup("Standing desk"), "the last setup stays")
+        let outcome2 = c.renameSetup("MacBook", to: "Sofa")
+        #expect(outcome2)
+        #expect(c.activeSetupName == "Sofa", "renaming the active setup keeps it active")
+        #expect(c.profile(named: "Sofa").camera == .builtIn)
+        let duplicated1 = c.duplicateSetup("Standing desk", as: "Standing desk 2")
+        #expect(duplicated1)
+        #expect(c.setupNames == ["Standing desk", "Standing desk 2", "Sofa"])
+        #expect(c.profile(named: "Standing desk 2") == SetupProfile(name: "Standing desk 2", camera: .named("HD Pro Webcam C920"), screen: "external", measurements: c.profile(named: "Standing desk").measurements))
+        let outcome3 = c.deleteSetup("Sofa")
+        #expect(outcome3)
+        #expect(c.activeSetupName == "Standing desk")
+        #expect(c.setupNames == ["Standing desk", "Standing desk 2"])
+        let outcome4 = c.deleteSetup("Standing desk 2")
+        #expect(outcome4)
+        let outcome5 = c.deleteSetup("Standing desk")
+        #expect(!(outcome5), "the last setup stays")
     }
 
-    func testNamesMustBeNewAndNotEmpty() {
+    @Test func namesMustBeNewAndNotEmpty() {
         var c = twoSetups()
-        XCTAssertFalse(c.addSetup(.external(name: "")))
-        XCTAssertFalse(c.addSetup(.external(name: "MacBook")))
-        XCTAssertFalse(c.renameSetup("MacBook", to: "Standing desk"))
-        XCTAssertFalse(c.duplicateSetup("MacBook", as: " "))
-        XCTAssertEqual(c.setupNames.count, 2)
+        let outcome6 = c.addSetup(.external(name: ""))
+        #expect(!(outcome6))
+        let outcome7 = c.addSetup(.external(name: "MacBook"))
+        #expect(!(outcome7))
+        let outcome8 = c.renameSetup("MacBook", to: "Standing desk")
+        #expect(!(outcome8))
+        let duplicated2 = c.duplicateSetup("MacBook", as: " ")
+        #expect(!(duplicated2))
+        #expect(c.setupNames.count == 2)
     }
 
-    func testSetupNameWithQuotesAndDotsRoundTrips() {
+    @Test func setupNameWithQuotesAndDotsRoundTrips() {
         var c = DeskConfig(text: DeskConfig.starterContents)
-        XCTAssertTrue(c.addSetup(.laptop(name: "Mum's \"sofa\" v1.2")))
-        XCTAssertEqual(DeskConfig(text: c.document.text).setupNames, ["Standing desk", "Mum's \"sofa\" v1.2"])
+        let outcome9 = c.addSetup(.laptop(name: "Mum's \"sofa\" v1.2"))
+        #expect(outcome9)
+        #expect(DeskConfig(text: c.document.text).setupNames == ["Standing desk", "Mum's \"sofa\" v1.2"])
     }
 
-    func testDuplicateKeepsCommentsOfTheCopiedSetup() {
+    @Test func duplicateKeepsCommentsOfTheCopiedSetup() {
         var c = DeskConfig(text: DeskConfig.starterContents)
-        XCTAssertTrue(c.duplicateSetup("Standing desk", as: "Copy"))
-        XCTAssertEqual(c.document.text.components(separatedBy: "# Top edge of the screen above the desk surface").count - 1, 2)
+        let duplicated3 = c.duplicateSetup("Standing desk", as: "Copy")
+        #expect(duplicated3)
+        #expect(c.document.text.components(separatedBy: "# Top edge of the screen above the desk surface").count - 1 == 2)
     }
 
     // MARK: Auto-suggest
 
-    func testExternalWebcamPluggedInSuggestsTheStandingDeskSetup() {
+    @Test func externalWebcamPluggedInSuggestsTheStandingDeskSetup() {
         var c = twoSetups()
         c.activeSetupName = "MacBook"
-        XCTAssertEqual(c.suggestedSetup(externalCameras: ["HD Pro Webcam C920"], builtInCameras: ["MacBook Pro Camera"]), "Standing desk")
+        #expect(c.suggestedSetup(externalCameras: ["HD Pro Webcam C920"], builtInCameras: ["MacBook Pro Camera"]) == "Standing desk")
     }
 
-    func testUnpluggingTheWebcamSuggestsTheMacBookSetup() {
+    @Test func unpluggingTheWebcamSuggestsTheMacBookSetup() {
         let c = twoSetups()
-        XCTAssertEqual(c.suggestedSetup(externalCameras: [], builtInCameras: ["MacBook Pro Camera"]), "MacBook")
+        #expect(c.suggestedSetup(externalCameras: [], builtInCameras: ["MacBook Pro Camera"]) == "MacBook")
     }
 
-    func testTheSetupInUseIsKeptWhenItStillFits() {
+    @Test func theSetupInUseIsKeptWhenItStillFits() {
         var c = twoSetups()
         c.activeSetupName = "Standing desk"
-        XCTAssertEqual(c.suggestedSetup(externalCameras: ["HD Pro Webcam C920"], builtInCameras: []), "Standing desk")
+        #expect(c.suggestedSetup(externalCameras: ["HD Pro Webcam C920"], builtInCameras: []) == "Standing desk")
     }
 
-    func testNoCameraSuggestsNothing() {
-        XCTAssertNil(twoSetups().suggestedSetup(externalCameras: [], builtInCameras: []))
+    @Test func noCameraSuggestsNothing() {
+        #expect(twoSetups().suggestedSetup(externalCameras: [], builtInCameras: []) == nil)
     }
 
     // MARK: Calibration stays per camera
 
-    func testCalibrationIsPerWebcamAndSharedByEverySetupUsingIt() {
+    @Test func calibrationIsPerWebcamAndSharedByEverySetupUsingIt() {
         var c = twoSetups()
         c.setCalibration(WebcamCalibration(focalWidths: 0.7812, pitchDegrees: -2.5), forWebcam: "HD Pro Webcam C920")
         c.setCalibration(WebcamCalibration(focalWidths: 0.9), forWebcam: "MacBook Pro Camera")
         let r = DeskConfig(text: c.document.text)
-        XCTAssertEqual(r.calibration(forWebcam: "HD Pro Webcam C920"), WebcamCalibration(focalWidths: 0.7812, pitchDegrees: -2.5))
-        XCTAssertEqual(r.calibration(forWebcam: "MacBook Pro Camera").focalWidths, 0.9)
-        XCTAssertEqual(r.calibration(forWebcam: "Other"), WebcamCalibration())
+        #expect(r.calibration(forWebcam: "HD Pro Webcam C920") == WebcamCalibration(focalWidths: 0.7812, pitchDegrees: -2.5))
+        #expect(r.calibration(forWebcam: "MacBook Pro Camera").focalWidths == 0.9)
+        #expect(r.calibration(forWebcam: "Other") == WebcamCalibration())
         var copy = r
-        XCTAssertTrue(copy.duplicateSetup("Standing desk", as: "Standing desk 2"))
-        XCTAssertEqual(copy.calibration(forWebcam: "HD Pro Webcam C920").focalWidths, 0.7812)
-        XCTAssertTrue(copy.deleteSetup("Standing desk 2"))
-        XCTAssertEqual(copy.calibration(forWebcam: "HD Pro Webcam C920").focalWidths, 0.7812, "deleting a setup keeps calibration")
+        let duplicated4 = copy.duplicateSetup("Standing desk", as: "Standing desk 2")
+        #expect(duplicated4)
+        #expect(copy.calibration(forWebcam: "HD Pro Webcam C920").focalWidths == 0.7812)
+        let outcome10 = copy.deleteSetup("Standing desk 2")
+        #expect(outcome10)
+        #expect(copy.calibration(forWebcam: "HD Pro Webcam C920").focalWidths == 0.7812, "deleting a setup keeps calibration")
     }
 
-    func testUncalibratedWebcamFallsBackToATypicalFieldOfView() {
+    @Test func uncalibratedWebcamFallsBackToATypicalFieldOfView() {
         let c = DeskConfig(text: DeskConfig.starterContents)
-        XCTAssertEqual(c.camera(forWebcam: "x", fieldOfViewDegrees: 90).focalWidths, 0.5, accuracy: 0.001)
-        XCTAssertEqual(c.camera(forWebcam: "x", fieldOfViewDegrees: nil).focalWidths, CameraModel(fieldOfViewDegrees: 70).focalWidths, accuracy: 0.001)
+        #expect(abs((c.camera(forWebcam: "x", fieldOfViewDegrees: 90).focalWidths) - (0.5)) <= 0.001)
+        #expect(abs((c.camera(forWebcam: "x", fieldOfViewDegrees: nil).focalWidths) - (CameraModel(fieldOfViewDegrees: 70).focalWidths)) <= 0.001)
     }
 
-    func testNonNumbersAndNonPositiveValuesCountAsNotMeasured() {
+    @Test func nonNumbersAndNonPositiveValuesCountAsNotMeasured() {
         let c = DeskConfig(text: "[setups.\"A\"]\nscreen_top_height_cm = \"tall\"\nlens_offset_cm = -3\nuser_height_cm = 180")
         let m = c.profile(named: "A").measurements
-        XCTAssertNil(m.screenTopHeightCm)
-        XCTAssertNil(m.lensOffsetCm)
-        XCTAssertEqual(m.userHeightCm, 180)
+        #expect(m.screenTopHeightCm == nil)
+        #expect(m.lensOffsetCm == nil)
+        #expect(m.userHeightCm == 180)
     }
 
-    func testWebcamNameWithQuotesRoundTrips() {
+    @Test func webcamNameWithQuotesRoundTrips() {
         var c = DeskConfig(text: "")
         c.setCalibration(WebcamCalibration(focalWidths: 0.8), forWebcam: "Cam \"Pro\" 2")
-        XCTAssertEqual(DeskConfig(text: c.document.text).calibration(forWebcam: "Cam \"Pro\" 2").focalWidths, 0.8)
+        #expect(DeskConfig(text: c.document.text).calibration(forWebcam: "Cam \"Pro\" 2").focalWidths == 0.8)
     }
 }
 
-final class TOMLLayoutTests: XCTestCase {
-    func testMeasuredValueTakesTheCommentedTemplateLine() {
+@Suite struct TOMLLayoutTests {
+    @Test func measuredValueTakesTheCommentedTemplateLine() {
         var c = DeskConfig(text: DeskConfig.starterContents)
         var p = c.activeProfile
         p.measurements.screenTopHeightCm = 52
         c.save(p)
         let text = c.document.text
-        XCTAssertTrue(text.contains("# Top edge of the screen above the desk surface (default 45; 24 for the built-in screen).\nscreen_top_height_cm = 52\n"))
-        XCTAssertFalse(text.contains("# screen_top_height_cm"))
+        #expect(text.contains("# Top edge of the screen above the desk surface (default 45; 24 for the built-in screen).\nscreen_top_height_cm = 52\n"))
+        #expect(!(text.contains("# screen_top_height_cm")))
     }
 
-    func testNewSectionsStayAfterTheirOwnIntroducingComment() {
+    @Test func newSectionsStayAfterTheirOwnIntroducingComment() {
         var c = DeskConfig(text: DeskConfig.starterContents)
         c.setCalibration(WebcamCalibration(focalWidths: 0.8), forWebcam: "Cam")
-        XCTAssertTrue(c.document.text.contains("# pitch_degrees = 0\n\n[webcams.\"Cam\"]\nfocal_widths = 0.8"))
+        #expect(c.document.text.contains("# pitch_degrees = 0\n\n[webcams.\"Cam\"]\nfocal_widths = 0.8"))
     }
 }
 
 /// Intent source: the Desk Check rename requires existing Desk Undo settings to carry over,
 /// so users keep their setups, tape measurements and webcam calibration.
-final class ConfigMigrationTests: XCTestCase {
+@Suite struct ConfigMigrationTests {
     func scratch() throws -> URL {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("desk-check-migration-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        defer { try? FileManager.default.removeItem(at: dir) }
         return dir
     }
 
-    func testOldSettingsAreCopiedAndLeftInPlace() throws {
+    @Test func oldSettingsAreCopiedAndLeftInPlace() throws {
         let root = try scratch()
         let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
         try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
@@ -344,12 +359,12 @@ final class ConfigMigrationTests: XCTestCase {
         legacyConfig.autoSwitch = true
         let legacyText = legacyConfig.document.text
         try legacyText.write(to: old.appendingPathComponent("config.toml"), atomically: false, encoding: .utf8)
-        XCTAssertFalse(try ConfigLocation.ensureStarterFile(in: new, legacy: old))
-        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), legacyText)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: old.appendingPathComponent("config.toml").path))
+        #expect(!(try ConfigLocation.ensureStarterFile(in: new, legacy: old)))
+        #expect(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8) == legacyText)
+        #expect(FileManager.default.fileExists(atPath: old.appendingPathComponent("config.toml").path))
     }
 
-    func testNewSettingsAreNeverOverwrittenByOldOnes() throws {
+    @Test func newSettingsAreNeverOverwrittenByOldOnes() throws {
         let root = try scratch()
         let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
         let oldConfig = DeskConfig(text: DeskConfig.starterContents)
@@ -360,18 +375,18 @@ final class ConfigMigrationTests: XCTestCase {
             try config.document.text.write(to: dir.appendingPathComponent("config.toml"), atomically: false, encoding: .utf8)
         }
         try ConfigLocation.ensureStarterFile(in: new, legacy: old)
-        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), newConfig.document.text)
+        #expect(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8) == newConfig.document.text)
     }
 
-    func testNoOldSettingsWritesTheStarterFile() throws {
+    @Test func noOldSettingsWritesTheStarterFile() throws {
         let root = try scratch()
         let new = root.appendingPathComponent("desk-check")
-        XCTAssertTrue(try ConfigLocation.ensureStarterFile(in: new, legacy: root.appendingPathComponent("desk-undo")))
-        XCTAssertEqual(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8), DeskConfig.starterContents)
+        #expect(try ConfigLocation.ensureStarterFile(in: new, legacy: root.appendingPathComponent("desk-undo")))
+        #expect(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8) == DeskConfig.starterContents)
     }
 
     /// Intent source: the captain asked Desk Check to retry rather than replace unreadable legacy settings.
-    func testUnreadableLegacySettingsAreNotReplacedByStarterFile() throws {
+    @Test func unreadableLegacySettingsAreNotReplacedByStarterFile() throws {
         let root = try scratch()
         let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
         try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
@@ -386,9 +401,9 @@ final class ConfigMigrationTests: XCTestCase {
         }
         try fm.setAttributes([.posixPermissions: 0], ofItemAtPath: oldFile.path)
 
-        XCTAssertThrowsError(try ConfigLocation.ensureStarterFile(in: new, legacy: old)) { error in
-            XCTAssertTrue(error.localizedDescription.contains("Legacy settings exist but cannot be read"))
-        }
-        XCTAssertFalse(fm.fileExists(atPath: new.appendingPathComponent("config.toml").path))
+        #expect(performing: { try ConfigLocation.ensureStarterFile(in: new, legacy: old) }, throws: { error in
+            error.localizedDescription.contains("Legacy settings exist but cannot be read")
+        })
+        #expect(!(fm.fileExists(atPath: new.appendingPathComponent("config.toml").path)))
     }
 }

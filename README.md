@@ -63,7 +63,7 @@ Read the permissions back with
 
 ```sh
 scripts/build-app.sh 0.3.0 .build/app            # build and sign .build/app/DeskCheck.app
-swift test                                       # core tests and offscreen view pictures
+swift test                                       # core tests and offscreen view pictures (Swift Testing, no Xcode needed)
 Tests/verify-app.sh .build/app/DeskCheck.app     # check the built app's permissions
 Tests/sandbox-probe.sh                           # check the sandbox rules through the kernel
 sh Tests/build-settings-sandbox-app.sh <new-dir> # disposable sandboxed Settings test app
@@ -73,6 +73,11 @@ sh Tests/build-settings-sandbox-app.sh <new-dir> # disposable sandboxed Settings
 pictures of the popover, Live and Settings. The Settings test app saves a picture of its
 window to `SettingsSandboxTest/snapshots` in its container when sent `SIGUSR1`.
 Each script's header explains its use.
+
+The tests use Swift Testing, so `swift test` works with the command line tools alone. With the
+command line tools, an incremental build can sometimes fail with "plugin for module 'TestingMacros'
+not found"; run the command again, or pass
+`-Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`.
 
 ## Credits
 
