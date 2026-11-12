@@ -21,9 +21,9 @@ import Testing
         let midY = 540 + focalPx * (4.0 / 62)
         let r = try #require(Geometry.reading(eyes(span: span, midY: midY), camera: camera,
                                                setup: Setup(screenTopHeightCm: 50, lensOffsetCm: 1.5)))
-        #expect(abs((r.distanceCm) - (62)) <= 0.1)
-        #expect(abs((r.eyeAboveScreenTopCm) - (5.5)) <= 0.2)   // 1.5 lens offset + 4 above the lens
-        #expect(abs((r.eyeHeightAboveDeskCm) - (55.5)) <= 0.2)
+        #expect(abs(r.distanceCm - 62) <= 0.1)
+        #expect(abs(r.eyeAboveScreenTopCm - 5.5) <= 0.2)   // 1.5 lens offset + 4 above the lens
+        #expect(abs(r.eyeHeightAboveDeskCm - 55.5) <= 0.2)
     }
 
     @Test func movingTheScreen5cmChangesTheReadingBy5cm() throws {
@@ -31,7 +31,7 @@ import Testing
         func read(_ d: Double) -> Double {
             Geometry.reading(eyes(span: focalPx * 6.3 / d, midY: 540), camera: camera, setup: Setup())!.distanceCm
         }
-        #expect(abs((read(67) - read(62)) - (5)) <= 0.1)
+        #expect(abs((read(67) - read(62)) - 5) <= 0.1)
     }
 
     @Test func turnedHeadDoesNotReadAsFarther() throws {
@@ -39,7 +39,7 @@ import Testing
         let yaw = 0.35
         let span = focalPx * 6.3 / 60 * cos(yaw)
         let r = try #require(Geometry.reading(eyes(span: span, midY: 540, yaw: yaw), camera: camera, setup: Setup()))
-        #expect(abs((r.distanceCm) - (60)) <= 0.1)
+        #expect(abs(r.distanceCm - 60) <= 0.1)
     }
 
     @Test func focalCalibrationFixesAWrongFieldOfView() throws {
@@ -51,11 +51,11 @@ import Testing
         #expect(abs(before.distanceCm - 55) > 3, "uncalibrated reading is off by more than the limit")
         let focal = try #require(Geometry.calibrateFocal(frame, tapeDistanceCm: 55))
         let after = try #require(Geometry.reading(frame, camera: CameraModel(focalWidths: focal), setup: Setup()))
-        #expect(abs((after.distanceCm) - (55)) <= 0.1)
+        #expect(abs(after.distanceCm - 55) <= 0.1)
         // And the calibrated camera reads a different distance correctly.
         let moved = eyes(span: real.focalWidths * 1920 * 6.3 / 70, midY: 540)
         let reading = try #require(Geometry.reading(moved, camera: CameraModel(focalWidths: focal), setup: Setup()))
-        #expect(abs((reading.distanceCm) - (70)) <= 0.1)
+        #expect(abs(reading.distanceCm - 70) <= 0.1)
     }
 
     @Test func pitchCalibrationRecoversTiltedLens() throws {
@@ -67,10 +67,10 @@ import Testing
         let frame = eyes(span: focalPx * 6.3 / 60, midY: midY)
         let pitch = try #require(Geometry.calibratePitch(frame, focalWidths: camera.focalWidths, tapeDistanceCm: 60,
                                                          lensHeightAboveDeskCm: 40, eyeHeightAboveDeskCm: 48))
-        #expect(abs((pitch) - (tilt)) <= 0.002)
+        #expect(abs(pitch - tilt) <= 0.002)
         let r = try #require(Geometry.reading(frame, camera: CameraModel(focalWidths: camera.focalWidths, pitch: pitch),
                                                setup: Setup(screenTopHeightCm: 39, lensOffsetCm: 1)))
-        #expect(abs((r.eyeHeightAboveDeskCm) - (48)) <= 0.3)
+        #expect(abs(r.eyeHeightAboveDeskCm - 48) <= 0.3)
     }
 
     @Test func medianIgnoresOneBadFrame() {
@@ -169,8 +169,8 @@ import Testing
         c.save(desk)
         var mac = SetupProfile.laptop(name: "MacBook")
         mac.measurements = Setup(screenDistanceCm: 45, screenTopHeightCm: 22)
-        let outcome1 = c.addSetup(mac)
-        #expect(outcome1)
+        let added = c.addSetup(mac)
+        #expect(added)
         return c
     }
 
@@ -215,48 +215,48 @@ import Testing
     @Test func renameDuplicateAndDelete() {
         var c = twoSetups()
         c.activeSetupName = "MacBook"
-        let outcome2 = c.renameSetup("MacBook", to: "Sofa")
-        #expect(outcome2)
+        let renamed = c.renameSetup("MacBook", to: "Sofa")
+        #expect(renamed)
         #expect(c.activeSetupName == "Sofa", "renaming the active setup keeps it active")
         #expect(c.profile(named: "Sofa").camera == .builtIn)
-        let duplicated1 = c.duplicateSetup("Standing desk", as: "Standing desk 2")
-        #expect(duplicated1)
+        let duplicated = c.duplicateSetup("Standing desk", as: "Standing desk 2")
+        #expect(duplicated)
         #expect(c.setupNames == ["Standing desk", "Standing desk 2", "Sofa"])
         #expect(c.profile(named: "Standing desk 2") == SetupProfile(name: "Standing desk 2", camera: .named("HD Pro Webcam C920"), screen: "external", measurements: c.profile(named: "Standing desk").measurements))
-        let outcome3 = c.deleteSetup("Sofa")
-        #expect(outcome3)
+        let deleted = c.deleteSetup("Sofa")
+        #expect(deleted)
         #expect(c.activeSetupName == "Standing desk")
         #expect(c.setupNames == ["Standing desk", "Standing desk 2"])
-        let outcome4 = c.deleteSetup("Standing desk 2")
-        #expect(outcome4)
-        let outcome5 = c.deleteSetup("Standing desk")
-        #expect(!(outcome5), "the last setup stays")
+        let deleted2 = c.deleteSetup("Standing desk 2")
+        #expect(deleted2)
+        let deleted3 = c.deleteSetup("Standing desk")
+        #expect(!(deleted3), "the last setup stays")
     }
 
     @Test func namesMustBeNewAndNotEmpty() {
         var c = twoSetups()
-        let outcome6 = c.addSetup(.external(name: ""))
-        #expect(!(outcome6))
-        let outcome7 = c.addSetup(.external(name: "MacBook"))
-        #expect(!(outcome7))
-        let outcome8 = c.renameSetup("MacBook", to: "Standing desk")
-        #expect(!(outcome8))
-        let duplicated2 = c.duplicateSetup("MacBook", as: " ")
-        #expect(!(duplicated2))
+        let added = c.addSetup(.external(name: ""))
+        #expect(!(added))
+        let added2 = c.addSetup(.external(name: "MacBook"))
+        #expect(!(added2))
+        let renamed = c.renameSetup("MacBook", to: "Standing desk")
+        #expect(!(renamed))
+        let duplicated = c.duplicateSetup("MacBook", as: " ")
+        #expect(!(duplicated))
         #expect(c.setupNames.count == 2)
     }
 
     @Test func setupNameWithQuotesAndDotsRoundTrips() {
         var c = DeskConfig(text: DeskConfig.starterContents)
-        let outcome9 = c.addSetup(.laptop(name: "Mum's \"sofa\" v1.2"))
-        #expect(outcome9)
+        let added = c.addSetup(.laptop(name: "Mum's \"sofa\" v1.2"))
+        #expect(added)
         #expect(DeskConfig(text: c.document.text).setupNames == ["Standing desk", "Mum's \"sofa\" v1.2"])
     }
 
     @Test func duplicateKeepsCommentsOfTheCopiedSetup() {
         var c = DeskConfig(text: DeskConfig.starterContents)
-        let duplicated3 = c.duplicateSetup("Standing desk", as: "Copy")
-        #expect(duplicated3)
+        let duplicated = c.duplicateSetup("Standing desk", as: "Copy")
+        #expect(duplicated)
         #expect(c.document.text.components(separatedBy: "# Top edge of the screen above the desk surface").count - 1 == 2)
     }
 
@@ -294,18 +294,18 @@ import Testing
         #expect(r.calibration(forWebcam: "MacBook Pro Camera").focalWidths == 0.9)
         #expect(r.calibration(forWebcam: "Other") == WebcamCalibration())
         var copy = r
-        let duplicated4 = copy.duplicateSetup("Standing desk", as: "Standing desk 2")
-        #expect(duplicated4)
+        let duplicated = copy.duplicateSetup("Standing desk", as: "Standing desk 2")
+        #expect(duplicated)
         #expect(copy.calibration(forWebcam: "HD Pro Webcam C920").focalWidths == 0.7812)
-        let outcome10 = copy.deleteSetup("Standing desk 2")
-        #expect(outcome10)
+        let deleted = copy.deleteSetup("Standing desk 2")
+        #expect(deleted)
         #expect(copy.calibration(forWebcam: "HD Pro Webcam C920").focalWidths == 0.7812, "deleting a setup keeps calibration")
     }
 
     @Test func uncalibratedWebcamFallsBackToATypicalFieldOfView() {
         let c = DeskConfig(text: DeskConfig.starterContents)
-        #expect(abs((c.camera(forWebcam: "x", fieldOfViewDegrees: 90).focalWidths) - (0.5)) <= 0.001)
-        #expect(abs((c.camera(forWebcam: "x", fieldOfViewDegrees: nil).focalWidths) - (CameraModel(fieldOfViewDegrees: 70).focalWidths)) <= 0.001)
+        #expect(abs(c.camera(forWebcam: "x", fieldOfViewDegrees: 90).focalWidths - 0.5) <= 0.001)
+        #expect(abs(c.camera(forWebcam: "x", fieldOfViewDegrees: nil).focalWidths - CameraModel(fieldOfViewDegrees: 70).focalWidths) <= 0.001)
     }
 
     @Test func nonNumbersAndNonPositiveValuesCountAsNotMeasured() {
@@ -347,12 +347,12 @@ import Testing
     func scratch() throws -> URL {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("desk-check-migration-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: dir) }
         return dir
     }
 
     @Test func oldSettingsAreCopiedAndLeftInPlace() throws {
         let root = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
         let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
         try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
         var legacyConfig = DeskConfig(text: DeskConfig.starterContents)
@@ -366,6 +366,7 @@ import Testing
 
     @Test func newSettingsAreNeverOverwrittenByOldOnes() throws {
         let root = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
         let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
         let oldConfig = DeskConfig(text: DeskConfig.starterContents)
         var newConfig = DeskConfig(text: DeskConfig.starterContents)
@@ -380,6 +381,7 @@ import Testing
 
     @Test func noOldSettingsWritesTheStarterFile() throws {
         let root = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
         let new = root.appendingPathComponent("desk-check")
         #expect(try ConfigLocation.ensureStarterFile(in: new, legacy: root.appendingPathComponent("desk-undo")))
         #expect(try String(contentsOf: new.appendingPathComponent("config.toml"), encoding: .utf8) == DeskConfig.starterContents)
@@ -388,6 +390,7 @@ import Testing
     /// Intent source: the captain asked Desk Check to retry rather than replace unreadable legacy settings.
     @Test func unreadableLegacySettingsAreNotReplacedByStarterFile() throws {
         let root = try scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
         let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
         try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
         let oldFile = old.appendingPathComponent("config.toml")
@@ -401,9 +404,8 @@ import Testing
         }
         try fm.setAttributes([.posixPermissions: 0], ofItemAtPath: oldFile.path)
 
-        #expect(performing: { try ConfigLocation.ensureStarterFile(in: new, legacy: old) }, throws: { error in
-            error.localizedDescription.contains("Legacy settings exist but cannot be read")
-        })
+        let error = #expect(throws: (any Error).self) { try ConfigLocation.ensureStarterFile(in: new, legacy: old) }
+        #expect(error?.localizedDescription.contains("Legacy settings exist but cannot be read") == true)
         #expect(!(fm.fileExists(atPath: new.appendingPathComponent("config.toml").path)))
     }
 }

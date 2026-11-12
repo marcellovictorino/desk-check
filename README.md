@@ -63,7 +63,7 @@ Read the permissions back with
 
 ```sh
 scripts/build-app.sh 0.3.0 .build/app            # build and sign .build/app/DeskCheck.app
-swift test                                       # core tests and offscreen view pictures (Swift Testing, no Xcode needed)
+swift test                                       # core tests and offscreen view pictures
 Tests/verify-app.sh .build/app/DeskCheck.app     # check the built app's permissions
 Tests/sandbox-probe.sh                           # check the sandbox rules through the kernel
 sh Tests/build-settings-sandbox-app.sh <new-dir> # disposable sandboxed Settings test app

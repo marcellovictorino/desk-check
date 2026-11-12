@@ -68,8 +68,8 @@ import DeskCheckCore
                        title: "Settings load warning", width: 520, swiftUI: false, to: directory)
         // Intent: selecting a settings file must keep the Settings controls readable in both native appearances.
         var selectedConfig = config
-        let outcome1 = selectedConfig.renameSetup(selectedConfig.activeSetupName, to: "Chosen desk")
-        #expect(outcome1)
+        let renamed = selectedConfig.renameSetup(selectedConfig.activeSetupName, to: "Chosen desk")
+        #expect(renamed)
         try selectedConfig.document.text.write(to: fixture, atomically: false, encoding: .utf8)
         try settingsFile.choose(fixture)
         checker.reloadSetups()
@@ -111,7 +111,7 @@ import DeskCheckCore
         defer { window.close() }
         host.layoutSubtreeIfNeeded()
         let size = host.fittingSize
-        #expect(abs((size.width) - (width)) <= 1)
+        #expect(abs(size.width - width) <= 1)
         #expect(size.height > 100)
         host.setFrameSize(size)
         window.setContentSize(size)

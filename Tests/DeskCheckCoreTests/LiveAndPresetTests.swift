@@ -65,7 +65,7 @@ import Testing
     }
 
     @Test func eyeToElbowDefaultsFromHeight() {
-        #expect(abs((Setup(userHeightCm: 180).eyeToElbow) - (54)) <= 0.01)
+        #expect(abs((Setup(userHeightCm: 180).eyeToElbow) - 54) <= 0.01)
         #expect(Setup(userHeightCm: 180, eyeToElbowCm: 49).eyeToElbow == 49)
     }
 }
@@ -77,7 +77,7 @@ import Testing
         var avg = RollingAverage(window: 1.0, minimumCount: 3)
         for (i, d) in [100.0, 60, 62, 61].enumerated() { avg.add(r(d), at: 5.0 + Double(i) * 0.35) }
         // The 100 cm frame at t=5.0 is more than a second older than t=6.05.
-        #expect(abs((avg.average?.distanceCm ?? 0) - (61)) <= 0.01)
+        #expect(abs((avg.average?.distanceCm ?? 0) - 61) <= 0.01)
     }
 
     @Test func showsNothingUntilEnoughFrames() {
@@ -94,7 +94,7 @@ import Testing
         var avg = RollingAverage()
         // Frames flicker either side of 74 cm, the edge of green; the averaged number sits in the middle.
         for (i, d) in [73.0, 75, 73, 75, 73, 75].enumerated() { avg.add(r(d), at: Double(i) * 0.15) }
-        #expect(abs((avg.average?.distanceCm ?? 0) - (74)) <= 0.5)
+        #expect(abs((avg.average?.distanceCm ?? 0) - 74) <= 0.5)
     }
 }
 
@@ -105,8 +105,8 @@ import Testing
         desk.presets[.sit] = DeskPreset(deskHeightCm: 72, distanceCm: 60, eyeAboveScreenTopCm: -1.5)
         desk.presets[.stand] = DeskPreset(deskHeightCm: 112)
         c.save(desk)
-        let outcome1 = c.addSetup(.laptop(name: "Sofa"))
-        #expect(outcome1)
+        let added = c.addSetup(.laptop(name: "Sofa"))
+        #expect(added)
         var reread = DeskConfig(text: c.document.text)
         #expect(reread.profile(named: "Standing desk").presets[.sit] == DeskPreset(deskHeightCm: 72, distanceCm: 60, eyeAboveScreenTopCm: -1.5))
         #expect(reread.profile(named: "Standing desk").presets[.stand]?.deskHeightCm == 112)
@@ -120,8 +120,8 @@ import Testing
         var p = SetupProfile.laptop(name: "Sofa")
         p.presets[.sit] = DeskPreset(deskHeightCm: 74)
         p.presets[.stand] = DeskPreset(deskHeightCm: 110)
-        let outcome2 = c.addSetup(p)
-        #expect(outcome2)
+        let added = c.addSetup(p)
+        #expect(added)
         let back = c.profile(named: "Sofa")
         #expect(back.presets[.sit] != nil)
         #expect(back.presets[.stand] == nil)
@@ -157,28 +157,28 @@ import Testing
 @Suite struct LiveRunTests {
     @Test func stopWhenIdleDoesNothingAndNeverStarts() {
         var run = LiveRun()
-        let outcome3 = run.stop()
-        #expect(!(outcome3))
+        let stopped = run.stop()
+        #expect(!(stopped))
         #expect(!(run.isRunning))
     }
 
     @Test func secondQuickStopIsANoOp() {
         var run = LiveRun()
-        let outcome4 = run.start()
-        #expect(outcome4 != nil)
-        let outcome5 = run.stop()
-        #expect(outcome5)
-        let outcome6 = run.stop()
-        #expect(!(outcome6), "the second click of a double click must find nothing to stop")
+        let started = run.start()
+        #expect(started != nil)
+        let stopped = run.stop()
+        #expect(stopped)
+        let stopped2 = run.stop()
+        #expect(!(stopped2), "the second click of a double click must find nothing to stop")
         #expect(!(run.isRunning))
     }
 
     @Test func startWhileRunningIsRefused() {
         var run = LiveRun()
-        let outcome7 = run.start()
-        #expect(outcome7 != nil)
-        let outcome8 = run.start()
-        #expect(outcome8 == nil)
+        let started = run.start()
+        #expect(started != nil)
+        let started2 = run.start()
+        #expect(started2 == nil)
     }
 
     @Test func lateCallbackFromStoppedSessionIsRejectedAfterRestart() {
