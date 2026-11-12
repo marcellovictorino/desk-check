@@ -4,7 +4,7 @@ A macOS menu bar app (Swift Package, no Xcode project) that reads where your eye
 
 ## The gate
 
-Run `scripts/check.sh` before every pull request. CI runs the same script, so a pass here is a pass there. It stops at the first failing step and names it:
+Run `scripts/check.sh` before every pull request. The pull request workflow is meant to run this same script, so a pass here is a pass there. It stops at the first failing step and names it:
 
 1. `swift format lint --strict --recursive Sources Tests` (style: `.swift-format`; fix with `swift format -i --recursive Sources Tests`)
 2. `swift test`
