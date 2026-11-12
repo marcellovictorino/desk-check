@@ -1,6 +1,6 @@
 # Desk Check's Homebrew formula has one source: this file in the desk-check repository.
 # The tap (marcellovictorino/homebrew-tap) copies it at each release tag and fills in its own
-# url, sha256 and revision. Here the url and checksum are placeholders; change install,
+# url, sha256 and revision. In desk-check the url and checksum are placeholders; change install,
 # test and caveats in desk-check, never in the tap.
 # Desk Check is built on the person's own Mac during `brew install`, with Apple's
 # command line tools. Built here, it is signed ad hoc for this Mac and opens without
