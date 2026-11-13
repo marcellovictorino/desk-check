@@ -19,7 +19,7 @@ let home = ConfigLocation.realHomeDirectory
 let fm = FileManager.default
 
 expect(NSHomeDirectory().contains("/Library/Containers/"), "running inside the App Sandbox container")
-expect(ConfigLocation.file.path == home.path + "/.config/desk-check/config.toml",
+expect(MainActor.assumeIsolated { ConfigLocation.file.path } == home.path + "/.config/desk-check/config.toml",
        "config path is in the real home folder, not the container")
 
 // Config folder: create it if needed, write, read back, remove the probe file.
