@@ -95,7 +95,12 @@ import Testing
         try await save(PopoverView(checker: busy, version: "0.3.2").content, capture: Capture(file: "checking.png",
             renderer: "SwiftUI ImageRenderer", limitation: popover.limitation + " The run is simulated; no camera opens. ImageRenderer draws the spinning wheel as a placeholder icon."),
             title: "Checking", width: 320, swiftUI: true, to: directory)
+        // Intent: the result may show while the camera closes, but no new camera run may start until it is off.
         busy.isRunning = false
+        busy.cameraOpen = true
+        #expect(busy.isBusy)
+        busy.cameraOpen = false
+        #expect(!busy.isBusy)
         #expect(!(warningChecker.isRunning))
         #expect(checker.showingSettings)
         #expect(!(checker.isRunning))

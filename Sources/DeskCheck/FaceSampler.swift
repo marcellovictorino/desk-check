@@ -60,7 +60,10 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
         }
     }
 
-    func run(device: AVCaptureDevice, completion: @escaping @Sendable (SampleResult?, String?) -> Void) {
+    /// `completion` gets the result as soon as it is ready; `onStopped` follows once the camera is really off, and is not
+    /// called when the camera could not open.
+    func run(device: AVCaptureDevice, completion: @escaping @Sendable (SampleResult?, String?) -> Void,
+             onStopped: @escaping @Sendable () -> Void) {
         let session = AVCaptureSession()
         do {
             session.addInput(try AVCaptureDeviceInput(device: device))
@@ -87,6 +90,7 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
             completion(result, nil)
             session.stopRunning()
             log.notice("camera timing: stopped after \(self.elapsedMs(), privacy: .public) ms")
+            onStopped()
         }
     }
 

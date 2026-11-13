@@ -99,7 +99,7 @@ final class LiveController: ObservableObject {
             average.add(r, at: time)
             if let avg = average.average {
                 lastSteady = LiveSnapshot(reading: avg, time: time, setupName: profile.name, cameraName: cameraName,
-                                          measurements: profile.measurements)
+                                          measurements: profile.measurements, camera: camera)
                 advice = LiveEngine.advise(avg, setup: profile.measurements, fixed: profile.fixed)
                 statusText = "Camera on (\(profile.name)). Updating about every second."
             }

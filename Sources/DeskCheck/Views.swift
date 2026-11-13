@@ -51,7 +51,7 @@ struct PopoverView: View {
                     Picker("Setup", selection: Binding(get: { checker.activeSetup }, set: { checker.selectSetup($0) })) {
                         ForEach(checker.setupNames, id: \.self) { Text($0).tag($0) }
                     }
-                    .labelsHidden().fixedSize().disabled(checker.isRunning)
+                    .labelsHidden().fixedSize().disabled(checker.isBusy)
                 } else {
                     Text(checker.activeSetup).font(.caption).foregroundStyle(.secondary)
                 }
@@ -96,11 +96,11 @@ struct PopoverView: View {
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button("Check desk") { checker.check() }
-                    .disabled(checker.isRunning || checker.settingsWarning != nil)
+                    .disabled(checker.isBusy || checker.settingsWarning != nil)
                     .keyboardShortcut(.defaultAction)
                     .glassButton(prominent: true)
                 Button("Live") { live.start() }
-                    .disabled(checker.isRunning || checker.settingsWarning != nil)
+                    .disabled(checker.isBusy || checker.settingsWarning != nil)
                     .glassButton()
                 Spacer()
             }
@@ -141,9 +141,9 @@ extension PopoverView {
                     HStack {
                         Text("\(posture.label): \(Int(preset.deskHeightCm.rounded())) cm on the tape").font(.callout)
                         Spacer()
-                        Button("Confirm") { checker.confirmPreset(posture) }.disabled(checker.isRunning || preset.distanceCm == nil)
+                        Button("Confirm") { checker.confirmPreset(posture) }.disabled(checker.isBusy || preset.distanceCm == nil)
                             .glassButton()
-                        Button("Remember view") { checker.rememberView(posture) }.disabled(checker.isRunning)
+                        Button("Remember view") { checker.rememberView(posture) }.disabled(checker.isBusy)
                             .glassButton()
                         if checker.isRunning { ProgressView().controlSize(.small) }
                     }
@@ -344,7 +344,7 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack {
                     Button("Calibrate webcam") { if save() { checker.calibrate() } }
-                        .disabled(checker.isRunning || checker.webcamName == nil)
+                        .disabled(checker.isBusy || checker.webcamName == nil)
                         .glassButton()
                     if checker.isRunning { ProgressView().controlSize(.small) }
                 }
@@ -368,7 +368,7 @@ struct SettingsView: View {
                 .font(.caption).textSelection(.enabled).lineLimit(2)
             HStack {
                 Button("Choose settings file…") { chooseSettingsFile() }.glassButton()
-                    .disabled(checker.isRunning)
+                    .disabled(checker.isBusy)
                 Button("Open config file") { openConfigFile() }.glassButton()
                     .disabled(checker.settingsWarning != nil)
             }

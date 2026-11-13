@@ -21,8 +21,10 @@ the camera once more after an upgrade, because the permission is tied to the exa
 
 ## What it does
 
-- **Check desk** opens the camera for about two seconds, finds your eyes and gives one
-  sentence per adjustment, for example "Screen: lower 8 cm."
+- **Check desk** opens the camera for a few seconds, finds your eyes and gives one
+  sentence per adjustment, for example "Screen: lower 8 cm." A spinner shows while it
+  works. Pressed within 10 seconds of Live, with nothing changed, it reuses Live's
+  reading instead and does not open the camera.
 - **Setups** keep a camera, screen and tape measurements per place you work, such as a
   standing desk and a MacBook. Desk Check can switch setup when a webcam is plugged in.
 - **Presets** remember the sit and stand desk heights you read off the desk leg, and
