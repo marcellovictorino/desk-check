@@ -79,7 +79,7 @@ Each script's header explains its use.
 The tests use Swift Testing, so `swift test` works with the command line tools alone. With the
 command line tools, an incremental build can sometimes fail with "plugin for module 'TestingMacros'
 not found"; run the command again, or pass
-`-Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`.
+`-Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`. `scripts/check.sh` does both.
 
 ## Credits
 

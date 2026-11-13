@@ -7,7 +7,7 @@ A macOS menu bar app (Swift Package, no Xcode project) that reads where your eye
 Run `scripts/check.sh` before every pull request. The pull request workflow is meant to run this same script, so a pass here is a pass there. It stops at the first failing step and names it:
 
 1. `swift format lint --strict --recursive Sources Tests` (style: `.swift-format`; fix with `swift format -i --recursive Sources Tests`)
-2. `swift test`
+2. `swift test`, passing the active toolchain's testing plugins folder with `-Xswiftc -plugin-path`; it retries once, and says so, only when the build reports "plugin for module 'TestingMacros' not found"
 3. `sh scripts/test-next-version.sh` (the release version rules)
 4. `scripts/build-app.sh 0.0.0-ci <temp folder>` (real build, signed ad hoc with the sandbox entitlements)
 5. `Tests/verify-app.sh <app>` (permissions the README promises)
