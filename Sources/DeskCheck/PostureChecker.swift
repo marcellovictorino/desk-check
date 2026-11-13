@@ -159,18 +159,18 @@ final class PostureChecker: NSObject, ObservableObject {
         let profile = config.activeProfile
         let readings = result.samples.compactMap { Geometry.reading($0, camera: camera, setup: profile.measurements) }
         guard let median = Geometry.median(readings) else {
-            finish("No face found. Sit facing the screen with your face lit. The camera is off.")
+            finish(CheckOutcome.noFace)
             return
         }
         reading = median
         advice = AdviceEngine.advise(median, fixed: profile.fixed)
         calibrationNote = config.calibration(forWebcam: result.cameraName).focalWidths == nil
-            ? "This webcam is not calibrated, so distances are estimates. Calibrate it in Settings." : nil
+            ? CheckOutcome.notCalibratedNote : nil
         let line = String(format: "distance=%.1f eyeAboveTop=%.1f eyeHeight=%.1f frames=%d", median.distanceCm,
                           median.eyeAboveScreenTopCm, median.eyeHeightAboveDeskCm, readings.count)
         log.notice("check \(line, privacy: .public)")
         let passed = advice.allSatisfy { $0.status != .adjust }
-        var message = (passed ? "Desk check passed" : "Checked") + " for \(profile.name) with \(result.cameraName). The camera is off."
+        var message = CheckOutcome.checked(passed: passed, setupName: profile.name, cameraName: result.cameraName)
         switch mode {
         case .remember(let posture): message = remember(median, posture: posture, config: config, profile: profile)
         case .confirm(let posture): message = confirm(median, posture: posture, profile: profile)
@@ -180,73 +180,38 @@ final class PostureChecker: NSObject, ObservableObject {
     }
 
     private func remember(_ r: PostureReading, posture: Posture, config: DeskConfig, profile: SetupProfile) -> String {
-        guard var preset = profile.presets[posture] else {
-            return "Enter the \(posture.label.lowercased()) desk height from the tape in Settings first. The camera is off."
-        }
-        preset.distanceCm = r.distanceCm
-        preset.eyeAboveScreenTopCm = r.eyeAboveScreenTopCm
-        var p = profile
-        p.presets[posture] = preset
-        var updated = config
-        updated.save(p)
-        do { try settings.save(updated) } catch { return "Could not save: \(error.localizedDescription)" }
+        let outcome = CheckOutcome.remember(r, posture: posture, config: config, profile: profile)
+        guard let updated = outcome.config else { return outcome.message }
+        do { try settings.save(updated) } catch { return CheckOutcome.saveFailed(error.localizedDescription) }
         presetNote = nil
-        return "Remembered \(posture.label.lowercased()) at \(Int(preset.deskHeightCm.rounded())) cm for \(profile.name). The camera is off."
+        return outcome.message
     }
 
     private func confirm(_ r: PostureReading, posture: Posture, profile: SetupProfile) -> String {
-        guard let preset = profile.presets[posture] else { return "No \(posture.label.lowercased()) preset in this setup. The camera is off." }
-        switch preset.confirm(r) {
-        case .confirmed: presetNote = "\(posture.label) confirmed at \(Int(preset.deskHeightCm.rounded())) cm."
-        case .differs(let why): presetNote = why
-        case .notRemembered: presetNote = "Use Remember view at \(Int(preset.deskHeightCm.rounded())) cm first, so there is something to confirm."
-        }
-        return "Camera is off."
+        let outcome = CheckOutcome.confirm(r, posture: posture, profile: profile)
+        presetNote = outcome.note
+        return outcome.message
     }
 
     private func finishCalibration(_ result: SampleResult) {
         var config = settings.load()
-        let setup = config.activeProfile.measurements
-        guard let tape = setup.screenDistanceCm else { finish("Enter your tape-measured screen distance first."); return }
-        let focals = result.samples.compactMap { Geometry.calibrateFocal($0, tapeDistanceCm: tape) }
-        guard let focal = Self.median(focals) else {
-            finish("No face found, so nothing was calibrated. The camera is off.")
-            return
-        }
-        var calibration = WebcamCalibration(focalWidths: focal, pitchDegrees: 0)
-        var text = String(format: "Calibrated %@ at %.0f cm.", result.cameraName, tape)
-        if let top = setup.screenTopHeightCm, let eye = setup.seatedEyeHeightCm {
-            let lens = top + setup.lensOffset
-            let pitches = result.samples.compactMap {
-                Geometry.calibratePitch($0, focalWidths: focal, tapeDistanceCm: tape, lensHeightAboveDeskCm: lens, eyeHeightAboveDeskCm: eye)
+        let outcome = CheckOutcome.calibrate(result.samples, setup: config.activeProfile.measurements, cameraName: result.cameraName)
+        if case .calibrated(let calibration, let text) = outcome {
+            config.setCalibration(calibration, forWebcam: result.cameraName)
+            do {
+                try settings.save(config)
+                lastCalibrationText = text
+                log.notice("calibration saved \(text, privacy: .public)")
+            } catch {
+                lastCalibrationText = "Could not save the calibration: \(error.localizedDescription)"
             }
-            if let pitch = Self.median(pitches) {
-                calibration.pitchDegrees = pitch * 180 / .pi
-                text += String(format: " Lens tilt %.1f°.", calibration.pitchDegrees ?? 0)
-            }
-        } else {
-            text += " Tilt not calibrated: add screen top height and seated eye height."
         }
-        config.setCalibration(calibration, forWebcam: result.cameraName)
-        do {
-            try settings.save(config)
-            lastCalibrationText = text
-            log.notice("calibration saved \(text, privacy: .public)")
-        } catch {
-            lastCalibrationText = "Could not save the calibration: \(error.localizedDescription)"
-        }
-        finish("\(text) The camera is off.")
+        finish(outcome.message)
     }
 
     private func finish(_ message: String) {
         statusText = message
         isRunning = false
-    }
-
-    private static func median(_ v: [Double]) -> Double? {
-        guard !v.isEmpty else { return nil }
-        let s = v.sorted()
-        return s.count % 2 == 1 ? s[s.count / 2] : (s[s.count / 2 - 1] + s[s.count / 2]) / 2
     }
 
     static func describe(_ status: AVAuthorizationStatus) -> String {

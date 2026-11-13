@@ -124,13 +124,17 @@ public enum Geometry {
         return abs(pitch) < 30 * .pi / 180 ? pitch : nil
     }
 
+    /// The middle value of many, so one bad value cannot move the result. Nil when there are none.
+    public static func median(_ values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+        let s = values.sorted()
+        return s.count % 2 == 1 ? s[s.count / 2] : (s[s.count / 2 - 1] + s[s.count / 2]) / 2
+    }
+
     /// The middle reading of many frames, so one bad frame cannot move the result.
     public static func median(_ readings: [PostureReading]) -> PostureReading? {
         guard !readings.isEmpty else { return nil }
-        func mid(_ values: [Double]) -> Double {
-            let s = values.sorted()
-            return s.count % 2 == 1 ? s[s.count / 2] : (s[s.count / 2 - 1] + s[s.count / 2]) / 2
-        }
+        func mid(_ values: [Double]) -> Double { median(values) ?? 0 }
         return PostureReading(distanceCm: mid(readings.map(\.distanceCm)),
                               eyeAboveScreenTopCm: mid(readings.map(\.eyeAboveScreenTopCm)),
                               eyeHeightAboveDeskCm: mid(readings.map(\.eyeHeightAboveDeskCm)))
