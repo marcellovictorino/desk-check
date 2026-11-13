@@ -3,7 +3,7 @@ import QuartzCore
 import SwiftUI
 import Foundation
 import Testing
-import DeskCheckCore
+@testable import DeskCheckCore
 @testable import DeskCheck
 
 /// Intent source: save offscreen pictures of the popover, Live and Settings for cards.
@@ -80,6 +80,27 @@ import DeskCheckCore
                        title: "Chosen settings, light appearance", width: 520, swiftUI: false, to: directory)
         try await save(PopoverView(checker: checker).content, capture: selectedDark,
                        title: "Chosen settings, dark appearance", width: 520, swiftUI: false, to: directory, scheme: .dark)
+        // Intent (DESK-71 option B): while any camera run is under way the old result is gone and a spinner with
+        // "Checking" shows; the same run next to Remember view and Confirm shows a spinner too.
+        let busy = PostureChecker(settings: settingsFile)
+        busy.showingSettings = false
+        busy.reading = PostureReading(distanceCm: 60, eyeAboveScreenTopCm: 2, eyeHeightAboveDeskCm: 50)
+        busy.advice = AdviceEngine.advise(busy.reading!, fixed: [])
+        try await save(PopoverView(checker: busy, version: "0.3.2").content, capture: Capture(file: "idle-with-result.png",
+            renderer: "SwiftUI ImageRenderer", limitation: popover.limitation + " Result tiles are sample values."),
+            title: "Previous result shown", width: 320, swiftUI: true, to: directory)
+        busy.enterRunning()
+        #expect(busy.isRunning)
+        #expect(busy.reading == nil && busy.advice.isEmpty, "the previous result must be gone while a new reading is taken")
+        try await save(PopoverView(checker: busy, version: "0.3.2").content, capture: Capture(file: "checking.png",
+            renderer: "SwiftUI ImageRenderer", limitation: popover.limitation + " The run is simulated; no camera opens. ImageRenderer draws the spinning wheel as a placeholder icon."),
+            title: "Checking", width: 320, swiftUI: true, to: directory)
+        // Intent: the result may show while the camera closes, but no new camera run may start until it is off.
+        busy.isRunning = false
+        busy.cameraOpen = true
+        #expect(busy.isBusy)
+        busy.cameraOpen = false
+        #expect(!busy.isBusy)
         #expect(!(warningChecker.isRunning))
         #expect(checker.showingSettings)
         #expect(!(checker.isRunning))

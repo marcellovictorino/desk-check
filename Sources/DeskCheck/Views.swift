@@ -51,7 +51,7 @@ struct PopoverView: View {
                     Picker("Setup", selection: Binding(get: { checker.activeSetup }, set: { checker.selectSetup($0) })) {
                         ForEach(checker.setupNames, id: \.self) { Text($0).tag($0) }
                     }
-                    .labelsHidden().fixedSize().disabled(checker.isRunning)
+                    .labelsHidden().fixedSize().disabled(checker.isBusy)
                 } else {
                     Text(checker.activeSetup).font(.caption).foregroundStyle(.secondary)
                 }
@@ -65,7 +65,9 @@ struct PopoverView: View {
                     .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
             }
             if let preview = checker.preview { PreviewView(frame: preview) }
-            if let r = checker.reading {
+            if checker.isRunning {
+                CheckingRow()
+            } else if let r = checker.reading {
                 GlassGroup(spacing: 6) {
                     VStack(spacing: 6) {
                         ForEach(Array(checker.advice.enumerated()), id: \.offset) { _, item in
@@ -94,11 +96,11 @@ struct PopoverView: View {
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button("Check desk") { checker.check() }
-                    .disabled(checker.isRunning || checker.settingsWarning != nil)
+                    .disabled(checker.isBusy || checker.settingsWarning != nil)
                     .keyboardShortcut(.defaultAction)
                     .glassButton(prominent: true)
                 Button("Live") { live.start() }
-                    .disabled(checker.isRunning || checker.settingsWarning != nil)
+                    .disabled(checker.isBusy || checker.settingsWarning != nil)
                     .glassButton()
                 Spacer()
             }
@@ -139,14 +141,30 @@ extension PopoverView {
                     HStack {
                         Text("\(posture.label): \(Int(preset.deskHeightCm.rounded())) cm on the tape").font(.callout)
                         Spacer()
-                        Button("Confirm") { checker.confirmPreset(posture) }.disabled(checker.isRunning || preset.distanceCm == nil)
+                        Button("Confirm") { checker.confirmPreset(posture) }.disabled(checker.isBusy || preset.distanceCm == nil)
                             .glassButton()
-                        Button("Remember view") { checker.rememberView(posture) }.disabled(checker.isRunning)
+                        Button("Remember view") { checker.rememberView(posture) }.disabled(checker.isBusy)
                             .glassButton()
+                        if checker.isRunning { ProgressView().controlSize(.small) }
                     }
                 }
             }
         }
+    }
+}
+
+/// Shown where the result tiles go while the camera is reading, so the screen never looks idle.
+struct CheckingRow: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+            Text(CheckOutcome.checkingText).font(.callout)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10).padding(.vertical, 7)
+        .glassTile(tint: .gray)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -326,7 +344,7 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack {
                     Button("Calibrate webcam") { if save() { checker.calibrate() } }
-                        .disabled(checker.isRunning || checker.webcamName == nil)
+                        .disabled(checker.isBusy || checker.webcamName == nil)
                         .glassButton()
                     if checker.isRunning { ProgressView().controlSize(.small) }
                 }
@@ -350,7 +368,7 @@ struct SettingsView: View {
                 .font(.caption).textSelection(.enabled).lineLimit(2)
             HStack {
                 Button("Choose settings file…") { chooseSettingsFile() }.glassButton()
-                    .disabled(checker.isRunning)
+                    .disabled(checker.isBusy)
                 Button("Open config file") { openConfigFile() }.glassButton()
                     .disabled(checker.settingsWarning != nil)
             }

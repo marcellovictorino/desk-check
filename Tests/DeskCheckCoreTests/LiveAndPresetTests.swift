@@ -208,3 +208,47 @@ import Testing
         #expect(LiveLayout.bandAreaHeight(rows: 9) == LiveLayout.bandAreaHeight(rows: 3))
     }
 }
+
+/// Intent source: DESK-71 option B. A Check pressed within about 10 s of Live reuses Live's steady reading;
+/// anything older, or from another setup, webcam or tape measurement, must not stand in for the current desk.
+@Suite struct LiveReuseTests {
+    let setup = Setup(userHeightCm: 175, eyeToElbowCm: 50)
+    let model = CameraModel(fieldOfViewDegrees: 70)
+    let reading = PostureReading(distanceCm: 60, eyeAboveScreenTopCm: 2, eyeHeightAboveDeskCm: 53)
+
+    func snapshot(at time: Double = 100) -> LiveSnapshot {
+        LiveSnapshot(reading: reading, time: time, setupName: "Home", cameraName: "C920", measurements: setup, camera: model)
+    }
+
+    @Test func freshMatchingReadingIsUsed() {
+        #expect(snapshot().ageIfUsable(now: 103, setupName: "Home", cameraName: "C920", measurements: setup, camera: model) == 3)
+        #expect(snapshot().ageIfUsable(now: 110, setupName: "Home", cameraName: "C920", measurements: setup, camera: model) == 10)
+    }
+
+    @Test func olderReadingIsNotUsed() {
+        #expect(snapshot().ageIfUsable(now: 110.5, setupName: "Home", cameraName: "C920", measurements: setup, camera: model) == nil)
+    }
+
+    @Test func otherSetupCameraOrMeasurementsAreNotUsed() {
+        #expect(snapshot().ageIfUsable(now: 101, setupName: "Office", cameraName: "C920", measurements: setup, camera: model) == nil)
+        #expect(snapshot().ageIfUsable(now: 101, setupName: "Home", cameraName: "Built-in", measurements: setup, camera: model) == nil)
+        var moved = setup; moved.userHeightCm = 180
+        #expect(snapshot().ageIfUsable(now: 101, setupName: "Home", cameraName: "C920", measurements: moved, camera: model) == nil)
+    }
+
+    @Test func recalibratedWebcamIsNotUsed() {
+        #expect(snapshot().ageIfUsable(now: 101, setupName: "Home", cameraName: "C920", measurements: setup,
+                                       camera: CameraModel(fieldOfViewDegrees: 60)) == nil)
+    }
+
+    @Test func aClockBeforeTheReadingIsNotUsed() {
+        #expect(snapshot(at: 100).ageIfUsable(now: 99, setupName: "Home", cameraName: "C920", measurements: setup, camera: model) == nil)
+    }
+
+    @Test func messageSaysWhenTheReadingCameFromLive() {
+        #expect(CheckOutcome.checked(passed: true, setupName: "Home", cameraName: "C920", reusedSecondsAgo: 4)
+            == "Desk check passed for Home with C920. Used the Live reading from 4 s ago. The camera is off.")
+        #expect(CheckOutcome.checked(passed: false, setupName: "Home", cameraName: "C920")
+            == "Checked for Home with C920. The camera is off.")
+    }
+}

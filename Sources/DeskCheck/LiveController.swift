@@ -32,6 +32,9 @@ final class LiveController: ObservableObject {
     private var profile = SetupProfile.external(name: "")
     private var camera = CameraModel(fieldOfViewDegrees: DeskConfig.typicalFieldOfViewDegrees)
     private var lastFace = 0.0
+    private var cameraName = ""
+    /// The last steady average, kept after Live stops so a Check pressed soon after can reuse it.
+    private(set) var lastSteady: LiveSnapshot?
     private var timeout: Task<Void, Never>?
 
     func start() {
@@ -70,7 +73,8 @@ final class LiveController: ObservableObject {
             return
         }
         camera = config.camera(forWebcam: device.localizedName, fieldOfViewDegrees: nil)
-        average.reset(); advice = []
+        cameraName = device.localizedName
+        average.reset(); advice = []; lastSteady = nil
         lastFace = ProcessInfo.processInfo.systemUptime
         let sampler = LiveSampler { eyes, time in
             Task { @MainActor in if self.run.isCurrent(token) { self.receive(eyes, at: time) } }
@@ -94,11 +98,13 @@ final class LiveController: ObservableObject {
             lastFace = time
             average.add(r, at: time)
             if let avg = average.average {
+                lastSteady = LiveSnapshot(reading: avg, time: time, setupName: profile.name, cameraName: cameraName,
+                                          measurements: profile.measurements, camera: camera)
                 advice = LiveEngine.advise(avg, setup: profile.measurements, fixed: profile.fixed)
                 statusText = "Camera on (\(profile.name)). Updating about every second."
             }
         } else if time - lastFace > 2 {
-            average.reset(); advice = []
+            average.reset(); advice = []; lastSteady = nil
             statusText = "No face found. Look at the screen with your face lit."
         }
     }
