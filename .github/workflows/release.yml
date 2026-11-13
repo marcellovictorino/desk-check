@@ -15,12 +15,18 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    # The same gate as the pull request check; the release waits for it.
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/check.yml
+
   release:
+    needs: check
     # A manual run from another branch must not publish that branch's unmerged commits.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

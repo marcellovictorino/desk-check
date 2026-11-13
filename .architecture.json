@@ -12,7 +12,7 @@
     { "name": "app resources", "path": "Resources", "about": "The app's Info.plist and its App Sandbox entitlements", "group": "Build and release" },
     { "name": "build scripts", "path": "scripts", "about": "Builds and signs DeskCheck.app, the desk-check command, the next-version rule and a local formula test", "group": "Build and release" },
     { "name": "Homebrew formula", "path": "Formula", "about": "Builds the app on the person's Mac during brew install", "group": "Build and release" },
-    { "name": "release workflow", "path": ".github/workflows", "about": "Publishes a release for each merge to main that holds a feat, fix or breaking commit", "group": "Build and release" },
+    { "name": "release workflow", "path": ".github/workflows", "about": "Runs the check gate on every pull request, and publishes a release for each merge to main that holds a feat, fix or breaking commit once the gate passes", "group": "Build and release" },
     { "name": "tests", "path": "Tests", "about": "Core unit tests, offscreen view pictures, a sandbox probe and checks of the built app and command", "group": "Checks" }
   ],
   "outside": [
@@ -33,7 +33,8 @@
     { "from": "build scripts", "to": "Homebrew formula", "why": "installs it through a local test tap and runs brew test" },
     { "from": "Homebrew formula", "to": "build scripts", "why": "runs the app build and installs desk-check.sh as the command that opens or replaces the app" },
     { "from": "Homebrew formula", "to": "tests", "why": "brew test runs the built-app permission check" },
-    { "from": "release workflow", "to": "build scripts", "why": "works out the next version from commits" },
+    { "from": "release workflow", "to": "build scripts", "why": "works out the next version from commits, and runs scripts/check.sh as the gate" },
+    { "from": "release workflow", "to": "tests", "why": "scripts/check.sh runs the unit tests and the built-app checks on a macOS runner" },
     { "from": "release workflow", "to": "GitHub releases", "why": "publishes the release with generated notes" },
     { "from": "release workflow", "to": "Homebrew tap", "why": "starts the tap's update run" },
     { "from": "Homebrew tap", "to": "GitHub releases", "why": "picks up new releases on its own schedule as a backup" },
@@ -99,7 +100,7 @@
       "about": "A merge to main on its way to brew upgrade",
       "states": ["merged", "released", "in the tap"],
       "moves": [
-        { "from": "merged", "to": "released", "why": "a feat, fix or breaking commit since the last tag, at the tip of main", "by": "release workflow" },
+        { "from": "merged", "to": "released", "why": "the check gate passes, and there is a feat, fix or breaking commit since the last tag, at the tip of main", "by": "release workflow" },
         { "from": "released", "to": "in the tap", "why": "the tap's update run picks up the release", "by": "Homebrew tap" }
       ]
     }
