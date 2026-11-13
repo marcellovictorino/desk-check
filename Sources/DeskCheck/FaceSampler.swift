@@ -34,6 +34,9 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
     private var samples: [EyePoints] = []
     private var framesSeen = 0
     private var signalled = false
+    /// Set once the result is delivered; later frames are dropped, so nothing is read after the result.
+    private var finished = false
+    private var startedAt = 0.0
     private let wantPreview: Bool
     private let onPreview: @Sendable (PreviewFrame) -> Void
 
@@ -71,29 +74,41 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
         session.addOutput(output)
         let name = device.localizedName
         sessionQueue.async {
+            self.lock.withLock { self.startedAt = ProcessInfo.processInfo.systemUptime }
             session.startRunning()
+            log.notice("camera timing: started after \(self.elapsedMs(), privacy: .public) ms")
             _ = self.enough.wait(timeout: .now() + Self.timeoutSeconds)
-            session.stopRunning()
-            // The delegate may still be finishing a frame; wait for the frame queue before reading.
-            self.frameQueue.sync {}
-            let result = self.lock.withLock { SampleResult(cameraName: name, fieldOfViewDegrees: nil, samples: self.samples) }
+            // Deliver the result first, then close the camera: closing a USB webcam is slow and the answer does not need it.
+            let result = self.lock.withLock { () -> SampleResult in
+                self.finished = true
+                return SampleResult(cameraName: name, fieldOfViewDegrees: nil, samples: self.samples)
+            }
+            log.notice("camera timing: result after \(self.elapsedMs(), privacy: .public) ms, samples=\(result.samples.count, privacy: .public)")
             completion(result, nil)
+            session.stopRunning()
+            log.notice("camera timing: stopped after \(self.elapsedMs(), privacy: .public) ms")
         }
     }
 
+    private func elapsedMs() -> Int { Int((ProcessInfo.processInfo.systemUptime - lock.withLock { startedAt }) * 1000) }
+
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        let seen = lock.withLock { () -> Int in framesSeen += 1; return framesSeen }
-        guard seen > Self.framesToSkip, let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let (seen, done) = lock.withLock { () -> (Int, Bool) in framesSeen += 1; return (framesSeen, finished) }
+        if seen == 1 { log.notice("camera timing: first frame after \(self.elapsedMs(), privacy: .public) ms") }
+        guard !done, seen > Self.framesToSkip, let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let size = CGSize(width: CVPixelBufferGetWidth(pixels), height: CVPixelBufferGetHeight(pixels))
         guard let eyes = Self.findEyes(in: pixels, size: size) else { return }
         let count = lock.withLock { () -> Int in
-            if samples.count < Self.samplesWanted { samples.append(eyes) }
+            if !finished, samples.count < Self.samplesWanted { samples.append(eyes) }
             return samples.count
         }
-        if wantPreview, seen % 2 == 0 { sendPreview(pixels, eyes: eyes, size: size) }
+        if wantPreview, seen % 2 == 0, !lock.withLock({ finished }) { sendPreview(pixels, eyes: eyes, size: size) }
         if count >= Self.samplesWanted {
             let first = lock.withLock { () -> Bool in defer { signalled = true }; return !signalled }
-            if first { enough.signal() }
+            if first {
+                log.notice("camera timing: enough samples after \(self.elapsedMs(), privacy: .public) ms")
+                enough.signal()
+            }
         }
     }
 

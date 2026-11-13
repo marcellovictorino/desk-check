@@ -9,9 +9,9 @@ final class PostureChecker: NSObject, ObservableObject {
 
     @Published private(set) var permissionText = "unknown"
     @Published private(set) var statusText = "The camera is off."
-    @Published private(set) var isRunning = false
-    @Published private(set) var reading: PostureReading?
-    @Published private(set) var advice: [Advice] = []
+    @Published internal(set) var isRunning = false
+    @Published internal(set) var reading: PostureReading?
+    @Published internal(set) var advice: [Advice] = []
     @Published private(set) var webcamName: String?
     @Published private(set) var calibrationNote: String?
     @Published private(set) var presetNote: String?
@@ -111,9 +111,9 @@ final class PostureChecker: NSObject, ObservableObject {
         _ = settings.load()
         settingsWarning = settings.loadWarning
         guard settingsWarning == nil else { return }
-        isRunning = true
-        preview = nil
-        presetNote = nil
+        pressedAt = ProcessInfo.processInfo.systemUptime
+        if mode == .check, reuseLive(config: settings.load()) { return }
+        enterRunning()
         AVCaptureDevice.requestAccess(for: .video) { granted in
             Task { @MainActor in
                 self.refreshPermission()
@@ -124,6 +124,27 @@ final class PostureChecker: NSObject, ObservableObject {
                 self.begin(mode)
             }
         }
+    }
+
+    private var pressedAt = 0.0
+
+    /// Every camera mode starts from a blank result, so the screen shows that a new reading is under way.
+    func enterRunning() {
+        isRunning = true
+        reading = nil; advice = []; calibrationNote = nil; presetNote = nil; preview = nil
+        statusText = "Starting the camera…"
+    }
+
+    /// A Check pressed soon after Live answers from Live's last steady reading, without opening the camera.
+    private func reuseLive(config: DeskConfig) -> Bool {
+        let profile = config.activeProfile
+        guard let snapshot = live.lastSteady, !live.isRunning,
+              let cameraName = FaceSampler.camera(for: profile.camera)?.localizedName,
+              let age = snapshot.ageIfUsable(now: ProcessInfo.processInfo.systemUptime, setupName: profile.name,
+                                             cameraName: cameraName, measurements: profile.measurements) else { return false }
+        log.notice("check reusing the live reading from \(Int(age * 1000), privacy: .public) ms ago")
+        present(snapshot.reading, cameraName: cameraName, config: config, mode: .check, reusedSecondsAgo: Int(age.rounded()))
+        return true
     }
 
     private func begin(_ mode: Mode) {
@@ -162,15 +183,21 @@ final class PostureChecker: NSObject, ObservableObject {
             finish(CheckOutcome.noFace)
             return
         }
+        log.notice("check samples=\(readings.count, privacy: .public)")
+        present(median, cameraName: result.cameraName, config: config, mode: mode, reusedSecondsAgo: nil)
+    }
+
+    private func present(_ median: PostureReading, cameraName: String, config: DeskConfig, mode: Mode, reusedSecondsAgo: Int?) {
+        let profile = config.activeProfile
         reading = median
         advice = AdviceEngine.advise(median, fixed: profile.fixed)
-        calibrationNote = config.calibration(forWebcam: result.cameraName).focalWidths == nil
+        calibrationNote = config.calibration(forWebcam: cameraName).focalWidths == nil
             ? CheckOutcome.notCalibratedNote : nil
-        let line = String(format: "distance=%.1f eyeAboveTop=%.1f eyeHeight=%.1f frames=%d", median.distanceCm,
-                          median.eyeAboveScreenTopCm, median.eyeHeightAboveDeskCm, readings.count)
+        let line = String(format: "distance=%.1f eyeAboveTop=%.1f eyeHeight=%.1f", median.distanceCm,
+                          median.eyeAboveScreenTopCm, median.eyeHeightAboveDeskCm)
         log.notice("check \(line, privacy: .public)")
         let passed = advice.allSatisfy { $0.status != .adjust }
-        var message = CheckOutcome.checked(passed: passed, setupName: profile.name, cameraName: result.cameraName)
+        var message = CheckOutcome.checked(passed: passed, setupName: profile.name, cameraName: cameraName, reusedSecondsAgo: reusedSecondsAgo)
         switch mode {
         case .remember(let posture): message = remember(median, posture: posture, config: config, profile: profile)
         case .confirm(let posture): message = confirm(median, posture: posture, profile: profile)
@@ -212,6 +239,7 @@ final class PostureChecker: NSObject, ObservableObject {
     private func finish(_ message: String) {
         statusText = message
         isRunning = false
+        log.notice("check finished \(Int((ProcessInfo.processInfo.systemUptime - self.pressedAt) * 1000), privacy: .public) ms after the press")
     }
 
     static func describe(_ status: AVAuthorizationStatus) -> String {

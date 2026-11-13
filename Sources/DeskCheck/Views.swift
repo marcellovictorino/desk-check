@@ -65,7 +65,9 @@ struct PopoverView: View {
                     .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
             }
             if let preview = checker.preview { PreviewView(frame: preview) }
-            if let r = checker.reading {
+            if checker.isRunning {
+                CheckingRow()
+            } else if let r = checker.reading {
                 GlassGroup(spacing: 6) {
                     VStack(spacing: 6) {
                         ForEach(Array(checker.advice.enumerated()), id: \.offset) { _, item in
@@ -143,10 +145,26 @@ extension PopoverView {
                             .glassButton()
                         Button("Remember view") { checker.rememberView(posture) }.disabled(checker.isRunning)
                             .glassButton()
+                        if checker.isRunning { ProgressView().controlSize(.small) }
                     }
                 }
             }
         }
+    }
+}
+
+/// Shown where the result tiles go while the camera is reading, so the screen never looks idle.
+struct CheckingRow: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+            Text(CheckOutcome.checkingText).font(.callout)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10).padding(.vertical, 7)
+        .glassTile(tint: .gray)
+        .accessibilityElement(children: .combine)
     }
 }
 

@@ -8,9 +8,15 @@ public enum CheckOutcome {
         "This webcam is not calibrated, so distances are estimates. Calibrate it in Settings."
 
     /// The status line after a plain check.
-    public static func checked(passed: Bool, setupName: String, cameraName: String) -> String {
-        (passed ? "Desk check passed" : "Checked") + " for \(setupName) with \(cameraName). The camera is off."
+    /// `reusedSecondsAgo` is set when the reading came from a recent Live session and the camera was not opened.
+    public static func checked(passed: Bool, setupName: String, cameraName: String, reusedSecondsAgo: Int? = nil) -> String {
+        let head = (passed ? "Desk check passed" : "Checked") + " for \(setupName) with \(cameraName)."
+        guard let seconds = reusedSecondsAgo else { return head + " The camera is off." }
+        return head + " Used the Live reading from \(seconds) s ago. The camera is off."
     }
+
+    /// Shown in place of the result while a camera run is under way.
+    public static let checkingText = "Checking. Look at the screen."
 
     // MARK: Remember
 

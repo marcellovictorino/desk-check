@@ -41,3 +41,31 @@ public enum LiveLayout {
         return n * rowHeight + (n - 1) * rowSpacing
     }
 }
+
+/// The last steady Live reading, kept so a Check pressed soon after Live can answer without opening the camera.
+public struct LiveSnapshot: Equatable, Sendable {
+    /// How old a Live reading may be and still stand in for a Check.
+    public static let maximumAge = 10.0
+
+    public var reading: PostureReading
+    /// `ProcessInfo.systemUptime` of the newest frame in the average.
+    public var time: TimeInterval
+    public var setupName: String
+    public var cameraName: String
+    /// What the reading was computed from; a changed tape measurement makes it stale.
+    public var measurements: Setup
+
+    public init(reading: PostureReading, time: TimeInterval, setupName: String, cameraName: String, measurements: Setup) {
+        self.reading = reading; self.time = time; self.setupName = setupName
+        self.cameraName = cameraName; self.measurements = measurements
+    }
+
+    /// Its age in seconds when it may stand in for a Check now, else nil: it must be fresh, and come from the same
+    /// setup, webcam and measurements.
+    public func ageIfUsable(now: TimeInterval, setupName: String, cameraName: String, measurements: Setup) -> Double? {
+        let age = now - time
+        guard age >= 0, age <= Self.maximumAge, self.setupName == setupName,
+              self.cameraName == cameraName, self.measurements == measurements else { return nil }
+        return age
+    }
+}
