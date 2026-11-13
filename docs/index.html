@@ -5,153 +5,200 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Desk Check: Undo. Redo. For your desk.</title>
 <meta name="description" content="A macOS menu bar app that uses your webcam to tell you, in centimetres, how to move your screen and desk, and remembers your sitting and standing desk heights.">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light">
 <style>
-:root{--paper:#F6F1E7;--ink:#1F1B16;--muted:#5B5247;--card:#FBF8F1;--line:#D9CFBC;--tape:#F2C230;--btn:#1F1B16;--btnfg:#F6F1E7;--ok:#2E7D32;--warn:#B26A00;--bad:#C62828;--rowfg:#fff;
- --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,monospace}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--paper:#1A1714;--ink:#F6F1E7;--muted:#B5AA9A;--card:#242019;--line:#3A342B;--btn:#F6F1E7;--btnfg:#1A1714;--ok:#66BB6A;--warn:#E0A030;--bad:#EF6B6B;--rowfg:#1A1714}}
-:root[data-theme=dark]{--paper:#1A1714;--ink:#F6F1E7;--muted:#B5AA9A;--card:#242019;--line:#3A342B;--btn:#F6F1E7;--btnfg:#1A1714;--ok:#66BB6A;--warn:#E0A030;--bad:#EF6B6B;--rowfg:#1A1714}
+:root{
+ --bg:#F3EEE5;--surface:#FBF8F2;--stage:#E9E1D3;
+ --ink:#231E18;--ink2:#4A4238;--muted:#6E6355;
+ --line:#DDD3C2;--line2:#C4B8A3;
+ --amber:#B86E10;--amber-text:#9A5A08;--ok:#3E7D3A;
+ --term:#231E18;--termfg:#F3EEE5;--term-amber:#E0A040;--term-btn:#3A322A;
+ --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+ --serif:"New York","Iowan Old Style",Georgia,serif;
+ --mono:ui-monospace,"SF Mono",Menlo,monospace}
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
-.wrap{max-width:960px;margin:0 auto;padding:0 20px}
-section,footer{position:relative;padding:56px 0 48px}
-section::before,footer::before{content:"";position:absolute;left:0;right:0;top:0;height:12px;background:var(--tape);
- background-image:repeating-linear-gradient(90deg,#1F1B16 0 1px,transparent 1px 12px);background-size:100% 6px;background-repeat:no-repeat;background-position:bottom}
-h1{font-size:clamp(40px,8vw,76px);line-height:1;letter-spacing:-.03em;margin:0 0 16px}
-h2{font-size:28px;letter-spacing:-.02em;margin:0 0 16px}
-h3{font-size:18px;margin:0 0 4px}
-p{margin:0 0 12px}
-.muted{color:var(--muted)}
-kbd{display:inline-block;font:600 15px var(--mono);border:1px solid var(--ink);border-bottom-width:3px;border-radius:6px;padding:2px 9px;background:var(--card);margin-right:6px}
-code,.mono{font-family:var(--mono)}
-.install{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0}
-.cmd{font:15px var(--mono);background:var(--btn);color:var(--btnfg);padding:11px 16px;border-radius:8px;user-select:all;overflow-wrap:anywhere}
-button{font:inherit;cursor:pointer}
-.copy{border:1px solid var(--ink);background:transparent;color:var(--ink);border-radius:8px;padding:10px 14px;font-size:15px}
-a{color:var(--ink)}
-.top{position:absolute;top:22px;right:20px;display:flex;gap:8px;z-index:2}
-@media(max-width:760px){.top{position:static;justify-content:flex-end;margin:-40px 0 16px}}
-.top button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;font-size:14px}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+body::before{content:"";display:block;height:14px;opacity:.55;
+ background-image:repeating-linear-gradient(90deg,var(--ink) 0 1px,transparent 1px 10px),repeating-linear-gradient(90deg,var(--ink) 0 1px,transparent 1px 50px);
+ background-size:100% 6px,100% 12px;background-repeat:no-repeat;background-position:top}
+.wrap{max-width:1040px;margin:0 auto;padding-left:24px;padding-right:24px}
+a{color:inherit;text-decoration-color:var(--line2);text-underline-offset:3px}
+a:hover{text-decoration-color:currentColor}
+.nav{display:flex;justify-content:space-between;align-items:center;padding-top:20px;padding-bottom:20px}
+.mark{font-weight:650;text-decoration:none;letter-spacing:-.01em}
+.nav-link{font-size:14px;color:var(--muted);text-decoration:none}
+h1,h2{font-family:var(--serif);font-weight:600;letter-spacing:-.02em}
+h1{font-size:clamp(44px,6.4vw,68px);line-height:.98;margin:0 0 20px}
+h2{font-size:clamp(26px,3.4vw,36px);line-height:1.15;margin:0 0 28px}
+h3{font-size:17px;margin:0 0 6px}
+p{margin:0 0 14px}
+figure{margin:0}
+code{font-family:var(--mono);font-size:.9em}
+.nowrap{white-space:nowrap}
+.eyebrow,.kicker{font:600 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--amber-text);margin:0 0 18px}
+
+/* Hero */
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:48px;align-items:center;padding-top:48px;padding-bottom:88px}
+.hero>*{min-width:0}
+.keys{margin:0 0 20px}
+kbd{display:inline-block;font:600 14px var(--mono);color:var(--ink);background:var(--surface);border:1px solid var(--line2);border-bottom-width:3px;border-radius:7px;padding:3px 10px;margin-right:6px}
+.lede{font-size:20px;color:var(--ink2);max-width:30em;margin-bottom:28px}
+.install{display:flex;align-items:center;gap:10px;background:var(--term);color:var(--termfg);border-radius:10px;padding:8px 8px 8px 16px;max-width:540px}
+.install code,.install .prompt{font-size:14px;line-height:1.6}
+.install code{flex:1;min-width:0;white-space:nowrap;overflow-x:auto;user-select:all}
+.prompt{font-family:var(--mono);color:var(--term-amber)}
+.copy{font:600 13px var(--sans);background:var(--term-btn);color:var(--termfg);border:0;border-radius:7px;padding:8px 14px;cursor:pointer;flex:none}
+.copy:hover{background:#4A4033}
+.req{font-size:14px;color:var(--muted);margin-top:14px}
+.stage{border-radius:6px;padding:40px 24px 22px;background:var(--stage);border:1px solid var(--line)}
 .shots{display:grid;max-width:366px;margin:0 auto}
 .shot{grid-area:1/1;opacity:0;transition:opacity .45s ease}
 .shot.on{opacity:1}
-.shots img,.pic img{display:block;width:100%;height:auto}
-.cap{font:13px var(--mono);color:var(--muted);text-align:center;margin-top:6px}
-.pics{display:grid;grid-template-columns:1fr 1.25fr;gap:24px;align-items:start;margin-top:28px}
-@media(max-width:760px){.pics{grid-template-columns:1fr}}
-.pic figcaption{font-size:15px;color:var(--muted);margin-top:6px}
-figure{margin:0}
-.hero-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:36px;align-items:center}
-@media(max-width:760px){.hero-grid{grid-template-columns:1fr}}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:20px 0}
-.stat{border-left:4px solid var(--tape);padding-left:14px}
-.stat b{display:block;font:600 30px var(--mono)}
-.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px}
-.cols>div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
-ul{padding-left:20px;margin:0 0 12px}
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.shots img,.frame img{display:block;width:100%;height:auto}
+.cap{display:flex;justify-content:center;align-items:center;gap:10px;font:12px var(--mono);color:var(--muted);margin-top:8px}
+.dots{display:inline-flex;gap:5px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--line2)}
+.dots i.on{background:var(--amber)}
+
+/* Sections */
+section{padding-top:88px;padding-bottom:88px}
+section,footer{position:relative}
+section::before,footer::before{content:"";position:absolute;left:24px;right:24px;top:0;height:1px;background:var(--line)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:0 0 32px}
+.stat{border-top:2px solid var(--amber);padding-top:16px}
+.stat b{display:block;font:650 46px/1.05 var(--sans);font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:var(--amber);margin-bottom:8px}
+.stat span{color:var(--ink2);font-size:15px;line-height:1.45;display:block}
+.term{background:var(--term);color:var(--termfg);border-radius:10px;padding:16px 18px;font:14px/1.7 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 20px}
+.term code{font-size:inherit}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.cols>div{border-top:1px solid var(--line2);padding-top:16px}
+.cols p{color:var(--ink2);font-size:15.5px;margin:0}
+.n{display:block;font:600 12px var(--mono);color:var(--amber-text);margin-bottom:14px;letter-spacing:.08em}
+.pics{display:grid;grid-template-columns:1fr 1.25fr;gap:16px;margin-top:40px;align-items:stretch}
+.pic{background:var(--stage);border:1px solid var(--line);border-radius:6px;padding:28px 22px 18px;display:flex;flex-direction:column;justify-content:space-between}
+.frame{max-width:400px;margin:auto;width:100%}
+.pic figcaption{font-size:14px;color:var(--muted);margin-top:14px;text-align:center}
+.split{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-top:24px}
+.split>div{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:22px}
+ul{list-style:none;padding:0;margin:0}
+li{padding:7px 0 7px 26px;position:relative;color:var(--ink2);font-size:15.5px;border-top:1px solid var(--line)}
+li:first-child{border-top:0}
+.yes li::before{content:"";position:absolute;left:2px;top:15px;width:9px;height:5px;border-left:2px solid var(--ok);border-bottom:2px solid var(--ok);transform:rotate(-45deg)}
+.no li::before{content:"";position:absolute;left:2px;top:17px;width:11px;height:2px;background:var(--muted)}
+#install p{color:var(--ink2);max-width:44em}
+footer{padding-top:32px;padding-bottom:48px;font-size:14px;color:var(--muted)}
+footer p{margin-top:8px}
+
+@media(max-width:760px){
+ .wrap{padding-left:16px;padding-right:16px}
+ .hero{grid-template-columns:1fr;gap:36px;padding-top:24px;padding-bottom:56px}
+ .lede{font-size:18px}
+ section{padding-top:56px;padding-bottom:56px}
+ section::before,footer::before{left:16px;right:16px}
+ .stats,.cols,.pics,.split{grid-template-columns:1fr}
+ .stage{padding:28px 12px 16px}
+ .install{align-items:flex-start;padding-top:10px;padding-bottom:10px}
+ .install .copy{align-self:center}
+ .install code{white-space:normal}
+ .install .seg{display:inline-block;white-space:pre}
+ .term{overflow-wrap:normal;word-break:normal}
+ .term .anywhere{overflow-wrap:anywhere}
+}
+@media(prefers-reduced-motion:reduce){.shot{transition:none}}
 </style>
-<script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 </head>
 <body>
-<header>
-<section id="hero" class="wrap" style="padding-top:64px;max-width:none">
- <div class="wrap" style="position:relative">
-  <div class="top"><button id="theme" type="button">Theme: auto</button></div>
-  <div class="hero-grid">
-   <div>
-    <h1>Undo. Redo.<br>For your desk.</h1>
-    <p><kbd>⌘Z</kbd><kbd>⇧⌘Z</kbd></p>
-    <p style="font-size:20px">Stand up, sit down, and come back to the exact setup you saved. Your webcam tells you, in centimetres, what to move.</p>
-    <div class="install"><span class="cmd" id="cmd">brew install marcellovictorino/tap/desk-check</span><button class="copy" id="copy" type="button">Copy</button></div>
-    <p class="muted" style="font-size:15px">macOS 14.5 or later, Apple silicon. Early: <a href="#early">what is in place</a>.</p>
-   </div>
-   <div>
-    <figure id="shots" aria-label="Live mode, from wrong to right in four steps">
-     <div class="shots">
-      <div class="shot on"><img src="img/live-1-dark.png" width="366" height="334" alt="Live mode, nothing right yet: move the screen 15 cm back, lower the screen 13 cm and the desk 17 cm"></div>
-      <div class="shot"><img src="img/live-2-dark.png" width="366" height="334" alt="Live mode, getting closer: screen distance amber at 17 cm, screen height amber at 5 cm, desk height red at 9 cm" loading="lazy"></div>
-      <div class="shot"><img src="img/live-3-dark.png" width="366" height="334" alt="Live mode, nearly there: screen distance and desk height green, raise the screen 6 cm" loading="lazy"></div>
-      <div class="shot"><img src="img/live-4-dark.png" width="366" height="334" alt="Live mode with all three bands green and OK" loading="lazy"></div>
-     </div>
-     <figcaption class="cap">Live <span id="step">1</span> of 4</figcaption>
-    </figure>
-   </div>
-  </div>
+<nav class="nav wrap"><a class="mark" href="#">Desk Check</a><a class="nav-link" href="https://github.com/marcellovictorino/desk-check">GitHub</a></nav>
+
+<header class="hero wrap">
+ <div>
+  <p class="eyebrow">A menu bar app for macOS</p>
+  <h1>Undo. Redo.<br>For your desk.</h1>
+  <p class="keys"><kbd>⌘Z</kbd><kbd>⇧⌘Z</kbd></p>
+  <p class="lede">Stand up, sit down, and come back to the exact setup you saved. Your webcam tells you, in centimetres, what to move.</p>
+  <div class="install"><span class="prompt" aria-hidden="true">$</span><code id="cmd"><span class="seg">brew install </span><span class="seg">marcellovictorino/tap/</span><span class="seg">desk-check</span></code><button class="copy" id="copy" type="button">Copy</button></div>
+  <p class="req">macOS 14.5 or later, Apple silicon. Early: <a href="#early">what is in place</a>.</p>
  </div>
-</section>
+ <figure class="stage" id="shots" aria-label="Live mode, from wrong to right in four steps">
+  <div class="shots">
+   <div class="shot on"><img src="img/live-1-dark.png" width="366" height="334" alt="Live mode, nothing right yet: move the screen 15 cm back, lower the screen 13 cm and the desk 17 cm"></div>
+   <div class="shot"><img src="img/live-2-dark.png" width="366" height="334" alt="Live mode, getting closer: screen distance amber at 17 cm, screen height amber at 5 cm, desk height red at 9 cm" loading="lazy"></div>
+   <div class="shot"><img src="img/live-3-dark.png" width="366" height="334" alt="Live mode, nearly there: screen distance and desk height green, raise the screen 6 cm" loading="lazy"></div>
+   <div class="shot"><img src="img/live-4-dark.png" width="366" height="334" alt="Live mode with all three bands green and OK" loading="lazy"></div>
+  </div>
+  <figcaption class="cap"><span class="dots" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></span>Live <span id="step">1</span> of 4</figcaption>
+ </figure>
 </header>
 
 <main>
-<section id="privacy"><div class="wrap">
+<section id="privacy" class="wrap">
+ <p class="kicker">Privacy</p>
  <h2>Your camera, kept short and kept local</h2>
  <div class="stats">
-  <div class="stat"><b>~2 s</b>camera on per check</div>
-  <div class="stat"><b>0</b>images saved</div>
-  <div class="stat"><b>0</b>network connections: the App Sandbox denies them all</div>
+  <div class="stat"><b>~2 s</b><span>camera on per check</span></div>
+  <div class="stat"><b>0</b><span>images saved</span></div>
+  <div class="stat"><b>0</b><span>network connections: the App Sandbox denies them all</span></div>
  </div>
  <p>The camera runs only during a check or Live. Don't take our word for it; read the permissions back yourself:</p>
- <p><code style="font-size:14px;overflow-wrap:anywhere">codesign -d --entitlements - "$(brew --prefix)/opt/desk-check/DeskCheck.app"</code></p>
-</div></section>
+ <pre class="term"><code class="anywhere">codesign -d --entitlements - "$(brew --prefix)/opt/desk-check/DeskCheck.app"</code></pre>
+</section>
 
-<section id="how"><div class="wrap">
- <h2>How it works</h2>
+<section id="how" class="wrap">
+ <p class="kicker">How it works</p>
+ <h2>Three things, one click from the menu bar</h2>
  <div class="cols">
-  <div><h3>Check desk</h3><p>The camera opens for about two seconds, finds your eyes and gives one sentence per adjustment, such as “Screen: lower 8 cm.”</p></div>
-  <div><h3>Live</h3><p>Keep the camera on while you crank the desk. A green, amber or red row shows the centimetres still to move.</p></div>
-  <div><h3>Remember sit and stand</h3><p>Presets keep the heights you read off the desk leg and confirm the view matches when you return. That is your undo and redo.</p></div>
+  <div><span class="n">01</span><h3>Check desk</h3><p>The camera opens for about two seconds, finds your eyes and gives one sentence per adjustment, such as “Screen: lower 8 cm.”</p></div>
+  <div><span class="n">02</span><h3>Live</h3><p>Keep the camera on while you crank the desk. A green, amber or red row shows the centimetres still to move.</p></div>
+  <div><span class="n">03</span><h3>Remember sit and stand</h3><p>Presets keep the heights you read off the desk leg and confirm the view matches when you return. That is your undo and redo.</p></div>
  </div>
  <div class="pics">
-  <figure class="pic"><img src="img/popover-dark.png" width="366" height="243" alt="The Desk Check menu bar window with the Standing desk setup and the Check desk and Live buttons" loading="lazy"><figcaption>Check desk and Live sit one click away in the menu bar.</figcaption></figure>
-  <figure class="pic"><img src="img/settings-dark.png" width="566" height="706" alt="Desk Check Settings showing the settings file and a drawing of the desk with the measurements to take" loading="lazy"><figcaption>Settings: measure with a tape, type centimetres, save.</figcaption></figure>
+  <figure class="pic"><div class="frame"><img src="img/popover-dark.png" width="366" height="243" alt="The Desk Check menu bar window with the Standing desk setup and the Check desk and Live buttons" loading="lazy"></div><figcaption>Check desk and Live sit one click away in the menu bar.</figcaption></figure>
+  <figure class="pic"><div class="frame"><img src="img/settings-dark.png" width="566" height="706" alt="Desk Check Settings showing the settings file and a drawing of the desk with the measurements to take" loading="lazy"></div><figcaption>Settings: measure with a tape, type centimetres, save.</figcaption></figure>
  </div>
-</div></section>
+</section>
 
-<section id="early"><div class="wrap">
+<section id="early" class="wrap">
+ <p class="kicker">Status</p>
  <h2>Early, and already useful</h2>
  <p>Desk Check is early. This is general guidance, not medical advice.</p>
- <p><b>In place:</b></p>
- <ul>
-  <li>Tape measurements per setup, for accurate readings.</li>
-  <li>Webcam calibration for tilt and field of view.</li>
-  <li>A choice, per setup, of what can move.</li>
-  <li>Settings in a commented TOML file you can keep in your dotfiles.</li>
- </ul>
- <p><b>Not yet:</b> chair advice, and switching setup on lid close.</p>
-</div></section>
+ <div class="split">
+  <div><h3>In place</h3><ul class="yes">
+   <li>Tape measurements per setup, for accurate readings.</li>
+   <li>Webcam calibration for tilt and field of view.</li>
+   <li>A choice, per setup, of what can move.</li>
+   <li>Settings in a commented TOML file you can keep in your dotfiles.</li>
+  </ul></div>
+  <div><h3>Not yet</h3><ul class="no">
+   <li>Chair advice.</li>
+   <li>Switching setup on lid close.</li>
+  </ul></div>
+ </div>
+</section>
 
-<section id="install"><div class="wrap">
- <h2>Install</h2>
- <div class="install"><span class="cmd">brew install marcellovictorino/tap/desk-check</span></div>
- <div class="install"><span class="cmd">desk-check</span></div>
+<section id="install" class="wrap">
+ <p class="kicker">Install</p>
+ <h2>Two commands</h2>
+ <pre class="term"><code><span class="prompt" aria-hidden="true">$ </span>brew install marcellovictorino/tap/<wbr><span class="nowrap">desk-check</span>
+<span class="prompt" aria-hidden="true">$ </span>desk-check</code></pre>
  <p>Requires macOS 14.5 or later on Apple silicon. Homebrew builds the app on your Mac with Apple's command line tools, version 16 or later (Swift 6); Xcode and a developer account are not needed.</p>
  <p>After each <code>brew upgrade</code>, run <code>desk-check</code> again to replace the running copy. macOS asks for the camera once more, because the permission is tied to the exact build.</p>
-</div></section>
+</section>
 </main>
 
-<footer><div class="wrap muted" style="font-size:15px">
+<footer class="wrap">
  <a href="https://github.com/marcellovictorino/desk-check">GitHub</a> · MIT licence · <a href="https://github.com/marcellovictorino/desk-check/releases">Releases</a>
- <p style="margin-top:8px">Inspired by Posturr (now Dorso) by tldev. Shares no code with it.</p>
-</div></footer>
-
+ <p>Inspired by Posturr (now Dorso) by tldev. Shares no code with it.</p>
+</footer>
 
 <script>
 (function(){
- var root=document.documentElement;
- var tb=document.getElementById("theme");
- function label(){var t=root.getAttribute("data-theme");tb.textContent="Theme: "+(t||"auto")}
- label();
- tb.onclick=function(){var cur=root.getAttribute("data-theme");var next=cur==="light"?"dark":cur==="dark"?null:"light";
-  if(next)root.setAttribute("data-theme",next);else root.removeAttribute("data-theme");
-  try{next?localStorage.setItem("theme",next):localStorage.removeItem("theme")}catch(e){}label()};
  document.getElementById("copy").onclick=function(){var b=this;
   (navigator.clipboard?navigator.clipboard.writeText(document.getElementById("cmd").textContent):Promise.reject()).then(function(){b.textContent="Copied"},function(){b.textContent="Select and copy"});};
- var shots=[].slice.call(document.querySelectorAll(".shot")),stepEl=document.getElementById("step"),cur=0;
- function show(i){if(i===cur)return;shots[cur].classList.remove("on");shots[i].classList.add("on");cur=i;stepEl.textContent=i+1}
- var still=matchMedia("(prefers-reduced-motion: reduce)").matches,timer=null;
- function tick(){show((cur+1)%4);timer=setTimeout(tick,cur===3?3200:1600)}
- function play(){clearTimeout(timer);if(still){show(3);return}timer=setTimeout(tick,1600)}
- play();
+ var shots=[].slice.call(document.querySelectorAll(".shot")),dots=[].slice.call(document.querySelectorAll(".dots i")),stepEl=document.getElementById("step"),cur=0;
+ function show(i){if(i===cur)return;shots[cur].classList.remove("on");dots[cur].classList.remove("on");shots[i].classList.add("on");dots[i].classList.add("on");cur=i;stepEl.textContent=i+1}
+ if(matchMedia("(prefers-reduced-motion: reduce)").matches){show(3);return}
+ function tick(){show((cur+1)%4);setTimeout(tick,cur===3?3200:1600)}
+ setTimeout(tick,1600);
 })();
 </script>
 </body>
