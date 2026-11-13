@@ -25,7 +25,8 @@ public enum ConfigLocation {
     }
 
     public static var defaultFile: URL { directory.appendingPathComponent("config.toml") }
-    public static let settings = SettingsFile(defaultFile: defaultFile, defaults: .standard) {
+    /// Shared by the app and its checker; SettingsFile is not thread-safe, so callers use it from the main thread.
+    nonisolated(unsafe) public static let settings = SettingsFile(defaultFile: defaultFile, defaults: .standard) {
         try ensureStarterFile()
     }
     public static var file: URL { settings.file }
