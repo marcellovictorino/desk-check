@@ -44,9 +44,10 @@ code{font-family:var(--mono);font-size:.9em}
 kbd{display:inline-block;font:600 14px var(--mono);color:var(--ink);background:var(--surface);border:1px solid var(--line2);border-bottom-width:3px;border-radius:7px;padding:3px 10px;margin-right:6px}
 .lede{font-size:20px;color:var(--ink2);max-width:30em;margin-bottom:28px}
 .install{display:flex;align-items:center;gap:10px;background:var(--term);color:var(--termfg);border-radius:10px;padding:8px 8px 8px 16px;max-width:540px}
-.install code,.install .prompt{font-size:14px;line-height:1.6}
+.install code,.install::before{font-size:14px;line-height:1.6}
 .install code{flex:1;min-width:0;white-space:nowrap;overflow-x:auto;user-select:all}
-.prompt{font-family:var(--mono);color:var(--term-amber)}
+.install::before,.cmdline::before{content:"$";font-family:var(--mono);color:var(--term-amber)}
+.cmdline::before{content:"$ "}
 .copy{font:600 13px var(--sans);background:var(--term-btn);color:var(--termfg);border:0;border-radius:7px;padding:8px 14px;cursor:pointer;flex:none}
 .copy:hover{background:#4A4033}
 .req{font-size:14px;color:var(--muted);margin-top:14px}
@@ -116,7 +117,7 @@ footer p{margin-top:8px}
   <h1>Undo. Redo.<br>For your desk.</h1>
   <p class="keys"><kbd>⌘Z</kbd><kbd>⇧⌘Z</kbd></p>
   <p class="lede">Stand up, sit down, and come back to the exact setup you saved. Your webcam tells you, in centimetres, what to move.</p>
-  <div class="install"><span class="prompt" aria-hidden="true">$</span><code id="cmd"><span class="seg">brew install </span><span class="seg">marcellovictorino/tap/</span><span class="seg">desk-check</span></code><button class="copy" id="copy" type="button">Copy</button></div>
+  <div class="install"><code id="cmd"><span class="seg">brew install </span><span class="seg">marcellovictorino/tap/</span><span class="seg">desk-check</span></code><button class="copy" id="copy" type="button">Copy</button></div>
   <p class="req">macOS 14.5 or later, Apple silicon. Early: <a href="#early">what is in place</a>.</p>
  </div>
  <figure class="stage" id="shots" aria-label="Live mode, from wrong to right in four steps">
@@ -178,8 +179,8 @@ footer p{margin-top:8px}
 <section id="install" class="wrap">
  <p class="kicker">Install</p>
  <h2>Two commands</h2>
- <pre class="term"><code><span class="prompt" aria-hidden="true">$ </span>brew install marcellovictorino/tap/<wbr><span class="nowrap">desk-check</span>
-<span class="prompt" aria-hidden="true">$ </span>desk-check</code></pre>
+ <pre class="term"><code><span class="cmdline">brew install marcellovictorino/tap/<wbr><span class="nowrap">desk-check</span></span>
+<span class="cmdline">desk-check</span></code></pre>
  <p>Requires macOS 14.5 or later on Apple silicon. Homebrew builds the app on your Mac with Apple's command line tools, version 16 or later (Swift 6); Xcode and a developer account are not needed.</p>
  <p>After each <code>brew upgrade</code>, run <code>desk-check</code> again to replace the running copy. macOS asks for the camera once more, because the permission is tied to the exact build.</p>
 </section>
