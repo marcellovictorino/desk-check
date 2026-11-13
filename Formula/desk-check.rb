@@ -25,7 +25,8 @@ class DeskCheck < Formula
     if swift_major < 6
       odie "Desk Check needs Swift 6 or later to build, and this Mac has Swift #{swift_major}. " \
            "Update the command line tools (version 16 or later, which needs macOS 14.5 or later) " \
-           "with `xcode-select --install` or in System Settings > General > Software Update, then run brew install again."
+           "with `xcode-select --install` or in System Settings > General > Software Update, " \
+           "then run brew install again."
     end
     system "scripts/build-app.sh", version.to_s, prefix
     pkgshare.install "Tests/verify-app.sh"

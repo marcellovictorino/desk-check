@@ -49,6 +49,15 @@ swift_test() {
 }
 
 step "swift-format lint" swift format lint --strict --recursive Sources Tests
+# Homebrew's own style rules, the ones the tap applies to the formula at each release. A line over
+# 118 characters here would make the tap reject the release, so catch it on the pull request.
+# Needs Homebrew, which is on the macOS runners and on any Mac that installs Desk Check.
+formula_style() {
+    command -v brew >/dev/null 2>&1 || { echo "Homebrew is needed for brew style; see https://brew.sh" >&2; return 1; }
+    HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 brew style Formula/desk-check.rb
+}
+
+step "formula style (brew style)" formula_style
 step "swift test" swift_test
 step "release policy (scripts/test-next-version.sh)" sh scripts/test-next-version.sh
 step "build the app ($version)" scripts/build-app.sh "$version" "$tmp"
