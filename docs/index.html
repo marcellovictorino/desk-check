@@ -39,9 +39,6 @@ a{color:var(--ink)}
 .shot{grid-area:1/1;opacity:0;transition:opacity .45s ease}
 .shot.on{opacity:1}
 .shots img,.pic img{display:block;width:100%;height:auto}
-.d{display:none!important}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .l{display:none!important}:root:not([data-theme=light]) .d{display:block!important}}
-:root[data-theme=dark] .l{display:none!important}:root[data-theme=dark] .d{display:block!important}
 .cap{font:13px var(--mono);color:var(--muted);text-align:center;margin-top:6px}
 .pics{display:grid;grid-template-columns:1fr 1.25fr;gap:24px;align-items:start;margin-top:28px}
 @media(max-width:760px){.pics{grid-template-columns:1fr}}
@@ -83,10 +80,10 @@ ul{padding-left:20px;margin:0 0 12px}
    <div>
     <figure id="shots" aria-label="Live mode, from wrong to right in four steps">
      <div class="shots">
-      <div class="shot on"><img class="l" src="img/live-1-light.png" width="366" height="334" alt="Live mode with all three bands red: move the screen 25 cm closer, lower the screen 7 cm and the desk 11 cm"><img class="d" src="img/live-1-dark.png" width="366" height="334" alt="Live mode with all three bands red: move the screen 25 cm closer, lower the screen 7 cm and the desk 11 cm" loading="lazy"></div>
-      <div class="shot"><img class="l" src="img/live-2-light.png" width="366" height="334" alt="Live mode with screen distance green, screen height amber at 4 cm and desk height red at 8 cm" loading="lazy"><img class="d" src="img/live-2-dark.png" width="366" height="334" alt="Live mode with screen distance green, screen height amber at 4 cm and desk height red at 8 cm" loading="lazy"></div>
-      <div class="shot"><img class="l" src="img/live-3-light.png" width="366" height="334" alt="Live mode with screen distance and screen height green, desk height amber at 3 cm" loading="lazy"><img class="d" src="img/live-3-dark.png" width="366" height="334" alt="Live mode with screen distance and screen height green, desk height amber at 3 cm" loading="lazy"></div>
-      <div class="shot"><img class="l" src="img/live-4-light.png" width="366" height="334" alt="Live mode with all three bands green and OK" loading="lazy"><img class="d" src="img/live-4-dark.png" width="366" height="334" alt="Live mode with all three bands green and OK" loading="lazy"></div>
+      <div class="shot on"><img src="img/live-1-dark.png" width="366" height="334" alt="Live mode, nothing right yet: move the screen 15 cm back, lower the screen 13 cm and the desk 17 cm"></div>
+      <div class="shot"><img src="img/live-2-dark.png" width="366" height="334" alt="Live mode, getting closer: screen distance amber at 17 cm, screen height amber at 5 cm, desk height red at 9 cm" loading="lazy"></div>
+      <div class="shot"><img src="img/live-3-dark.png" width="366" height="334" alt="Live mode, nearly there: screen distance and desk height green, raise the screen 6 cm" loading="lazy"></div>
+      <div class="shot"><img src="img/live-4-dark.png" width="366" height="334" alt="Live mode with all three bands green and OK" loading="lazy"></div>
      </div>
      <figcaption class="cap">Live <span id="step">1</span> of 4</figcaption>
     </figure>
@@ -116,8 +113,8 @@ ul{padding-left:20px;margin:0 0 12px}
   <div><h3>Remember sit and stand</h3><p>Presets keep the heights you read off the desk leg and confirm the view matches when you return. That is your undo and redo.</p></div>
  </div>
  <div class="pics">
-  <figure class="pic"><img class="l" src="img/popover-light.png" width="366" height="243" alt="The Desk Check menu bar window with the Standing desk setup and the Check desk and Live buttons" loading="lazy"><img class="d" src="img/popover-dark.png" width="366" height="243" alt="The Desk Check menu bar window with the Standing desk setup and the Check desk and Live buttons" loading="lazy"><figcaption>Check desk and Live sit one click away in the menu bar.</figcaption></figure>
-  <figure class="pic"><img class="l" src="img/settings-light.png" width="566" height="706" alt="Desk Check Settings showing the settings file and a drawing of the desk with the measurements to take" loading="lazy"><img class="d" src="img/settings-dark.png" width="566" height="706" alt="Desk Check Settings showing the settings file and a drawing of the desk with the measurements to take" loading="lazy"><figcaption>Settings: measure with a tape, type centimetres, save.</figcaption></figure>
+  <figure class="pic"><img src="img/popover-dark.png" width="366" height="243" alt="The Desk Check menu bar window with the Standing desk setup and the Check desk and Live buttons" loading="lazy"><figcaption>Check desk and Live sit one click away in the menu bar.</figcaption></figure>
+  <figure class="pic"><img src="img/settings-dark.png" width="566" height="706" alt="Desk Check Settings showing the settings file and a drawing of the desk with the measurements to take" loading="lazy"><figcaption>Settings: measure with a tape, type centimetres, save.</figcaption></figure>
  </div>
 </div></section>
 
