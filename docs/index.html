@@ -32,9 +32,6 @@ a{color:var(--ink)}
 .top{position:absolute;top:22px;right:20px;display:flex;gap:8px;z-index:2}
 @media(max-width:760px){.top{position:static;justify-content:flex-end;margin:-40px 0 16px}}
 .top button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;font-size:14px}
-.review{background:var(--card);border-bottom:1px dashed var(--line);font-size:14px;padding:8px 20px;text-align:center}
-.review button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:6px;padding:3px 10px;margin:0 3px}
-.review button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
 .shots{display:grid;max-width:366px;margin:0 auto}
 .shot{grid-area:1/1;opacity:0;transition:opacity .45s ease}
 .shot.on{opacity:1}
@@ -51,20 +48,12 @@ figure{margin:0}
 .stat b{display:block;font:600 30px var(--mono)}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px}
 .cols>div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
-body.b #hero>.wrap{min-height:260vh}body.b .hero-grid{position:sticky;top:48px}
-@media(max-width:760px){body.b .hero-grid,body.b .hero-grid>div{display:contents}body.b .hero-grid{position:static}body.b #shots{position:sticky;top:8px;z-index:1;background:var(--paper)}}
 ul{padding-left:20px;margin:0 0 12px}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 <script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 </head>
 <body>
-<div class="review" role="group" aria-label="Review switch (removed before release)">
- Review only: hero
- <button id="vA" aria-pressed="true">A. Plays by itself</button>
- <button id="vB" aria-pressed="false">B. Swaps as you scroll</button>
-</div>
-
 <header>
 <section id="hero" class="wrap" style="padding-top:64px;max-width:none">
  <div class="wrap" style="position:relative">
@@ -159,15 +148,9 @@ ul{padding-left:20px;margin:0 0 12px}
   (navigator.clipboard?navigator.clipboard.writeText(document.getElementById("cmd").textContent):Promise.reject()).then(function(){b.textContent="Copied"},function(){b.textContent="Select and copy"});};
  var shots=[].slice.call(document.querySelectorAll(".shot")),stepEl=document.getElementById("step"),cur=0;
  function show(i){if(i===cur)return;shots[cur].classList.remove("on");shots[i].classList.add("on");cur=i;stepEl.textContent=i+1}
- var still=matchMedia("(prefers-reduced-motion: reduce)").matches,timer=null,modeB=false;
+ var still=matchMedia("(prefers-reduced-motion: reduce)").matches,timer=null;
  function tick(){show((cur+1)%4);timer=setTimeout(tick,cur===3?3200:1600)}
  function play(){clearTimeout(timer);if(still){show(3);return}timer=setTimeout(tick,1600)}
- var vA=document.getElementById("vA"),vB=document.getElementById("vB");
- function pick(b){modeB=b;document.body.classList.toggle("b",b);vA.setAttribute("aria-pressed",!b);vB.setAttribute("aria-pressed",b);clearTimeout(timer);show(0);if(!b)play();else onScroll()}
- vA.onclick=function(){pick(false)};vB.onclick=function(){pick(true)};
- var hero=document.getElementById("hero");
- function onScroll(){if(!modeB)return;var r=hero.getBoundingClientRect();var max=r.height-innerHeight;var p=max>0?Math.min(1,Math.max(0,-r.top/max)):0;show(Math.min(3,Math.floor(p*4)))}
- addEventListener("scroll",onScroll,{passive:true});
  play();
 })();
 </script>
