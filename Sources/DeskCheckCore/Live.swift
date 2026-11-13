@@ -47,14 +47,18 @@ public enum LiveEngine {
         if !fixed.contains(.screenDistance) {
             // Positive when the screen is further than the target.
             let off = r.distanceCm - Band.distance.target
-            out.append(make(.screenDistance, Band.distance.level(of: r.distanceCm), off > 0 ? .closer : .further, off,
-                            noun: "screen", closer: "Bring the screen closer", further: "Move the screen further away"))
+            out.append(
+                make(
+                    .screenDistance, Band.distance.level(of: r.distanceCm), off > 0 ? .closer : .further, off,
+                    noun: "screen", closer: "Bring the screen closer", further: "Move the screen further away"))
         }
         if !fixed.contains(.screenHeight) {
             // Eyes higher above the screen top than the target means the screen is too low.
             let off = r.eyeAboveScreenTopCm - Band.screenTop.target
-            out.append(make(.screenHeight, Band.screenTop.level(of: r.eyeAboveScreenTopCm), off > 0 ? .up : .down, off,
-                            noun: "screen", up: "Raise the screen", down: "Lower the screen"))
+            out.append(
+                make(
+                    .screenHeight, Band.screenTop.level(of: r.eyeAboveScreenTopCm), off > 0 ? .up : .down, off,
+                    noun: "screen", up: "Raise the screen", down: "Lower the screen"))
         }
         if !fixed.contains(.deskHeight) {
             // The desk should sit 3 cm below the elbow, so the eyes sit one eye-to-elbow gap plus 3 cm above it.
@@ -66,8 +70,10 @@ public enum LiveEngine {
         return out
     }
 
-    private static func make(_ a: Adjustment, _ level: BandLevel, _ dir: MoveDirection, _ off: Double, noun: String,
-                             closer: String = "", further: String = "", up: String = "", down: String = "") -> LiveAdvice {
+    private static func make(
+        _ a: Adjustment, _ level: BandLevel, _ dir: MoveDirection, _ off: Double, noun: String,
+        closer: String = "", further: String = "", up: String = "", down: String = ""
+    ) -> LiveAdvice {
         let cm = Int(abs(off).rounded())
         if level == .green {
             return LiveAdvice(adjustment: a, level: .green, direction: .none, moveCm: cm, text: "\(a.label) is right.")
@@ -91,7 +97,8 @@ public struct RollingAverage: Sendable {
     private var entries: [(time: TimeInterval, reading: PostureReading)] = []
 
     public init(window: TimeInterval = 1.0, minimumCount: Int = 3) {
-        self.window = window; self.minimumCount = minimumCount
+        self.window = window
+        self.minimumCount = minimumCount
     }
 
     public mutating func add(_ r: PostureReading, at time: TimeInterval) {
@@ -104,8 +111,9 @@ public struct RollingAverage: Sendable {
     public var average: PostureReading? {
         guard entries.count >= minimumCount else { return nil }
         let n = Double(entries.count)
-        return PostureReading(distanceCm: entries.reduce(0) { $0 + $1.reading.distanceCm } / n,
-                              eyeAboveScreenTopCm: entries.reduce(0) { $0 + $1.reading.eyeAboveScreenTopCm } / n,
-                              eyeHeightAboveDeskCm: entries.reduce(0) { $0 + $1.reading.eyeHeightAboveDeskCm } / n)
+        return PostureReading(
+            distanceCm: entries.reduce(0) { $0 + $1.reading.distanceCm } / n,
+            eyeAboveScreenTopCm: entries.reduce(0) { $0 + $1.reading.eyeAboveScreenTopCm } / n,
+            eyeHeightAboveDeskCm: entries.reduce(0) { $0 + $1.reading.eyeHeightAboveDeskCm } / n)
     }
 }

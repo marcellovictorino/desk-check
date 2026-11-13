@@ -172,12 +172,17 @@ public struct TOMLDocument: Equatable {
             var idx = t.index(after: t.startIndex)
             while idx < t.endIndex {
                 let ch = t[idx]
-                if escaped { out.append(ch); escaped = false }
-                else if ch == "\\" { escaped = true }
-                else if ch == "\"" {
+                if escaped {
+                    out.append(ch)
+                    escaped = false
+                } else if ch == "\\" {
+                    escaped = true
+                } else if ch == "\"" {
                     let tail = t[t.index(after: idx)...].trimmingCharacters(in: .whitespaces)
                     return (.string(out), tail.hasPrefix("#") ? tail : nil)
-                } else { out.append(ch) }
+                } else {
+                    out.append(ch)
+                }
                 idx = t.index(after: idx)
             }
             return (nil, nil)

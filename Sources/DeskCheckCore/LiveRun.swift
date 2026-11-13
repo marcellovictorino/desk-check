@@ -57,19 +57,28 @@ public struct LiveSnapshot: Equatable, Sendable {
     /// The webcam's field of view and tilt used for the reading; calibrating the webcam changes it.
     public var camera: CameraModel
 
-    public init(reading: PostureReading, time: TimeInterval, setupName: String, cameraName: String,
-                measurements: Setup, camera: CameraModel) {
-        self.reading = reading; self.time = time; self.setupName = setupName
-        self.cameraName = cameraName; self.measurements = measurements; self.camera = camera
+    public init(
+        reading: PostureReading, time: TimeInterval, setupName: String, cameraName: String,
+        measurements: Setup, camera: CameraModel
+    ) {
+        self.reading = reading
+        self.time = time
+        self.setupName = setupName
+        self.cameraName = cameraName
+        self.measurements = measurements
+        self.camera = camera
     }
 
     /// Its age in seconds when it may stand in for a Check now, else nil: it must be fresh, and come from the same
     /// setup, webcam and measurements.
-    public func ageIfUsable(now: TimeInterval, setupName: String, cameraName: String, measurements: Setup,
-                            camera: CameraModel) -> Double? {
+    public func ageIfUsable(
+        now: TimeInterval, setupName: String, cameraName: String, measurements: Setup,
+        camera: CameraModel
+    ) -> Double? {
         let age = now - time
         guard age >= 0, age <= Self.maximumAge, self.setupName == setupName,
-              self.cameraName == cameraName, self.measurements == measurements, self.camera == camera else { return nil }
+            self.cameraName == cameraName, self.measurements == measurements, self.camera == camera
+        else { return nil }
         return age
     }
 }

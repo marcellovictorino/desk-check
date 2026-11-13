@@ -19,7 +19,8 @@ public enum Adjustment: String, CaseIterable, Sendable {
 
 /// Which camera a setup uses: the best one connected, the MacBook's own, or one by name.
 public enum CameraChoice: Hashable, Sendable {
-    case auto, builtIn, named(String)
+    case auto, builtIn
+    case named(String)
 
     public init(_ text: String) {
         switch text {
@@ -47,10 +48,16 @@ public struct SetupProfile: Equatable, Sendable {
     public var fixed: Set<Adjustment>
     public var presets: [Posture: DeskPreset]
 
-    public init(name: String, camera: CameraChoice = .auto, screen: String = "", measurements: Setup = Setup(),
-                fixed: Set<Adjustment> = [], presets: [Posture: DeskPreset] = [:]) {
-        self.name = name; self.camera = camera; self.screen = screen
-        self.measurements = measurements; self.fixed = fixed; self.presets = presets
+    public init(
+        name: String, camera: CameraChoice = .auto, screen: String = "", measurements: Setup = Setup(),
+        fixed: Set<Adjustment> = [], presets: [Posture: DeskPreset] = [:]
+    ) {
+        self.name = name
+        self.camera = camera
+        self.screen = screen
+        self.measurements = measurements
+        self.fixed = fixed
+        self.presets = presets
         self.measurements.builtIn = camera == .builtIn
     }
 
@@ -64,7 +71,8 @@ public struct SetupProfile: Equatable, Sendable {
 
     /// The MacBook's own camera and screen on a normal desk: seated only, so desk and screen height are fixed.
     public static func laptop(name: String) -> SetupProfile {
-        SetupProfile(name: name, camera: .builtIn, screen: "MacBook",
-                     fixed: [.deskHeight, .screenHeight])
+        SetupProfile(
+            name: name, camera: .builtIn, screen: "MacBook",
+            fixed: [.deskHeight, .screenHeight])
     }
 }

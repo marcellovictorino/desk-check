@@ -17,10 +17,12 @@ public enum AdviceEngine {
 
     /// A fixed adjustment cannot be moved in the current setup, so it is reported but not advised.
     public static func advise(_ r: PostureReading, fixed: Set<Adjustment> = []) -> [Advice] {
-        let distance = fixed.contains(.screenDistance)
+        let distance =
+            fixed.contains(.screenDistance)
             ? Advice(status: .fixed, sentence: "Screen distance is fixed in this setup; it is \(cm(r.distanceCm)) from your eyes.")
             : screenDistance(r.distanceCm)
-        let height = fixed.contains(.screenHeight)
+        let height =
+            fixed.contains(.screenHeight)
             ? Advice(status: .fixed, sentence: "Screen height is fixed in this setup; your eyes are \(relative(r.eyeAboveScreenTopCm)).")
             : screenHeight(r.eyeAboveScreenTopCm)
         return [distance, height]

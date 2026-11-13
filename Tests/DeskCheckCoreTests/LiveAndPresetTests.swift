@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import DeskCheckCore
 
 /// Intent source: piece 3 of the Desk Check brief (SCR-705): sit and stand presets read from a desk-leg tape and
@@ -22,9 +23,9 @@ import Testing
     }
 
     @Test func screenHeightBandsAreCentredTwoCmBelowEyes() {
-        #expect(levels(reading(eyeAboveTop: 5))[.screenHeight] == .green)    // 3 off
+        #expect(levels(reading(eyeAboveTop: 5))[.screenHeight] == .green)  // 3 off
         #expect(levels(reading(eyeAboveTop: 5.5))[.screenHeight] == .yellow)
-        #expect(levels(reading(eyeAboveTop: 8))[.screenHeight] == .yellow)   // 6 off
+        #expect(levels(reading(eyeAboveTop: 8))[.screenHeight] == .yellow)  // 6 off
         #expect(levels(reading(eyeAboveTop: 8.5))[.screenHeight] == .red)
         #expect(levels(reading(eyeAboveTop: -1))[.screenHeight] == .green)
         #expect(levels(reading(eyeAboveTop: -5))[.screenHeight] == .red)
@@ -51,9 +52,9 @@ import Testing
         func get(_ x: Adjustment) -> LiveAdvice { a.first { $0.adjustment == x }! }
         #expect(get(.screenDistance).direction == .closer)
         #expect(get(.screenDistance).moveCm == 18)
-        #expect(get(.screenHeight).direction == .up)       // eyes well above the screen top: raise the screen
+        #expect(get(.screenHeight).direction == .up)  // eyes well above the screen top: raise the screen
         #expect(get(.screenHeight).moveCm == 8)
-        #expect(get(.deskHeight).direction == .down)       // eyes only 45 above desk: desk too high
+        #expect(get(.deskHeight).direction == .down)  // eyes only 45 above desk: desk too high
         #expect(get(.deskHeight).moveCm == 8)
         #expect(LiveEngine.advise(reading(distance: 45), setup: measured, fixed: []).first!.direction == .further)
     }
@@ -82,7 +83,8 @@ import Testing
 
     @Test func showsNothingUntilEnoughFrames() {
         var avg = RollingAverage()
-        avg.add(r(60), at: 0); avg.add(r(60), at: 0.1)
+        avg.add(r(60), at: 0)
+        avg.add(r(60), at: 0.1)
         #expect(avg.average == nil)
         avg.add(r(60), at: 0.2)
         #expect(avg.average != nil)
@@ -108,7 +110,8 @@ import Testing
         let added = c.addSetup(.laptop(name: "Sofa"))
         #expect(added)
         var reread = DeskConfig(text: c.document.text)
-        #expect(reread.profile(named: "Standing desk").presets[.sit] == DeskPreset(deskHeightCm: 72, distanceCm: 60, eyeAboveScreenTopCm: -1.5))
+        #expect(
+            reread.profile(named: "Standing desk").presets[.sit] == DeskPreset(deskHeightCm: 72, distanceCm: 60, eyeAboveScreenTopCm: -1.5))
         #expect(reread.profile(named: "Standing desk").presets[.stand]?.deskHeightCm == 112)
         #expect(reread.profile(named: "Sofa").presets.isEmpty, "another setup keeps its own presets")
         reread.save(reread.profile(named: "Standing desk"))
@@ -141,12 +144,20 @@ import Testing
 
     @Test func cameraConfirmsTheDeskIsBackAtTheSavedHeight() {
         let saved = DeskPreset(deskHeightCm: 112, distanceCm: 58, eyeAboveScreenTopCm: 4)
-        func read(_ d: Double, _ h: Double) -> PostureReading { PostureReading(distanceCm: d, eyeAboveScreenTopCm: h, eyeHeightAboveDeskCm: 0) }
+        func read(_ d: Double, _ h: Double) -> PostureReading {
+            PostureReading(distanceCm: d, eyeAboveScreenTopCm: h, eyeHeightAboveDeskCm: 0)
+        }
         #expect(saved.confirm(read(59.5, 5.5)) == .confirmed)
         // The desk was left 6 cm too low: the eyes read 6 cm lower against the screen.
-        guard case .differs(let why) = saved.confirm(read(58, -2)) else { Issue.record("should not confirm"); return }
+        guard case .differs(let why) = saved.confirm(read(58, -2)) else {
+            Issue.record("should not confirm")
+            return
+        }
         #expect(why.contains("6 cm lower"), Comment(rawValue: why))
-        guard case .differs(let far) = saved.confirm(read(66, 4)) else { Issue.record("should not confirm"); return }
+        guard case .differs(let far) = saved.confirm(read(66, 4)) else {
+            Issue.record("should not confirm")
+            return
+        }
         #expect(far.contains("8 cm further"), Comment(rawValue: far))
         #expect(DeskPreset(deskHeightCm: 72).confirm(read(60, 2)) == .notRemembered)
     }
@@ -232,13 +243,16 @@ import Testing
     @Test func otherSetupCameraOrMeasurementsAreNotUsed() {
         #expect(snapshot().ageIfUsable(now: 101, setupName: "Office", cameraName: "C920", measurements: setup, camera: model) == nil)
         #expect(snapshot().ageIfUsable(now: 101, setupName: "Home", cameraName: "Built-in", measurements: setup, camera: model) == nil)
-        var moved = setup; moved.userHeightCm = 180
+        var moved = setup
+        moved.userHeightCm = 180
         #expect(snapshot().ageIfUsable(now: 101, setupName: "Home", cameraName: "C920", measurements: moved, camera: model) == nil)
     }
 
     @Test func recalibratedWebcamIsNotUsed() {
-        #expect(snapshot().ageIfUsable(now: 101, setupName: "Home", cameraName: "C920", measurements: setup,
-                                       camera: CameraModel(fieldOfViewDegrees: 60)) == nil)
+        #expect(
+            snapshot().ageIfUsable(
+                now: 101, setupName: "Home", cameraName: "C920", measurements: setup,
+                camera: CameraModel(fieldOfViewDegrees: 60)) == nil)
     }
 
     @Test func aClockBeforeTheReadingIsNotUsed() {
@@ -246,9 +260,11 @@ import Testing
     }
 
     @Test func messageSaysWhenTheReadingCameFromLive() {
-        #expect(CheckOutcome.checked(passed: true, setupName: "Home", cameraName: "C920", reusedSecondsAgo: 4)
-            == "Desk check passed for Home with C920. Used the Live reading from 4 s ago. The camera is off.")
-        #expect(CheckOutcome.checked(passed: false, setupName: "Home", cameraName: "C920")
-            == "Checked for Home with C920. The camera is off.")
+        #expect(
+            CheckOutcome.checked(passed: true, setupName: "Home", cameraName: "C920", reusedSecondsAgo: 4)
+                == "Desk check passed for Home with C920. Used the Live reading from 4 s ago. The camera is off.")
+        #expect(
+            CheckOutcome.checked(passed: false, setupName: "Home", cameraName: "C920")
+                == "Checked for Home with C920. The camera is off.")
     }
 }

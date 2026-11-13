@@ -24,8 +24,9 @@ enum GuideField: Hashable, CaseIterable {
         case .distance:
             return "From the centre of your eye straight to the screen, sitting as you normally do."
         case .screenTop:
-            return laptop ? "From the desk surface up to the top edge of the lit display, not the top of the lid."
-                          : "From the desk surface up to the top edge of the screen."
+            return laptop
+                ? "From the desk surface up to the top edge of the lit display, not the top of the lid."
+                : "From the desk surface up to the top edge of the screen."
         case .lens:
             return "From the top edge of the screen up to the centre of the webcam lens. Usually about "
                 + (laptop ? "0.5" : "1") + " cm, so a ruler is easier than a tape."
@@ -50,8 +51,9 @@ private struct GuideLine {
     let alignment: Alignment
 
     var hitBox: CGRect {
-        CGRect(x: min(from.x, to.x) - 8, y: min(from.y, to.y) - 8,
-               width: abs(from.x - to.x) + 16, height: abs(from.y - to.y) + 16)
+        CGRect(
+            x: min(from.x, to.x) - 8, y: min(from.y, to.y) - 8,
+            width: abs(from.x - to.x) + 16, height: abs(from.y - to.y) + 16)
     }
 }
 
@@ -77,11 +79,13 @@ struct FieldGuideView: View {
             .frame(width: Self.size.width, height: Self.size.height)
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .contain)
-            Text(active.map { "\($0.label): \($0.caption(laptop: laptop))" }
-                 ?? "Click a field or a line in the drawing to see what to measure.")
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
+            Text(
+                active.map { "\($0.label): \($0.caption(laptop: laptop))" }
+                    ?? "Click a field or a line in the drawing to see what to measure."
+            )
+            .font(.caption).foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
         }
     }
 
@@ -92,7 +96,8 @@ struct FieldGuideView: View {
         let colour: Color = lit ? .accentColor : Color.primary.opacity(0.35)
         return ZStack(alignment: .topLeading) {
             Path { p in
-                p.move(to: line.from); p.addLine(to: line.to)
+                p.move(to: line.from)
+                p.addLine(to: line.to)
                 for end in [line.from, line.to] {
                     // A short tick across each end, perpendicular to the line.
                     let vertical = line.from.x == line.to.x
@@ -104,8 +109,9 @@ struct FieldGuideView: View {
             if lit {
                 Text(line.field.label).font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.accentColor)
                     .frame(width: 200, alignment: line.alignment)
-                    .position(x: line.label.x + (line.alignment == .trailing ? -100 : line.alignment == .leading ? 100 : 0),
-                              y: line.label.y)
+                    .position(
+                        x: line.label.x + (line.alignment == .trailing ? -100 : line.alignment == .leading ? 100 : 0),
+                        y: line.label.y)
             }
             Color.clear
                 .frame(width: line.hitBox.width, height: line.hitBox.height)
@@ -125,42 +131,59 @@ struct FieldGuideView: View {
         let ink = Color.primary.opacity(0.6)
         let style = StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)
         return ZStack {
-            Path { p in // floor
-                p.move(to: CGPoint(x: 10, y: 175)); p.addLine(to: CGPoint(x: 430, y: 175))
+            Path { p in  // floor
+                p.move(to: CGPoint(x: 10, y: 175))
+                p.addLine(to: CGPoint(x: 430, y: 175))
             }.stroke(ink.opacity(0.5), style: style)
             if standing { standingScene(ink, style) } else { seatedScene(ink, style) }
         }
     }
 
-    private func person(_ p: inout Path, head: CGPoint, hip: CGPoint, knee: CGPoint, foot: CGPoint, shoulder: CGPoint, elbow: CGPoint, hand: CGPoint) {
+    private func person(
+        _ p: inout Path, head: CGPoint, hip: CGPoint, knee: CGPoint, foot: CGPoint, shoulder: CGPoint, elbow: CGPoint, hand: CGPoint
+    ) {
         p.addEllipse(in: CGRect(x: head.x - 13, y: head.y - 13, width: 26, height: 26))
-        p.move(to: CGPoint(x: head.x, y: head.y + 13)); p.addLine(to: shoulder)
-        p.addLine(to: hip); p.addLine(to: knee); p.addLine(to: foot)
-        p.move(to: shoulder); p.addLine(to: elbow); p.addLine(to: hand)
+        p.move(to: CGPoint(x: head.x, y: head.y + 13))
+        p.addLine(to: shoulder)
+        p.addLine(to: hip)
+        p.addLine(to: knee)
+        p.addLine(to: foot)
+        p.move(to: shoulder)
+        p.addLine(to: elbow)
+        p.addLine(to: hand)
     }
 
     private func seatedScene(_ ink: Color, _ style: StrokeStyle) -> some View {
         Path { p in
             // Chair.
-            p.move(to: CGPoint(x: 20, y: 128)); p.addLine(to: CGPoint(x: 76, y: 128))
-            p.move(to: CGPoint(x: 48, y: 128)); p.addLine(to: CGPoint(x: 48, y: 175))
+            p.move(to: CGPoint(x: 20, y: 128))
+            p.addLine(to: CGPoint(x: 76, y: 128))
+            p.move(to: CGPoint(x: 48, y: 128))
+            p.addLine(to: CGPoint(x: 48, y: 175))
             // Person: eye at (66, 53).
-            person(&p, head: CGPoint(x: 58, y: 55), hip: CGPoint(x: 46, y: 126), knee: CGPoint(x: 104, y: 126),
-                   foot: CGPoint(x: 104, y: 175), shoulder: CGPoint(x: 52, y: 84), elbow: CGPoint(x: 62, y: 104),
-                   hand: CGPoint(x: 112, y: 108))
+            person(
+                &p, head: CGPoint(x: 58, y: 55), hip: CGPoint(x: 46, y: 126), knee: CGPoint(x: 104, y: 126),
+                foot: CGPoint(x: 104, y: 175), shoulder: CGPoint(x: 52, y: 84), elbow: CGPoint(x: 62, y: 104),
+                hand: CGPoint(x: 112, y: 108))
             // Desk, with its leg.
-            p.move(to: CGPoint(x: 80, y: 110)); p.addLine(to: CGPoint(x: 410, y: 110))
-            p.move(to: CGPoint(x: 400, y: 110)); p.addLine(to: CGPoint(x: 400, y: 175))
+            p.move(to: CGPoint(x: 80, y: 110))
+            p.addLine(to: CGPoint(x: 410, y: 110))
+            p.move(to: CGPoint(x: 400, y: 110))
+            p.addLine(to: CGPoint(x: 400, y: 175))
             if laptop {
-                p.move(to: CGPoint(x: 200, y: 106)); p.addLine(to: CGPoint(x: 262, y: 106)) // base
-                p.move(to: CGPoint(x: 262, y: 106)); p.addLine(to: CGPoint(x: 270, y: 46)) // lid, leaning back
-                p.addEllipse(in: CGRect(x: 266, y: 46, width: 4, height: 4)) // built-in camera
+                p.move(to: CGPoint(x: 200, y: 106))
+                p.addLine(to: CGPoint(x: 262, y: 106))  // base
+                p.move(to: CGPoint(x: 262, y: 106))
+                p.addLine(to: CGPoint(x: 270, y: 46))  // lid, leaning back
+                p.addEllipse(in: CGRect(x: 266, y: 46, width: 4, height: 4))  // built-in camera
             } else {
-                p.move(to: CGPoint(x: 236, y: 110)); p.addLine(to: CGPoint(x: 262, y: 110)) // stand foot
-                p.move(to: CGPoint(x: 250, y: 110)); p.addLine(to: CGPoint(x: 250, y: 90))
+                p.move(to: CGPoint(x: 236, y: 110))
+                p.addLine(to: CGPoint(x: 262, y: 110))  // stand foot
+                p.move(to: CGPoint(x: 250, y: 110))
+                p.addLine(to: CGPoint(x: 250, y: 90))
                 p.addRoundedRect(in: CGRect(x: 244, y: 40, width: 6, height: 50), cornerSize: CGSize(width: 2, height: 2))
-                p.addRoundedRect(in: CGRect(x: 238, y: 29, width: 12, height: 11), cornerSize: CGSize(width: 2, height: 2)) // webcam
-                p.addEllipse(in: CGRect(x: 236, y: 32, width: 4, height: 4)) // its lens
+                p.addRoundedRect(in: CGRect(x: 238, y: 29, width: 12, height: 11), cornerSize: CGSize(width: 2, height: 2))  // webcam
+                p.addEllipse(in: CGRect(x: 236, y: 32, width: 4, height: 4))  // its lens
             }
         }
         .stroke(ink, style: style)
@@ -169,13 +192,18 @@ struct FieldGuideView: View {
     private func standingScene(_ ink: Color, _ style: StrokeStyle) -> some View {
         Path { p in
             // Eye at (157, 36), elbow at (156, 80).
-            person(&p, head: CGPoint(x: 150, y: 38), hip: CGPoint(x: 150, y: 102), knee: CGPoint(x: 152, y: 140),
-                   foot: CGPoint(x: 156, y: 175), shoulder: CGPoint(x: 150, y: 54), elbow: CGPoint(x: 156, y: 80),
-                   hand: CGPoint(x: 206, y: 84))
-            p.move(to: CGPoint(x: 150, y: 102)); p.addLine(to: CGPoint(x: 144, y: 140)); p.addLine(to: CGPoint(x: 142, y: 175))
+            person(
+                &p, head: CGPoint(x: 150, y: 38), hip: CGPoint(x: 150, y: 102), knee: CGPoint(x: 152, y: 140),
+                foot: CGPoint(x: 156, y: 175), shoulder: CGPoint(x: 150, y: 54), elbow: CGPoint(x: 156, y: 80),
+                hand: CGPoint(x: 206, y: 84))
+            p.move(to: CGPoint(x: 150, y: 102))
+            p.addLine(to: CGPoint(x: 144, y: 140))
+            p.addLine(to: CGPoint(x: 142, y: 175))
             // Standing desk, with its leg.
-            p.move(to: CGPoint(x: 190, y: 86)); p.addLine(to: CGPoint(x: 410, y: 86))
-            p.move(to: CGPoint(x: 400, y: 86)); p.addLine(to: CGPoint(x: 400, y: 175))
+            p.move(to: CGPoint(x: 190, y: 86))
+            p.addLine(to: CGPoint(x: 410, y: 86))
+            p.move(to: CGPoint(x: 400, y: 86))
+            p.addLine(to: CGPoint(x: 400, y: 175))
         }
         .stroke(ink, style: style)
     }
@@ -186,7 +214,7 @@ struct FieldGuideView: View {
             return [
                 GuideLine(field: .height, from: pt(100, 25), to: pt(100, 175), label: pt(94, 100), alignment: .trailing),
                 GuideLine(field: .elbow, from: pt(190, 36), to: pt(190, 80), label: pt(198, 58), alignment: .leading),
-                GuideLine(field: .standDesk, from: pt(424, 86), to: pt(424, 175), label: pt(418, 132), alignment: .trailing)
+                GuideLine(field: .standDesk, from: pt(424, 86), to: pt(424, 175), label: pt(418, 132), alignment: .trailing),
             ]
         }
         let screenX: CGFloat = laptop ? 292 : 270
@@ -195,9 +223,10 @@ struct FieldGuideView: View {
             GuideLine(field: .distance, from: pt(72, 53), to: pt(laptop ? 258 : 240, 53), label: pt(160, 43), alignment: .center),
             GuideLine(field: .seatedEye, from: pt(84, 53), to: pt(84, 110), label: pt(92, 84), alignment: .leading),
             GuideLine(field: .screenTop, from: pt(screenX, top), to: pt(screenX, 110), label: pt(screenX + 8, 80), alignment: .leading),
-            GuideLine(field: .lens, from: pt(laptop ? 250 : 222, top), to: pt(laptop ? 250 : 222, laptop ? 48 : 34),
-                      label: pt(laptop ? 244 : 216, laptop ? 36 : 22), alignment: .trailing),
-            GuideLine(field: .sitDesk, from: pt(424, 110), to: pt(424, 175), label: pt(418, 150), alignment: .trailing)
+            GuideLine(
+                field: .lens, from: pt(laptop ? 250 : 222, top), to: pt(laptop ? 250 : 222, laptop ? 48 : 34),
+                label: pt(laptop ? 244 : 216, laptop ? 36 : 22), alignment: .trailing),
+            GuideLine(field: .sitDesk, from: pt(424, 110), to: pt(424, 175), label: pt(418, 150), alignment: .trailing),
         ]
     }
 }

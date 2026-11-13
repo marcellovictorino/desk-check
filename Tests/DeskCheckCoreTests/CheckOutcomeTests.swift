@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import DeskCheckCore
 
 /// Intent source: DESK-58 recommendation 5, approved by the captain ("apply all recommendations"): the result
@@ -13,9 +14,11 @@ import Testing
     }
 
     @Test func checkedSentenceSaysPassedOrChecked() {
-        #expect(CheckOutcome.checked(passed: true, setupName: "Home", cameraName: "C920")
+        #expect(
+            CheckOutcome.checked(passed: true, setupName: "Home", cameraName: "C920")
                 == "Desk check passed for Home with C920. The camera is off.")
-        #expect(CheckOutcome.checked(passed: false, setupName: "Home", cameraName: "C920")
+        #expect(
+            CheckOutcome.checked(passed: false, setupName: "Home", cameraName: "C920")
                 == "Checked for Home with C920. The camera is off.")
     }
 
@@ -57,7 +60,8 @@ import Testing
 
     @Test func confirmBeforeRememberingExplainsWhat() {
         let p = profile(presets: [.stand: DeskPreset(deskHeightCm: 110.5)])
-        #expect(CheckOutcome.confirm(reading, posture: .stand, profile: p).note
+        #expect(
+            CheckOutcome.confirm(reading, posture: .stand, profile: p).note
                 == "Use Remember view at 111 cm first, so there is something to confirm.")
     }
 
@@ -74,8 +78,9 @@ import Testing
     let camera = CameraModel(fieldOfViewDegrees: 70.4)
     func frame(midY: Double) -> EyePoints {
         let span = camera.focalWidths * 1920 * Geometry.defaultEyeSpanCm / 62
-        return EyePoints(left: .init(x: 960 - span / 2, y: midY), right: .init(x: 960 + span / 2, y: midY),
-                         imageWidth: 1920, imageHeight: 1080, yaw: 0)
+        return EyePoints(
+            left: .init(x: 960 - span / 2, y: midY), right: .init(x: 960 + span / 2, y: midY),
+            imageWidth: 1920, imageHeight: 1080, yaw: 0)
     }
 
     @Test func calibrationWithoutTapeDistanceAsksForIt() {
@@ -92,7 +97,10 @@ import Testing
 
     @Test func calibrationWithoutHeightsLeavesTiltAlone() throws {
         let outcome = CheckOutcome.calibrate([frame(midY: 540)], setup: Setup(screenDistanceCm: 62), cameraName: "C920")
-        guard case .calibrated(let c, let summary) = outcome else { Issue.record("not calibrated"); return }
+        guard case .calibrated(let c, let summary) = outcome else {
+            Issue.record("not calibrated")
+            return
+        }
         #expect(abs(try #require(c.focalWidths) - camera.focalWidths) < 1e-9)
         #expect(c.pitchDegrees == 0)
         #expect(summary == "Calibrated C920 at 62 cm. Tilt not calibrated: add screen top height and seated eye height.")
@@ -106,7 +114,10 @@ import Testing
         let expected = atan(5.0 / 62)
         let midY = 540 + tan(expected - tilt) * camera.focalWidths * 1920
         let outcome = CheckOutcome.calibrate([frame(midY: midY), frame(midY: midY)], setup: setup, cameraName: "C920")
-        guard case .calibrated(let c, let summary) = outcome else { Issue.record("not calibrated"); return }
+        guard case .calibrated(let c, let summary) = outcome else {
+            Issue.record("not calibrated")
+            return
+        }
         #expect(abs(try #require(c.pitchDegrees) - 3.0) < 0.01)
         #expect(summary == "Calibrated C920 at 62 cm. Lens tilt 3.0°.")
     }
@@ -114,7 +125,10 @@ import Testing
     @Test func implausibleTiltIsDroppedNotStored() throws {
         let setup = Setup(screenDistanceCm: 62, screenTopHeightCm: 39, lensOffsetCm: 1, seatedEyeHeightCm: 45)
         let outcome = CheckOutcome.calibrate([frame(midY: 1600)], setup: setup, cameraName: "C920")
-        guard case .calibrated(let c, let summary) = outcome else { Issue.record("not calibrated"); return }
+        guard case .calibrated(let c, let summary) = outcome else {
+            Issue.record("not calibrated")
+            return
+        }
         #expect(c.pitchDegrees == 0)
         #expect(summary == "Calibrated C920 at 62 cm.")
     }

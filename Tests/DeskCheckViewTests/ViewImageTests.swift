@@ -1,10 +1,11 @@
 import AppKit
+import Foundation
 import QuartzCore
 import SwiftUI
-import Foundation
 import Testing
-@testable import DeskCheckCore
+
 @testable import DeskCheck
+@testable import DeskCheckCore
 
 /// Intent source: save offscreen pictures of the popover, Live and Settings for cards.
 /// The follow-up explicitly permits partial pictures if each labels its omissions.
@@ -39,33 +40,50 @@ import Testing
         }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let popover = Capture(file: "popover.png", renderer: "SwiftUI ImageRenderer",
-            limitation: "No outer popover chrome or desktop backdrop; native glass fidelity is unverified. Camera and permission checks are not run.")
-        let liveCapture = Capture(file: "live.png", renderer: "SwiftUI ImageRenderer",
-            limitation: "No outer popover chrome or desktop backdrop; native glass fidelity is unverified. Camera off: no live readings or coloured bands.")
-        let settings = Capture(file: "settings.png", renderer: "NSView cacheDisplay",
-            limitation: "Native glass button surfaces and some icons are omitted. Initial scroll position only: lower fields and outer popover chrome are omitted.")
+        let popover = Capture(
+            file: "popover.png", renderer: "SwiftUI ImageRenderer",
+            limitation:
+                "No outer popover chrome or desktop backdrop; native glass fidelity is unverified. Camera and permission checks are not run."
+        )
+        let liveCapture = Capture(
+            file: "live.png", renderer: "SwiftUI ImageRenderer",
+            limitation:
+                "No outer popover chrome or desktop backdrop; native glass fidelity is unverified. Camera off: no live readings or coloured bands."
+        )
+        let settings = Capture(
+            file: "settings.png", renderer: "NSView cacheDisplay",
+            limitation:
+                "Native glass button surfaces and some icons are omitted. Initial scroll position only: lower fields and outer popover chrome are omitted."
+        )
         // Intent: the popover shows the installed version, small and italic, below Check desk and Live.
-        try await save(PopoverView(checker: checker, version: "0.3.2").content, capture: popover,
-                       title: "Popover", width: 320, swiftUI: true, to: directory)
-        try await save(LiveView(live: live).padding(14).frame(width: 320), capture: liveCapture,
-                       title: "Live", width: 320, swiftUI: true, to: directory)
+        try await save(
+            PopoverView(checker: checker, version: "0.3.2").content, capture: popover,
+            title: "Popover", width: 320, swiftUI: true, to: directory)
+        try await save(
+            LiveView(live: live).padding(14).frame(width: 320), capture: liveCapture,
+            title: "Live", width: 320, swiftUI: true, to: directory)
         checker.showingSettings = true
-        try await save(PopoverView(checker: checker), capture: settings,
-                       title: "Settings", width: 520, swiftUI: false, to: directory)
+        try await save(
+            PopoverView(checker: checker), capture: settings,
+            title: "Settings", width: 520, swiftUI: false, to: directory)
         // Intent: a failed settings load is visible in both entry points, not hidden behind starter settings.
-        let missingFile = SettingsFile(defaultFile: fixture.deletingLastPathComponent().appendingPathComponent("missing.toml"), defaults: defaults)
+        let missingFile = SettingsFile(
+            defaultFile: fixture.deletingLastPathComponent().appendingPathComponent("missing.toml"), defaults: defaults)
         let warningChecker = PostureChecker(settings: missingFile)
         #expect(warningChecker.settingsWarning != nil)
-        let warning = Capture(file: "load-warning.png", renderer: "SwiftUI ImageRenderer",
+        let warning = Capture(
+            file: "load-warning.png", renderer: "SwiftUI ImageRenderer",
             limitation: popover.limitation)
-        try await save(PopoverView(checker: warningChecker, version: "0.3.2").content, capture: warning,
-                       title: "Settings load warning", width: 320, swiftUI: true, to: directory)
+        try await save(
+            PopoverView(checker: warningChecker, version: "0.3.2").content, capture: warning,
+            title: "Settings load warning", width: 320, swiftUI: true, to: directory)
         warningChecker.showingSettings = true
-        let warningSettings = Capture(file: "settings-warning.png", renderer: "NSView cacheDisplay",
+        let warningSettings = Capture(
+            file: "settings-warning.png", renderer: "NSView cacheDisplay",
             limitation: settings.limitation)
-        try await save(PopoverView(checker: warningChecker).content, capture: warningSettings,
-                       title: "Settings load warning", width: 520, swiftUI: false, to: directory)
+        try await save(
+            PopoverView(checker: warningChecker).content, capture: warningSettings,
+            title: "Settings load warning", width: 520, swiftUI: false, to: directory)
         // Intent: selecting a settings file must keep the Settings controls readable in both native appearances.
         var selectedConfig = config
         let renamed = selectedConfig.renameSetup(selectedConfig.activeSetupName, to: "Chosen desk")
@@ -76,24 +94,34 @@ import Testing
         #expect(checker.activeSetup == selectedConfig.activeSetupName)
         let selectedLight = Capture(file: "selected-settings-light.png", renderer: settings.renderer, limitation: settings.limitation)
         let selectedDark = Capture(file: "selected-settings-dark.png", renderer: settings.renderer, limitation: settings.limitation)
-        try await save(PopoverView(checker: checker).content, capture: selectedLight,
-                       title: "Chosen settings, light appearance", width: 520, swiftUI: false, to: directory)
-        try await save(PopoverView(checker: checker).content, capture: selectedDark,
-                       title: "Chosen settings, dark appearance", width: 520, swiftUI: false, to: directory, scheme: .dark)
+        try await save(
+            PopoverView(checker: checker).content, capture: selectedLight,
+            title: "Chosen settings, light appearance", width: 520, swiftUI: false, to: directory)
+        try await save(
+            PopoverView(checker: checker).content, capture: selectedDark,
+            title: "Chosen settings, dark appearance", width: 520, swiftUI: false, to: directory, scheme: .dark)
         // Intent (DESK-71 option B): while any camera run is under way the old result is gone and a spinner with
         // "Checking" shows; the same run next to Remember view and Confirm shows a spinner too.
         let busy = PostureChecker(settings: settingsFile)
         busy.showingSettings = false
         busy.reading = PostureReading(distanceCm: 60, eyeAboveScreenTopCm: 2, eyeHeightAboveDeskCm: 50)
         busy.advice = AdviceEngine.advise(busy.reading!, fixed: [])
-        try await save(PopoverView(checker: busy, version: "0.3.2").content, capture: Capture(file: "idle-with-result.png",
-            renderer: "SwiftUI ImageRenderer", limitation: popover.limitation + " Result tiles are sample values."),
+        try await save(
+            PopoverView(checker: busy, version: "0.3.2").content,
+            capture: Capture(
+                file: "idle-with-result.png",
+                renderer: "SwiftUI ImageRenderer", limitation: popover.limitation + " Result tiles are sample values."),
             title: "Previous result shown", width: 320, swiftUI: true, to: directory)
         busy.enterRunning()
         #expect(busy.isRunning)
         #expect(busy.reading == nil && busy.advice.isEmpty, "the previous result must be gone while a new reading is taken")
-        try await save(PopoverView(checker: busy, version: "0.3.2").content, capture: Capture(file: "checking.png",
-            renderer: "SwiftUI ImageRenderer", limitation: popover.limitation + " The run is simulated; no camera opens. ImageRenderer draws the spinning wheel as a placeholder icon."),
+        try await save(
+            PopoverView(checker: busy, version: "0.3.2").content,
+            capture: Capture(
+                file: "checking.png",
+                renderer: "SwiftUI ImageRenderer",
+                limitation: popover.limitation
+                    + " The run is simulated; no camera opens. ImageRenderer draws the spinning wheel as a placeholder icon."),
             title: "Checking", width: 320, swiftUI: true, to: directory)
         // Intent: the result may show while the camera closes, but no new camera run may start until it is off.
         busy.isRunning = false
@@ -113,8 +141,10 @@ import Testing
     }
 
     @MainActor
-    private func save<V: View>(_ view: V, capture: Capture, title: String, width: CGFloat,
-                               swiftUI: Bool, to directory: URL, scheme: ColorScheme = .light) async throws {
+    private func save<V: View>(
+        _ view: V, capture: Capture, title: String, width: CGFloat,
+        swiftUI: Bool, to directory: URL, scheme: ColorScheme = .light
+    ) async throws {
         let appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
         let previousAppearance = NSApplication.shared.appearance
         NSApplication.shared.appearance = appearance
@@ -123,8 +153,9 @@ import Testing
             .background(scheme == .dark ? Color(nsColor: .windowBackgroundColor) : Color.white)
         let host = NSHostingView(rootView: content)
         // A real backing store, kept ordered out, initialises native controls without touching the screen.
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: 800),
-                              styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: width, height: 800),
+            styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = appearance
         window.contentView = host
@@ -152,11 +183,12 @@ import Testing
         }
         // This only rejects a uniform/blank content area, not missing controls or incorrect glass.
         // Check before adding the caption: a caption alone must not make a blank render pass.
-        let colours = Set(stride(from: 0, to: bitmap.pixelsHigh, by: 4).flatMap { y in
-            stride(from: 0, to: bitmap.pixelsWide, by: 4).compactMap { x in
-                bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB)?.description
-            }
-        })
+        let colours = Set(
+            stride(from: 0, to: bitmap.pixelsHigh, by: 4).flatMap { y in
+                stride(from: 0, to: bitmap.pixelsWide, by: 4).compactMap { x in
+                    bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB)?.description
+                }
+            })
         #expect(colours.count > 16, "\(title): expected non-uniform partial content, not full visual fidelity")
         let labelled = try label(bitmap, size: size, text: "Partial offscreen render: \(title)\n\(capture.limitation)")
         let file = directory.appendingPathComponent(capture.file)
@@ -173,17 +205,24 @@ import Testing
 
     @MainActor
     private func label(_ bitmap: NSBitmapImageRep, size: CGSize, text: String) throws -> NSBitmapImageRep {
-        let caption = NSAttributedString(string: text, attributes: [
-            .font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.darkGray
-        ])
-        let captionHeight = ceil(caption.boundingRect(with: CGSize(width: size.width - 24, height: .greatestFiniteMagnitude),
-                                                     options: .usesLineFragmentOrigin).height)
+        let caption = NSAttributedString(
+            string: text,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.darkGray,
+            ])
+        let captionHeight = ceil(
+            caption.boundingRect(
+                with: CGSize(width: size.width - 24, height: .greatestFiniteMagnitude),
+                options: .usesLineFragmentOrigin
+            ).height)
         let footerHeight = captionHeight + 24
         let scale = CGFloat(bitmap.pixelsWide) / size.width
-        let labelled = try #require(NSBitmapImageRep(bitmapDataPlanes: nil,
-            pixelsWide: bitmap.pixelsWide, pixelsHigh: Int(ceil((size.height + footerHeight) * scale)),
-            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        let labelled = try #require(
+            NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: bitmap.pixelsWide, pixelsHigh: Int(ceil((size.height + footerHeight) * scale)),
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
         let context = try #require(NSGraphicsContext(bitmapImageRep: labelled))
         NSGraphicsContext.saveGraphicsState()
         defer { NSGraphicsContext.restoreGraphicsState() }
@@ -194,8 +233,9 @@ import Testing
         bitmap.draw(in: NSRect(x: 0, y: footerHeight, width: size.width, height: size.height))
         NSColor(white: 0.94, alpha: 1).setFill()
         NSRect(x: 0, y: 0, width: size.width, height: footerHeight).fill()
-        caption.draw(with: NSRect(x: 12, y: 12, width: size.width - 24, height: captionHeight),
-                     options: .usesLineFragmentOrigin)
+        caption.draw(
+            with: NSRect(x: 12, y: 12, width: size.width - 24, height: captionHeight),
+            options: .usesLineFragmentOrigin)
         return labelled
     }
 }

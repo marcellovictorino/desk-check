@@ -19,8 +19,9 @@ let home = ConfigLocation.realHomeDirectory
 let fm = FileManager.default
 
 expect(NSHomeDirectory().contains("/Library/Containers/"), "running inside the App Sandbox container")
-expect(MainActor.assumeIsolated { ConfigLocation.file.path } == home.path + "/.config/desk-check/config.toml",
-       "config path is in the real home folder, not the container")
+expect(
+    MainActor.assumeIsolated { ConfigLocation.file.path } == home.path + "/.config/desk-check/config.toml",
+    "config path is in the real home folder, not the container")
 
 // Config folder: create it if needed, write, read back, remove the probe file.
 let configFolder = args.count == 3 ? URL(fileURLWithPath: args[2], isDirectory: true) : ConfigLocation.directory
@@ -58,7 +59,8 @@ do {
     expect(true, "legacy settings can be read for migration")
 } catch {
     let nsError = error as NSError
-    let missing = (nsError.domain == NSCocoaErrorDomain && nsError.code == CocoaError.Code.fileReadNoSuchFile.rawValue)
+    let missing =
+        (nsError.domain == NSCocoaErrorDomain && nsError.code == CocoaError.Code.fileReadNoSuchFile.rawValue)
         || (nsError.domain == NSPOSIXErrorDomain && nsError.code == Int(ENOENT))
     if missing {
         expect(true, "legacy settings file may be absent on a clean install")

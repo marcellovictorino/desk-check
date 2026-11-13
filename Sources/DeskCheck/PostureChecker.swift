@@ -42,9 +42,10 @@ final class PostureChecker: NSObject, ObservableObject {
         super.init()
         reloadSetups()
         for name in [AVCaptureDevice.wasConnectedNotification, AVCaptureDevice.wasDisconnectedNotification] {
-            observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.camerasChanged() }
-            })
+            observers.append(
+                NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                    Task { @MainActor in self?.camerasChanged() }
+                })
         }
     }
 
@@ -61,8 +62,10 @@ final class PostureChecker: NSObject, ObservableObject {
         var config = settings.load()
         guard config.setupNames.contains(name) else { return }
         config.activeSetupName = name
-        do { try settings.save(config) }
-        catch { settingsWarning = "Could not save settings: \(error.localizedDescription)"; return }
+        do { try settings.save(config) } catch {
+            settingsWarning = "Could not save settings: \(error.localizedDescription)"
+            return
+        }
         reset()
         reloadSetups()
     }
@@ -85,7 +88,11 @@ final class PostureChecker: NSObject, ObservableObject {
 
     /// Forgets the last result, which belonged to another setup.
     func reset() {
-        reading = nil; advice = []; calibrationNote = nil; presetNote = nil; preview = nil
+        reading = nil
+        advice = []
+        calibrationNote = nil
+        presetNote = nil
+        preview = nil
         statusText = "The camera is off."
     }
 
@@ -110,7 +117,11 @@ final class PostureChecker: NSObject, ObservableObject {
     /// Checks the camera view against a preset's remembered view.
     func confirmPreset(_ posture: Posture) { start(.confirm(posture)) }
 
-    enum Mode: Equatable { case check, calibrate, remember(Posture), confirm(Posture) }
+    enum Mode: Equatable {
+        case check, calibrate
+        case remember(Posture)
+        case confirm(Posture)
+    }
 
     private func start(_ mode: Mode) {
         guard !isBusy else { return }
@@ -143,17 +154,23 @@ final class PostureChecker: NSObject, ObservableObject {
 
     /// Forgets the previous result and everything shown beside it, so nothing stale sits next to a new reading.
     private func clearResult() {
-        reading = nil; advice = []; calibrationNote = nil; presetNote = nil; preview = nil
+        reading = nil
+        advice = []
+        calibrationNote = nil
+        presetNote = nil
+        preview = nil
     }
 
     /// A Check pressed soon after Live answers from Live's last steady reading, without opening the camera.
     private func reuseLive(config: DeskConfig) -> Bool {
         let profile = config.activeProfile
         guard let snapshot = live.lastSteady, !live.isRunning,
-              let cameraName = FaceSampler.camera(for: profile.camera)?.localizedName,
-              let age = snapshot.ageIfUsable(now: ProcessInfo.processInfo.systemUptime, setupName: profile.name,
-                                             cameraName: cameraName, measurements: profile.measurements,
-                                             camera: config.camera(forWebcam: cameraName, fieldOfViewDegrees: nil)) else { return false }
+            let cameraName = FaceSampler.camera(for: profile.camera)?.localizedName,
+            let age = snapshot.ageIfUsable(
+                now: ProcessInfo.processInfo.systemUptime, setupName: profile.name,
+                cameraName: cameraName, measurements: profile.measurements,
+                camera: config.camera(forWebcam: cameraName, fieldOfViewDegrees: nil))
+        else { return false }
         clearResult()
         log.notice("check reusing the live reading from \(Int(age * 1000), privacy: .public) ms ago")
         present(snapshot.reading, cameraName: cameraName, config: config, mode: .check, reusedSecondsAgo: Int(age.rounded()))
@@ -178,20 +195,33 @@ final class PostureChecker: NSObject, ObservableObject {
             Task { @MainActor in self.preview = frame }
         }
         cameraOpen = true
-        sampler.run(device: device, completion: { result, error in
-            Task { @MainActor in
-                if let error { self.cameraOpen = false; self.finish(error); return }
-                guard let result else { self.finish("No reading."); return }
-                log.notice("camera result ready, samples=\(result.samples.count, privacy: .public)")
-                if calibrating { self.finishCalibration(result) } else { self.finishCheck(result, mode: mode) }
-            }
-        }, onStopped: {
-            Task { @MainActor in
-                self.cameraOpen = false
-                log.notice("camera session stopped")
-                if let message = self.pendingMessage { self.statusText = message; self.pendingMessage = nil }
-            }
-        })
+        sampler.run(
+            device: device,
+            completion: { result, error in
+                Task { @MainActor in
+                    if let error {
+                        self.cameraOpen = false
+                        self.finish(error)
+                        return
+                    }
+                    guard let result else {
+                        self.finish("No reading.")
+                        return
+                    }
+                    log.notice("camera result ready, samples=\(result.samples.count, privacy: .public)")
+                    if calibrating { self.finishCalibration(result) } else { self.finishCheck(result, mode: mode) }
+                }
+            },
+            onStopped: {
+                Task { @MainActor in
+                    self.cameraOpen = false
+                    log.notice("camera session stopped")
+                    if let message = self.pendingMessage {
+                        self.statusText = message
+                        self.pendingMessage = nil
+                    }
+                }
+            })
     }
 
     private func finishCheck(_ result: SampleResult, mode: Mode) {
@@ -211,13 +241,16 @@ final class PostureChecker: NSObject, ObservableObject {
         let profile = config.activeProfile
         reading = median
         advice = AdviceEngine.advise(median, fixed: profile.fixed)
-        calibrationNote = config.calibration(forWebcam: cameraName).focalWidths == nil
+        calibrationNote =
+            config.calibration(forWebcam: cameraName).focalWidths == nil
             ? CheckOutcome.notCalibratedNote : nil
-        let line = String(format: "distance=%.1f eyeAboveTop=%.1f eyeHeight=%.1f", median.distanceCm,
-                          median.eyeAboveScreenTopCm, median.eyeHeightAboveDeskCm)
+        let line = String(
+            format: "distance=%.1f eyeAboveTop=%.1f eyeHeight=%.1f", median.distanceCm,
+            median.eyeAboveScreenTopCm, median.eyeHeightAboveDeskCm)
         log.notice("check \(line, privacy: .public)")
         let passed = advice.allSatisfy { $0.status != .adjust }
-        var message = CheckOutcome.checked(passed: passed, setupName: profile.name, cameraName: cameraName, reusedSecondsAgo: reusedSecondsAgo)
+        var message = CheckOutcome.checked(
+            passed: passed, setupName: profile.name, cameraName: cameraName, reusedSecondsAgo: reusedSecondsAgo)
         switch mode {
         case .remember(let posture): message = remember(median, posture: posture, config: config, profile: profile)
         case .confirm(let posture): message = confirm(median, posture: posture, profile: profile)
@@ -258,9 +291,15 @@ final class PostureChecker: NSObject, ObservableObject {
 
     private func finish(_ message: String) {
         // The camera-off sentence waits for the camera to be off.
-        if cameraOpen { statusText = "Closing the camera…"; pendingMessage = message } else { statusText = message }
+        if cameraOpen {
+            statusText = "Closing the camera…"
+            pendingMessage = message
+        } else {
+            statusText = message
+        }
         isRunning = false
-        log.notice("check finished \(Int((ProcessInfo.processInfo.systemUptime - self.pressedAt) * 1000), privacy: .public) ms after the press")
+        log.notice(
+            "check finished \(Int((ProcessInfo.processInfo.systemUptime - self.pressedAt) * 1000), privacy: .public) ms after the press")
     }
 
     static func describe(_ status: AVAuthorizationStatus) -> String {

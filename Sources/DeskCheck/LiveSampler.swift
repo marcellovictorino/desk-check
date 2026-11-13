@@ -28,12 +28,19 @@ final class LiveSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
         output.alwaysDiscardsLateVideoFrames = true
         output.setSampleBufferDelegate(self, queue: frameQueue)
         session.addOutput(output)
-        lock.withLock { self.session = session; stopped = false }
+        lock.withLock {
+            self.session = session
+            stopped = false
+        }
         sessionQueue.async { session.startRunning() }
     }
 
     func stop() {
-        let session = lock.withLock { () -> AVCaptureSession? in stopped = true; defer { self.session = nil }; return self.session }
+        let session = lock.withLock { () -> AVCaptureSession? in
+            stopped = true
+            defer { self.session = nil }
+            return self.session
+        }
         guard let session else { return }
         // The session queue runs this after any pending startRunning, so stop always follows start. Frames still
         // in flight are dropped by `stopped`.

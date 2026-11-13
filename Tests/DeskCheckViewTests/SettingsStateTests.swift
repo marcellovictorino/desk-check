@@ -1,6 +1,7 @@
+import DeskCheckCore
 import Foundation
 import Testing
-import DeskCheckCore
+
 @testable import DeskCheck
 
 /// Intent: a failed settings load must be visible and must not start a check using starter calibration.

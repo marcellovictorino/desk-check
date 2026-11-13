@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import DeskCheckCore
 
 /// Intent sources: the piece 2 brief (SCR-705) asks for distance and height readings within
@@ -11,18 +12,21 @@ import Testing
     /// with a real webcam is the check against the real world.
     let camera = CameraModel(fieldOfViewDegrees: 70.4)
     func eyes(span: Double, midY: Double, yaw: Double = 0) -> EyePoints {
-        EyePoints(left: .init(x: 960 - span / 2, y: midY), right: .init(x: 960 + span / 2, y: midY),
-                  imageWidth: 1920, imageHeight: 1080, yaw: yaw)
+        EyePoints(
+            left: .init(x: 960 - span / 2, y: midY), right: .init(x: 960 + span / 2, y: midY),
+            imageWidth: 1920, imageHeight: 1080, yaw: yaw)
     }
 
     @Test func distanceAndHeightFromEyePoints() throws {
         let focalPx = camera.focalWidths * 1920
         let span = focalPx * 6.3 / 62
         let midY = 540 + focalPx * (4.0 / 62)
-        let r = try #require(Geometry.reading(eyes(span: span, midY: midY), camera: camera,
-                                               setup: Setup(screenTopHeightCm: 50, lensOffsetCm: 1.5)))
+        let r = try #require(
+            Geometry.reading(
+                eyes(span: span, midY: midY), camera: camera,
+                setup: Setup(screenTopHeightCm: 50, lensOffsetCm: 1.5)))
         #expect(abs(r.distanceCm - 62) <= 0.1)
-        #expect(abs(r.eyeAboveScreenTopCm - 5.5) <= 0.2)   // 1.5 lens offset + 4 above the lens
+        #expect(abs(r.eyeAboveScreenTopCm - 5.5) <= 0.2)  // 1.5 lens offset + 4 above the lens
         #expect(abs(r.eyeHeightAboveDeskCm - 55.5) <= 0.2)
     }
 
@@ -45,7 +49,7 @@ import Testing
     @Test func focalCalibrationFixesAWrongFieldOfView() throws {
         // The real lens is 78 degrees wide but the default assumes 65.
         let real = CameraModel(fieldOfViewDegrees: 78)
-        let span = real.focalWidths * 1920 * 6.3 / 55           // person sits 55 cm away by tape
+        let span = real.focalWidths * 1920 * 6.3 / 55  // person sits 55 cm away by tape
         let frame = eyes(span: span, midY: 540)
         let before = try #require(Geometry.reading(frame, camera: CameraModel(fieldOfViewDegrees: 60), setup: Setup()))
         #expect(abs(before.distanceCm - 55) > 3, "uncalibrated reading is off by more than the limit")
@@ -62,14 +66,18 @@ import Testing
         // Lens tilted up 6 degrees; eyes truly 3 cm above the lens axis height... measure at 60 cm.
         let tilt = 6.0 * .pi / 180
         let focalPx = camera.focalWidths * 1920
-        let trueAngle = atan(8.0 / 60)                      // eyes 8 cm above the lens
-        let midY = 540 + focalPx * tan(trueAngle - tilt)    // a lens tilted up sees the eyes lower
+        let trueAngle = atan(8.0 / 60)  // eyes 8 cm above the lens
+        let midY = 540 + focalPx * tan(trueAngle - tilt)  // a lens tilted up sees the eyes lower
         let frame = eyes(span: focalPx * 6.3 / 60, midY: midY)
-        let pitch = try #require(Geometry.calibratePitch(frame, focalWidths: camera.focalWidths, tapeDistanceCm: 60,
-                                                         lensHeightAboveDeskCm: 40, eyeHeightAboveDeskCm: 48))
+        let pitch = try #require(
+            Geometry.calibratePitch(
+                frame, focalWidths: camera.focalWidths, tapeDistanceCm: 60,
+                lensHeightAboveDeskCm: 40, eyeHeightAboveDeskCm: 48))
         #expect(abs(pitch - tilt) <= 0.002)
-        let r = try #require(Geometry.reading(frame, camera: CameraModel(focalWidths: camera.focalWidths, pitch: pitch),
-                                               setup: Setup(screenTopHeightCm: 39, lensOffsetCm: 1)))
+        let r = try #require(
+            Geometry.reading(
+                frame, camera: CameraModel(focalWidths: camera.focalWidths, pitch: pitch),
+                setup: Setup(screenTopHeightCm: 39, lensOffsetCm: 1)))
         #expect(abs(r.eyeHeightAboveDeskCm - 48) <= 0.3)
     }
 
@@ -91,10 +99,11 @@ import Testing
 
     @Test func eachAdjustmentGetsOneSentenceWithANumber() {
         let advice = AdviceEngine.advise(reading(45, 15))
-        #expect(advice.map(\.sentence) == [
-            "Distance: move the screen 15 cm further away.",
-            "Screen: raise 10 cm.",
-        ])
+        #expect(
+            advice.map(\.sentence) == [
+                "Distance: move the screen 15 cm further away.",
+                "Screen: raise 10 cm.",
+            ])
     }
 
     @Test func tooFarAndScreenTooHigh() {
@@ -139,14 +148,14 @@ import Testing
 
     @Test func handWrittenCommentsAndOtherKeysSurviveAnEdit() {
         let text = """
-        # my own note
-        [setups."Desk"]
-        screen_top_height_cm = 47 # tape, Monday
-        custom_key = "keep me"
+            # my own note
+            [setups."Desk"]
+            screen_top_height_cm = 47 # tape, Monday
+            custom_key = "keep me"
 
-        [preferences]
-        preview = true
-        """
+            [preferences]
+            preview = true
+            """
         var c = DeskConfig(text: text)
         var p = c.profile(named: "Desk")
         p.measurements.screenTopHeightCm = 50
@@ -177,7 +186,8 @@ import Testing
     @Test func twoSetupsKeepTheirOwnCameraScreenAndMeasurements() {
         let c = DeskConfig(text: twoSetups().document.text)
         #expect(c.setupNames == ["Standing desk", "MacBook"])
-        let desk = c.profile(named: "Standing desk"), mac = c.profile(named: "MacBook")
+        let desk = c.profile(named: "Standing desk")
+        let mac = c.profile(named: "MacBook")
         #expect(desk.camera == .named("HD Pro Webcam C920"))
         #expect(desk.measurements.screenTopHeightCm == 50)
         #expect(mac.camera == .builtIn)
@@ -208,7 +218,7 @@ import Testing
         var c = twoSetups()
         c.activeSetupName = "MacBook"
         #expect(DeskConfig(text: c.document.text).activeSetupName == "MacBook")
-        c.activeSetupName = "Gone"   // a setup that no longer exists falls back to the first
+        c.activeSetupName = "Gone"  // a setup that no longer exists falls back to the first
         #expect(DeskConfig(text: c.document.text).activeSetupName == "Standing desk")
     }
 
@@ -222,7 +232,11 @@ import Testing
         let duplicated = c.duplicateSetup("Standing desk", as: "Standing desk 2")
         #expect(duplicated)
         #expect(c.setupNames == ["Standing desk", "Standing desk 2", "Sofa"])
-        #expect(c.profile(named: "Standing desk 2") == SetupProfile(name: "Standing desk 2", camera: .named("HD Pro Webcam C920"), screen: "external", measurements: c.profile(named: "Standing desk").measurements))
+        #expect(
+            c.profile(named: "Standing desk 2")
+                == SetupProfile(
+                    name: "Standing desk 2", camera: .named("HD Pro Webcam C920"), screen: "external",
+                    measurements: c.profile(named: "Standing desk").measurements))
         let deleted = c.deleteSetup("Sofa")
         #expect(deleted)
         #expect(c.activeSetupName == "Standing desk")
@@ -305,7 +319,8 @@ import Testing
     @Test func uncalibratedWebcamFallsBackToATypicalFieldOfView() {
         let c = DeskConfig(text: DeskConfig.starterContents)
         #expect(abs(c.camera(forWebcam: "x", fieldOfViewDegrees: 90).focalWidths - 0.5) <= 0.001)
-        #expect(abs(c.camera(forWebcam: "x", fieldOfViewDegrees: nil).focalWidths - CameraModel(fieldOfViewDegrees: 70).focalWidths) <= 0.001)
+        #expect(
+            abs(c.camera(forWebcam: "x", fieldOfViewDegrees: nil).focalWidths - CameraModel(fieldOfViewDegrees: 70).focalWidths) <= 0.001)
     }
 
     @Test func nonNumbersAndNonPositiveValuesCountAsNotMeasured() {
@@ -330,7 +345,9 @@ import Testing
         p.measurements.screenTopHeightCm = 52
         c.save(p)
         let text = c.document.text
-        #expect(text.contains("# Top edge of the screen above the desk surface (default 45; 24 for the built-in screen).\nscreen_top_height_cm = 52\n"))
+        #expect(
+            text.contains(
+                "# Top edge of the screen above the desk surface (default 45; 24 for the built-in screen).\nscreen_top_height_cm = 52\n"))
         #expect(!(text.contains("# screen_top_height_cm")))
     }
 
@@ -353,7 +370,8 @@ import Testing
     @Test func oldSettingsAreCopiedAndLeftInPlace() throws {
         let root = try scratch()
         defer { try? FileManager.default.removeItem(at: root) }
-        let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
+        let old = root.appendingPathComponent("desk-undo")
+        let new = root.appendingPathComponent("desk-check")
         try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
         var legacyConfig = DeskConfig(text: DeskConfig.starterContents)
         legacyConfig.autoSwitch = true
@@ -367,7 +385,8 @@ import Testing
     @Test func newSettingsAreNeverOverwrittenByOldOnes() throws {
         let root = try scratch()
         defer { try? FileManager.default.removeItem(at: root) }
-        let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
+        let old = root.appendingPathComponent("desk-undo")
+        let new = root.appendingPathComponent("desk-check")
         let oldConfig = DeskConfig(text: DeskConfig.starterContents)
         var newConfig = DeskConfig(text: DeskConfig.starterContents)
         newConfig.autoSwitch = true
@@ -391,7 +410,8 @@ import Testing
     @Test func unreadableLegacySettingsAreNotReplacedByStarterFile() throws {
         let root = try scratch()
         defer { try? FileManager.default.removeItem(at: root) }
-        let old = root.appendingPathComponent("desk-undo"), new = root.appendingPathComponent("desk-check")
+        let old = root.appendingPathComponent("desk-undo")
+        let new = root.appendingPathComponent("desk-check")
         try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
         let oldFile = old.appendingPathComponent("config.toml")
         try DeskConfig.starterContents.write(to: oldFile, atomically: false, encoding: .utf8)

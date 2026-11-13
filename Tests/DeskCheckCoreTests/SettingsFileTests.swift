@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import DeskCheckCore
 
 /// Intent: the settings-file choice must preserve the default, remember access, and never save a failed-load fallback.
@@ -134,7 +135,8 @@ import Testing
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
         let link = home.appendingPathComponent("config.toml")
         // Stow writes relative links.
-        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: "../../mac-nix-config/stow/desk-check/.config/desk-check/config.toml")
+        try FileManager.default.createSymbolicLink(
+            atPath: link.path, withDestinationPath: "../../mac-nix-config/stow/desk-check/.config/desk-check/config.toml")
         let store = SettingsFile(defaultFile: link, defaults: defaults)
         #expect(store.panelStart.path == target.resolvingSymlinksInPath().path)
 

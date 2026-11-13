@@ -1,5 +1,5 @@
-import DeskCheckCore
 import AppKit
+import DeskCheckCore
 import SwiftUI
 import os
 
@@ -11,7 +11,7 @@ struct DeskCheckApp: App {
     @StateObject private var checker = PostureChecker.shared
 
     init() {
-        _ = ConfigLocation.load() // Creates only the default file when no file has been chosen.
+        _ = ConfigLocation.load()  // Creates only the default file when no file has been chosen.
         if let warning = ConfigLocation.settings.loadWarning { log.error("\(warning, privacy: .public)") }
     }
 
