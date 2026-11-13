@@ -44,9 +44,11 @@ public final class SettingsFile {
         } catch {
             loaded = false
             if !hasSelection, let target = defaultLinkTarget, Self.isAccessDenied(error) {
-                loadWarning = "Your settings file links to \(target.path). macOS lets Desk Check open it once you allow it: in Settings, click Choose settings file…, then Open."
+                loadWarning =
+                    "Your settings file links to \(target.path). macOS lets Desk Check open it once you allow it: in Settings, click Choose settings file…, then Open."
             } else {
-                loadWarning = "Could not load settings: \(error.localizedDescription) Choose your settings file in Settings. Saving and camera checks are unavailable until settings load."
+                loadWarning =
+                    "Could not load settings: \(error.localizedDescription) Choose your settings file in Settings. Saving and camera checks are unavailable until settings load."
             }
             throw error
         }
@@ -93,7 +95,8 @@ public final class SettingsFile {
         guard hasSelection else { return defaultFile }
         guard let data = defaults.data(forKey: Self.bookmarkKey) else { throw SettingsFileError.bookmark }
         var stale = false
-        let url = try URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale)
+        let url = try URL(
+            resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale)
         if stale {
             try access(url) { file in
                 let renewed = try file.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)

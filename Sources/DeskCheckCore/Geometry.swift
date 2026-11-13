@@ -12,12 +12,18 @@ public struct EyePoints: Equatable, Sendable {
     public struct Point: Equatable, Sendable {
         public var x: Double
         public var y: Double
-        public init(x: Double, y: Double) { self.x = x; self.y = y }
+        public init(x: Double, y: Double) {
+            self.x = x
+            self.y = y
+        }
     }
 
     public init(left: Point, right: Point, imageWidth: Double, imageHeight: Double, yaw: Double = 0) {
-        self.left = left; self.right = right
-        self.imageWidth = imageWidth; self.imageHeight = imageHeight; self.yaw = yaw
+        self.left = left
+        self.right = right
+        self.imageWidth = imageWidth
+        self.imageHeight = imageHeight
+        self.yaw = yaw
     }
 
     /// Pixel distance between the eyes, corrected for a turned head.
@@ -37,7 +43,8 @@ public struct CameraModel: Equatable, Sendable {
     public var pitch: Double
 
     public init(focalWidths: Double, pitch: Double = 0) {
-        self.focalWidths = focalWidths; self.pitch = pitch
+        self.focalWidths = focalWidths
+        self.pitch = pitch
     }
 
     public init(fieldOfViewDegrees: Double) {
@@ -62,11 +69,16 @@ public struct Setup: Equatable, Sendable {
     public var defaultScreenTopHeightCm: Double { builtIn ? 24 : 45 }
     public var defaultLensOffsetCm: Double { builtIn ? 0.5 : 1 }
 
-    public init(screenDistanceCm: Double? = nil, screenTopHeightCm: Double? = nil, lensOffsetCm: Double? = nil,
-                userHeightCm: Double? = nil, seatedEyeHeightCm: Double? = nil, eyeToElbowCm: Double? = nil, builtIn: Bool = false) {
+    public init(
+        screenDistanceCm: Double? = nil, screenTopHeightCm: Double? = nil, lensOffsetCm: Double? = nil,
+        userHeightCm: Double? = nil, seatedEyeHeightCm: Double? = nil, eyeToElbowCm: Double? = nil, builtIn: Bool = false
+    ) {
         self.builtIn = builtIn
-        self.screenDistanceCm = screenDistanceCm; self.screenTopHeightCm = screenTopHeightCm
-        self.lensOffsetCm = lensOffsetCm; self.userHeightCm = userHeightCm; self.seatedEyeHeightCm = seatedEyeHeightCm
+        self.screenDistanceCm = screenDistanceCm
+        self.screenTopHeightCm = screenTopHeightCm
+        self.lensOffsetCm = lensOffsetCm
+        self.userHeightCm = userHeightCm
+        self.seatedEyeHeightCm = seatedEyeHeightCm
         self.eyeToElbowCm = eyeToElbowCm
     }
 
@@ -92,8 +104,10 @@ public enum Geometry {
     public static let defaultEyeSpanCm = 6.3
 
     /// Pinhole model: the eyes' real span over their span in the frame is the distance over the focal length.
-    public static func reading(_ eyes: EyePoints, camera: CameraModel, setup: Setup,
-                               eyeSpanCm: Double = defaultEyeSpanCm) -> PostureReading? {
+    public static func reading(
+        _ eyes: EyePoints, camera: CameraModel, setup: Setup,
+        eyeSpanCm: Double = defaultEyeSpanCm
+    ) -> PostureReading? {
         let span = eyes.spanPixels
         guard span > 1, eyes.imageWidth > 0 else { return nil }
         let focalPx = camera.focalWidths * eyes.imageWidth
@@ -101,13 +115,16 @@ public enum Geometry {
         let angle = atan((eyes.midpointY - eyes.imageHeight / 2) / focalPx) + camera.pitch
         let aboveLens = distance * tan(angle)
         let aboveTop = setup.lensOffset + aboveLens
-        return PostureReading(distanceCm: distance, eyeAboveScreenTopCm: aboveTop,
-                              eyeHeightAboveDeskCm: setup.screenTop + aboveTop)
+        return PostureReading(
+            distanceCm: distance, eyeAboveScreenTopCm: aboveTop,
+            eyeHeightAboveDeskCm: setup.screenTop + aboveTop)
     }
 
     /// Focal length that makes this frame read `tapeDistanceCm`, the eye-to-screen distance measured with a tape.
-    public static func calibrateFocal(_ eyes: EyePoints, tapeDistanceCm: Double,
-                                      eyeSpanCm: Double = defaultEyeSpanCm) -> Double? {
+    public static func calibrateFocal(
+        _ eyes: EyePoints, tapeDistanceCm: Double,
+        eyeSpanCm: Double = defaultEyeSpanCm
+    ) -> Double? {
         let span = eyes.spanPixels
         guard span > 1, eyes.imageWidth > 0, tapeDistanceCm > 0 else { return nil }
         return tapeDistanceCm * span / (eyeSpanCm * eyes.imageWidth)
@@ -115,8 +132,10 @@ public enum Geometry {
 
     /// Lens tilt that makes this frame put the eyes at the tape-measured seated eye height.
     /// Needs the seated eye height and the distance to be tape measures, not defaults.
-    public static func calibratePitch(_ eyes: EyePoints, focalWidths: Double, tapeDistanceCm: Double,
-                                      lensHeightAboveDeskCm: Double, eyeHeightAboveDeskCm: Double) -> Double? {
+    public static func calibratePitch(
+        _ eyes: EyePoints, focalWidths: Double, tapeDistanceCm: Double,
+        lensHeightAboveDeskCm: Double, eyeHeightAboveDeskCm: Double
+    ) -> Double? {
         guard tapeDistanceCm > 0, eyes.imageWidth > 0 else { return nil }
         let expected = atan((eyeHeightAboveDeskCm - lensHeightAboveDeskCm) / tapeDistanceCm)
         let measured = atan((eyes.midpointY - eyes.imageHeight / 2) / (focalWidths * eyes.imageWidth))
@@ -135,8 +154,9 @@ public enum Geometry {
     public static func median(_ readings: [PostureReading]) -> PostureReading? {
         guard !readings.isEmpty else { return nil }
         func mid(_ values: [Double]) -> Double { median(values) ?? 0 }
-        return PostureReading(distanceCm: mid(readings.map(\.distanceCm)),
-                              eyeAboveScreenTopCm: mid(readings.map(\.eyeAboveScreenTopCm)),
-                              eyeHeightAboveDeskCm: mid(readings.map(\.eyeHeightAboveDeskCm)))
+        return PostureReading(
+            distanceCm: mid(readings.map(\.distanceCm)),
+            eyeAboveScreenTopCm: mid(readings.map(\.eyeAboveScreenTopCm)),
+            eyeHeightAboveDeskCm: mid(readings.map(\.eyeHeightAboveDeskCm)))
     }
 }

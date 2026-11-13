@@ -20,7 +20,7 @@ struct SampleResult {
 /// Opens the webcam, finds the eyes in a number of frames with Apple's Vision face landmarks, and closes it.
 /// Each frame is analysed and dropped; only the eye coordinates are kept.
 final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
-    static let framesToSkip = 10      // the camera adjusts exposure first
+    static let framesToSkip = 10  // the camera adjusts exposure first
     static let samplesWanted = 15
     static let timeoutSeconds = 8.0
 
@@ -46,8 +46,10 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
     }
 
     static func connectedCameras() -> [AVCaptureDevice] {
-        AVCaptureDevice.DiscoverySession(deviceTypes: [.external, .builtInWideAngleCamera], mediaType: .video,
-                                         position: .unspecified).devices
+        AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.external, .builtInWideAngleCamera], mediaType: .video,
+            position: .unspecified
+        ).devices
     }
 
     /// The camera a setup asks for, if it is connected. "auto" prefers an external webcam.
@@ -62,8 +64,10 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
 
     /// `completion` gets the result as soon as it is ready; `onStopped` follows once the camera is really off, and is not
     /// called when the camera could not open.
-    func run(device: AVCaptureDevice, completion: @escaping @Sendable (SampleResult?, String?) -> Void,
-             onStopped: @escaping @Sendable () -> Void) {
+    func run(
+        device: AVCaptureDevice, completion: @escaping @Sendable (SampleResult?, String?) -> Void,
+        onStopped: @escaping @Sendable () -> Void
+    ) {
         let session = AVCaptureSession()
         do {
             session.addInput(try AVCaptureDeviceInput(device: device))
@@ -86,7 +90,8 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
                 self.finished = true
                 return SampleResult(cameraName: name, fieldOfViewDegrees: nil, samples: self.samples)
             }
-            log.notice("camera timing: result after \(self.elapsedMs(), privacy: .public) ms, samples=\(result.samples.count, privacy: .public)")
+            log.notice(
+                "camera timing: result after \(self.elapsedMs(), privacy: .public) ms, samples=\(result.samples.count, privacy: .public)")
             completion(result, nil)
             session.stopRunning()
             log.notice("camera timing: stopped after \(self.elapsedMs(), privacy: .public) ms")
@@ -97,7 +102,10 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
     private func elapsedMs() -> Int { Int((ProcessInfo.processInfo.systemUptime - lock.withLock { startedAt }) * 1000) }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        let (seen, done) = lock.withLock { () -> (Int, Bool) in framesSeen += 1; return (framesSeen, finished) }
+        let (seen, done) = lock.withLock { () -> (Int, Bool) in
+            framesSeen += 1
+            return (framesSeen, finished)
+        }
         if seen == 1 { log.notice("camera timing: first frame after \(self.elapsedMs(), privacy: .public) ms") }
         guard !done, seen > Self.framesToSkip, let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let size = CGSize(width: CVPixelBufferGetWidth(pixels), height: CVPixelBufferGetHeight(pixels))
@@ -108,7 +116,10 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
         }
         if wantPreview, seen % 2 == 0, !lock.withLock({ finished }) { sendPreview(pixels, eyes: eyes, size: size) }
         if count >= Self.samplesWanted {
-            let first = lock.withLock { () -> Bool in defer { signalled = true }; return !signalled }
+            let first = lock.withLock { () -> Bool in
+                defer { signalled = true }
+                return !signalled
+            }
             if first {
                 log.notice("camera timing: enough samples after \(self.elapsedMs(), privacy: .public) ms")
                 enough.signal()
@@ -120,16 +131,19 @@ final class FaceSampler: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate,
         let request = VNDetectFaceLandmarksRequest()
         do { try VNImageRequestHandler(cvPixelBuffer: pixels, options: [:]).perform([request]) } catch { return nil }
         guard let face = request.results?.max(by: { $0.boundingBox.width < $1.boundingBox.width }),
-              let landmarks = face.landmarks else { return nil }
+            let landmarks = face.landmarks
+        else { return nil }
         func centre(_ region: VNFaceLandmarkRegion2D?) -> EyePoints.Point? {
             guard let points = region?.pointsInImage(imageSize: size), !points.isEmpty else { return nil }
             let n = Double(points.count)
             return .init(x: points.reduce(0) { $0 + Double($1.x) } / n, y: points.reduce(0) { $0 + Double($1.y) } / n)
         }
         guard let left = centre(landmarks.leftPupil) ?? centre(landmarks.leftEye),
-              let right = centre(landmarks.rightPupil) ?? centre(landmarks.rightEye) else { return nil }
-        return EyePoints(left: left, right: right, imageWidth: size.width, imageHeight: size.height,
-                         yaw: face.yaw?.doubleValue ?? 0)
+            let right = centre(landmarks.rightPupil) ?? centre(landmarks.rightEye)
+        else { return nil }
+        return EyePoints(
+            left: left, right: right, imageWidth: size.width, imageHeight: size.height,
+            yaw: face.yaw?.doubleValue ?? 0)
     }
 
     private func sendPreview(_ pixels: CVPixelBuffer, eyes: EyePoints, size: CGSize) {

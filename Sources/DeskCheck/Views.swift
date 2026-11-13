@@ -1,5 +1,5 @@
-import DeskCheckCore
 import AppKit
+import DeskCheckCore
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -17,14 +17,19 @@ struct PopoverView: View {
 
     var body: some View {
         content
-            .onAppear { checker.reloadSetups(); checker.refreshPermission() }
+            .onAppear {
+                checker.reloadSetups()
+                checker.refreshPermission()
+            }
             // Clicking away: the menu bar popover is hidden, not torn down, so onDisappear never fires for it.
             // The popover's window losing key status is the signal, and it turns the camera off.
-            .background(WindowHidden(visible: { live.popoverIsVisible = $0 }) {
-                checker.clearPreview(); live.popoverHidden()
-                // Next time the popover opens it starts on the main view, unless a calibration is still running.
-                if !checker.isRunning && !checker.choosingSettingsFile { checker.showingSettings = false }
-            })
+            .background(
+                WindowHidden(visible: { live.popoverIsVisible = $0 }) {
+                    checker.clearPreview()
+                    live.popoverHidden()
+                    // Next time the popover opens it starts on the main view, unless a calibration is still running.
+                    if !checker.isRunning && !checker.choosingSettingsFile { checker.showingSettings = false }
+                })
     }
 
     /// The real view content without window lifecycle hooks, also used by offscreen image tests.
@@ -55,10 +60,18 @@ struct PopoverView: View {
                 } else {
                     Text(checker.activeSetup).font(.caption).foregroundStyle(.secondary)
                 }
-                Button { checker.showingSettings = true } label: { Image(systemName: "gearshape") }
-                    .glassIconButton().help("Settings").accessibilityLabel("Settings")
-                Button { NSApplication.shared.terminate(nil) } label: { Image(systemName: "power") }
-                    .glassIconButton().help("Quit Desk Check").accessibilityLabel("Quit")
+                Button {
+                    checker.showingSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .glassIconButton().help("Settings").accessibilityLabel("Settings")
+                Button {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    Image(systemName: "power")
+                }
+                .glassIconButton().help("Quit Desk Check").accessibilityLabel("Quit")
             }
             if let warning = checker.settingsWarning {
                 Label(warning, systemImage: "exclamationmark.triangle.fill")
@@ -72,12 +85,16 @@ struct PopoverView: View {
                     VStack(spacing: 6) {
                         ForEach(Array(checker.advice.enumerated()), id: \.offset) { _, item in
                             let tint = item.status == .good ? Color.green : item.status == .fixed ? Color.gray : Color.orange
-                            Label(item.sentence, systemImage: item.status == .good ? "checkmark.circle.fill" : item.status == .fixed ? "lock.circle.fill" : "arrow.up.and.down.circle.fill")
-                                .foregroundStyle(item.status == .good ? Color.green : item.status == .fixed ? Color.secondary : Color.orange)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 10).padding(.vertical, 7)
-                                .glassTile(tint: tint)
+                            Label(
+                                item.sentence,
+                                systemImage: item.status == .good
+                                    ? "checkmark.circle.fill" : item.status == .fixed ? "lock.circle.fill" : "arrow.up.and.down.circle.fill"
+                            )
+                            .foregroundStyle(item.status == .good ? Color.green : item.status == .fixed ? Color.secondary : Color.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 10).padding(.vertical, 7)
+                            .glassTile(tint: tint)
                         }
                     }
                 }
@@ -119,8 +136,12 @@ struct PopoverView: View {
     private var settingsView: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Button { checker.showingSettings = false } label: { Label("Back", systemImage: "chevron.left") }
-                    .keyboardShortcut(.cancelAction).glassButton()
+                Button {
+                    checker.showingSettings = false
+                } label: {
+                    Label("Back", systemImage: "chevron.left")
+                }
+                .keyboardShortcut(.cancelAction).glassButton()
                 Text("Settings").font(.headline)
                 Spacer()
             }
@@ -175,12 +196,14 @@ struct PreviewView: View {
     var body: some View {
         Image(decorative: frame.image, scale: 1)
             .resizable().aspectRatio(contentMode: .fit)
-            .overlay(GeometryReader { geo in
-                ForEach([frame.left, frame.right], id: \.x) { p in
-                    Circle().stroke(Color.green, lineWidth: 2).frame(width: 12, height: 12)
-                        .position(x: p.x * geo.size.width, y: p.y * geo.size.height)
+            .overlay(
+                GeometryReader { geo in
+                    ForEach([frame.left, frame.right], id: \.x) { p in
+                        Circle().stroke(Color.green, lineWidth: 2).frame(width: 12, height: 12)
+                            .position(x: p.x * geo.size.width, y: p.y * geo.size.height)
+                    }
                 }
-            })
+            )
             .scaleEffect(x: -1, y: 1)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .accessibilityLabel("Camera preview with detected eye points")
@@ -210,7 +233,7 @@ struct WindowHidden: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(hidden: hidden) }
 
-    final class Coordinator: @unchecked Sendable { // only touched on the main queue
+    final class Coordinator: @unchecked Sendable {  // only touched on the main queue
         var hidden: () -> Void
         private var tokens: [NSObjectProtocol] = []
         init(hidden: @escaping () -> Void) { self.hidden = hidden }
@@ -218,12 +241,14 @@ struct WindowHidden: NSViewRepresentable {
         func attach(to window: NSWindow?) {
             guard let window, tokens.isEmpty else { return }
             let center = NotificationCenter.default
-            tokens.append(center.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.hidden() }
-            })
-            tokens.append(center.addObserver(forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { if !window.occlusionState.contains(.visible) { self?.hidden() } }
-            })
+            tokens.append(
+                center.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.hidden() }
+                })
+            tokens.append(
+                center.addObserver(forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { if !window.occlusionState.contains(.visible) { self?.hidden() } }
+                })
         }
 
         deinit { tokens.forEach(NotificationCenter.default.removeObserver) }
@@ -263,15 +288,20 @@ struct SettingsView: View {
         // The drawing stays above the scrolling form so it is visible while a value is typed.
         VStack(spacing: 0) {
             settingsFileControls
-            FieldGuideView(active: hovered ?? focused, laptop: profile.camera == .builtIn,
-                           select: { focused = $0 },
-                           hover: { field, inside in
-                               if inside { hovered = field } else if hovered == field { hovered = nil }
-                           })
+            FieldGuideView(
+                active: hovered ?? focused, laptop: profile.camera == .builtIn,
+                select: { focused = $0 },
+                hover: { field, inside in
+                    if inside { hovered = field } else if hovered == field { hovered = nil }
+                })
             form
         }
         .frame(width: 492, height: 600)
-        .onAppear { checker.reloadSetups(); checker.refreshPermission(); load() }
+        .onAppear {
+            checker.reloadSetups()
+            checker.refreshPermission()
+            load()
+        }
     }
 
     private var form: some View {
@@ -306,11 +336,16 @@ struct SettingsView: View {
                     ForEach(namedCameras, id: \.self) { Text($0).tag(CameraChoice.named($0)) }
                 }
                 LabeledContent("Screen") {
-                    TextField("", text: $profile.screen, prompt: Text("a label, e.g. Studio Display")).multilineTextAlignment(.trailing).frame(width: 200)
+                    TextField("", text: $profile.screen, prompt: Text("a label, e.g. Studio Display")).multilineTextAlignment(.trailing)
+                        .frame(width: 200)
                 }
                 ForEach(Adjustment.allCases, id: \.self) { a in
-                    Picker(a.label, selection: Binding(get: { profile.fixed.contains(a) },
-                                                       set: { if $0 { profile.fixed.insert(a) } else { profile.fixed.remove(a) } })) {
+                    Picker(
+                        a.label,
+                        selection: Binding(
+                            get: { profile.fixed.contains(a) },
+                            set: { if $0 { profile.fixed.insert(a) } else { profile.fixed.remove(a) } })
+                    ) {
                         Text("Adjustable").tag(false)
                         Text("Fixed").tag(true)
                     }.pickerStyle(.segmented)
@@ -335,13 +370,17 @@ struct SettingsView: View {
                 } else {
                     Text("Desk height is fixed, so this setup has no standing preset.").font(.caption).foregroundStyle(.secondary)
                 }
-                Text("Set the desk to the height on the tape, then use Remember view in the menu bar popover so the camera can confirm it later.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(
+                    "Set the desk to the height on the tape, then use Remember view in the menu bar popover so the camera can confirm it later."
+                )
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }.glassSection()
             Section("Webcam calibration") {
                 Text(checker.webcamName ?? "The camera for this setup is not connected")
-                Text("Sit as you normally do with your eyes at the tape distance, then calibrate. Calibration belongs to the webcam, so every setup using it shares it.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(
+                    "Sit as you normally do with your eyes at the tape distance, then calibrate. Calibration belongs to the webcam, so every setup using it shares it."
+                )
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack {
                     Button("Calibrate webcam") { if save() { checker.calibrate() } }
                         .disabled(checker.isBusy || checker.webcamName == nil)
@@ -363,17 +402,21 @@ struct SettingsView: View {
     private var settingsFileControls: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Settings file").font(.headline)
-            Text(checker.settings.hasSelection && checker.settingsWarning != nil
-                 ? "Chosen settings file is unavailable" : checker.settings.file.path)
-                .font(.caption).textSelection(.enabled).lineLimit(2)
+            Text(
+                checker.settings.hasSelection && checker.settingsWarning != nil
+                    ? "Chosen settings file is unavailable" : checker.settings.file.path
+            )
+            .font(.caption).textSelection(.enabled).lineLimit(2)
             HStack {
                 Button("Choose settings file…") { chooseSettingsFile() }.glassButton()
                     .disabled(checker.isBusy)
                 Button("Open config file") { openConfigFile() }.glassButton()
                     .disabled(checker.settingsWarning != nil)
             }
-            Text("If the default is a link into your dotfiles, the panel opens on the real file: click Open. Changing files discards unsaved edits.")
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(
+                "If the default is a link into your dotfiles, the panel opens on the real file: click Open. Changing files discards unsaved edits."
+            )
+            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if let warning = checker.settingsWarning {
                 Label(warning, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
@@ -445,9 +488,10 @@ struct SettingsView: View {
         profile = config.activeProfile
         let s = profile.measurements
         func str(_ v: Double?) -> String { v.map { String(format: "%g", $0) } ?? "" }
-        fields = Fields(distance: str(s.screenDistanceCm), screenTop: str(s.screenTopHeightCm), lens: str(s.lensOffsetCm),
-                        height: str(s.userHeightCm), seatedEye: str(s.seatedEyeHeightCm), elbow: str(s.eyeToElbowCm),
-                        sitDesk: str(profile.presets[.sit]?.deskHeightCm), standDesk: str(profile.presets[.stand]?.deskHeightCm))
+        fields = Fields(
+            distance: str(s.screenDistanceCm), screenTop: str(s.screenTopHeightCm), lens: str(s.lensOffsetCm),
+            height: str(s.userHeightCm), seatedEye: str(s.seatedEyeHeightCm), elbow: str(s.eyeToElbowCm),
+            sitDesk: str(profile.presets[.sit]?.deskHeightCm), standDesk: str(profile.presets[.stand]?.deskHeightCm))
         showPreview = config.showPreview
         autoSwitch = config.autoSwitch
         nameField = ""
@@ -460,9 +504,10 @@ struct SettingsView: View {
         func num(_ s: String) -> Double? { Double(s.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")) }
         var config = checker.settings.load()
         var p = profile
-        p.measurements = Setup(screenDistanceCm: num(fields.distance), screenTopHeightCm: num(fields.screenTop),
-                               lensOffsetCm: num(fields.lens), userHeightCm: num(fields.height),
-                               seatedEyeHeightCm: num(fields.seatedEye), eyeToElbowCm: num(fields.elbow))
+        p.measurements = Setup(
+            screenDistanceCm: num(fields.distance), screenTopHeightCm: num(fields.screenTop),
+            lensOffsetCm: num(fields.lens), userHeightCm: num(fields.height),
+            seatedEyeHeightCm: num(fields.seatedEye), eyeToElbowCm: num(fields.elbow))
         // Changing the tape height forgets the remembered camera view, which belonged to the old height.
         for (posture, text) in [(Posture.sit, fields.sitDesk), (.stand, fields.standDesk)] {
             if let cm = num(text), cm > 0 {
@@ -478,8 +523,13 @@ struct SettingsView: View {
     }
 
     private func write(_ config: DeskConfig) -> Bool {
-        do { try checker.settings.save(config); return true }
-        catch { message = "Could not save: \(error.localizedDescription)"; return false }
+        do {
+            try checker.settings.save(config)
+            return true
+        } catch {
+            message = "Could not save: \(error.localizedDescription)"
+            return false
+        }
     }
 
     private func switchSetup(to name: String) {

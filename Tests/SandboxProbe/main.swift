@@ -11,27 +11,39 @@ func expect(_ ok: Bool, _ what: String) {
 }
 
 let args = CommandLine.arguments
-guard args.count == 2, let port = UInt16(args[1]) else {
-    print("usage: SandboxProbe <port on this Mac>")
+guard args.count == 2 || args.count == 3, let port = UInt16(args[1]) else {
+    print("usage: SandboxProbe <port on this Mac> [settings folder to test instead of ~/.config/desk-check]")
     exit(2)
 }
 let home = ConfigLocation.realHomeDirectory
 let fm = FileManager.default
 
 expect(NSHomeDirectory().contains("/Library/Containers/"), "running inside the App Sandbox container")
-expect(MainActor.assumeIsolated { ConfigLocation.file.path } == home.path + "/.config/desk-check/config.toml",
-       "config path is in the real home folder, not the container")
+expect(
+    MainActor.assumeIsolated { ConfigLocation.file.path } == home.path + "/.config/desk-check/config.toml",
+    "config path is in the real home folder, not the container")
 
 // Config folder: create it if needed, write, read back, remove the probe file.
-let probe = ConfigLocation.directory.appendingPathComponent(".sandbox-probe-\(UUID().uuidString)")
+let configFolder = args.count == 3 ? URL(fileURLWithPath: args[2], isDirectory: true) : ConfigLocation.directory
+// A settings folder that is a symbolic link (GNU Stow makes these) is checked by the sandbox at its destination,
+// which the entitlements do not allow. Say so instead of leaving a bare write failure.
+let linkDestination = try? fm.destinationOfSymbolicLink(atPath: configFolder.path)
+if let linkDestination {
+    print(
+        "note \(configFolder.path) is a symbolic link to \(linkDestination). The sandbox allows writes only inside "
+            + "~/.config/desk-check/ itself, so writes through a link to another folder fail. "
+            + "Replace the link with a real folder, or link only config.toml inside it.")
+}
+let probe = configFolder.appendingPathComponent(".sandbox-probe-\(UUID().uuidString)")
 do {
-    try fm.createDirectory(at: ConfigLocation.directory, withIntermediateDirectories: true)
+    try fm.createDirectory(at: configFolder, withIntermediateDirectories: true)
     try "probe".write(to: probe, atomically: false, encoding: .utf8)
     let back = try String(contentsOf: probe, encoding: .utf8)
     try fm.removeItem(at: probe)
     expect(back == "probe", "config folder can be created, written and read")
 } catch {
-    expect(false, "config folder can be created, written and read (\(error.localizedDescription))")
+    let why = linkDestination == nil ? "" : "; the folder is a symbolic link, see the note above"
+    expect(false, "config folder can be created, written and read (\(error.localizedDescription)\(why))")
 }
 
 // Anywhere else in the home folder is closed.
@@ -47,7 +59,8 @@ do {
     expect(true, "legacy settings can be read for migration")
 } catch {
     let nsError = error as NSError
-    let missing = (nsError.domain == NSCocoaErrorDomain && nsError.code == CocoaError.Code.fileReadNoSuchFile.rawValue)
+    let missing =
+        (nsError.domain == NSCocoaErrorDomain && nsError.code == CocoaError.Code.fileReadNoSuchFile.rawValue)
         || (nsError.domain == NSPOSIXErrorDomain && nsError.code == Int(ENOENT))
     if missing {
         expect(true, "legacy settings file may be absent on a clean install")

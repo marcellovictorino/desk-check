@@ -1,5 +1,5 @@
-import DeskCheckCore
 import AppKit
+import DeskCheckCore
 import SwiftUI
 
 /// Live adjustment inside the menu bar popover. Its height never changes: the title and Stop sit in a header, the
@@ -71,6 +71,7 @@ struct BandRow: View {
         .frame(height: LiveLayout.rowHeight)
         .glassTile(tint: colour)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(item.adjustment.label): \(item.level == .green ? "green" : item.level == .yellow ? "yellow" : "red"). \(item.text)")
+        .accessibilityLabel(
+            "\(item.adjustment.label): \(item.level == .green ? "green" : item.level == .yellow ? "yellow" : "red"). \(item.text)")
     }
 }

@@ -39,8 +39,10 @@ final class LiveController: ObservableObject {
 
     func start() {
         let config: DeskConfig
-        do { config = try settings.read() }
-        catch { statusText = settings.loadWarning ?? error.localizedDescription; return }
+        do { config = try settings.read() } catch {
+            statusText = settings.loadWarning ?? error.localizedDescription
+            return
+        }
         guard let token = run.start() else { return }
         isRunning = true
         statusText = "Starting the camera…"
@@ -55,8 +57,14 @@ final class LiveController: ObservableObject {
                 guard self.run.isCurrent(token) else { return }
                 self.awaitingPermission = false
                 // The popover was closed while the prompt was up: nobody is watching, so the camera stays off.
-                guard self.popoverIsVisible() else { self.stop(); return }
-                guard granted else { self.fail("Desk Check has no camera permission. Allow it in System Settings, Privacy & Security, Camera."); return }
+                guard self.popoverIsVisible() else {
+                    self.stop()
+                    return
+                }
+                guard granted else {
+                    self.fail("Desk Check has no camera permission. Allow it in System Settings, Privacy & Security, Camera.")
+                    return
+                }
                 self.begin(token)
             }
         }
@@ -64,8 +72,10 @@ final class LiveController: ObservableObject {
 
     private func begin(_ token: Int) {
         let config: DeskConfig
-        do { config = try settings.read() }
-        catch { fail(settings.loadWarning ?? error.localizedDescription); return }
+        do { config = try settings.read() } catch {
+            fail(settings.loadWarning ?? error.localizedDescription)
+            return
+        }
         profile = config.activeProfile
         setupName = profile.name
         guard let device = FaceSampler.camera(for: profile.camera) else {
@@ -74,7 +84,9 @@ final class LiveController: ObservableObject {
         }
         camera = config.camera(forWebcam: device.localizedName, fieldOfViewDegrees: nil)
         cameraName = device.localizedName
-        average.reset(); advice = []; lastSteady = nil
+        average.reset()
+        advice = []
+        lastSteady = nil
         lastFace = ProcessInfo.processInfo.systemUptime
         let sampler = LiveSampler { eyes, time in
             Task { @MainActor in if self.run.isCurrent(token) { self.receive(eyes, at: time) } }
@@ -98,13 +110,16 @@ final class LiveController: ObservableObject {
             lastFace = time
             average.add(r, at: time)
             if let avg = average.average {
-                lastSteady = LiveSnapshot(reading: avg, time: time, setupName: profile.name, cameraName: cameraName,
-                                          measurements: profile.measurements, camera: camera)
+                lastSteady = LiveSnapshot(
+                    reading: avg, time: time, setupName: profile.name, cameraName: cameraName,
+                    measurements: profile.measurements, camera: camera)
                 advice = LiveEngine.advise(avg, setup: profile.measurements, fixed: profile.fixed)
                 statusText = "Camera on (\(profile.name)). Updating about every second."
             }
         } else if time - lastFace > 2 {
-            average.reset(); advice = []; lastSteady = nil
+            average.reset()
+            advice = []
+            lastSteady = nil
             statusText = "No face found. Look at the screen with your face lit."
         }
     }
@@ -117,8 +132,10 @@ final class LiveController: ObservableObject {
 
     func stop(reason: String = LiveController.offText) {
         awaitingPermission = false
-        timeout?.cancel(); timeout = nil
-        sampler?.stop(); sampler = nil
+        timeout?.cancel()
+        timeout = nil
+        sampler?.stop()
+        sampler = nil
         if run.stop() { log.notice("live session stopped") }
         isRunning = false
         advice = []
@@ -126,7 +143,8 @@ final class LiveController: ObservableObject {
     }
 
     private func fail(_ message: String) {
-        sampler?.stop(); sampler = nil
+        sampler?.stop()
+        sampler = nil
         run.stop()
         isRunning = false
         statusText = message

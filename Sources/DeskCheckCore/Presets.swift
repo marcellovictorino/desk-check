@@ -13,7 +13,9 @@ public struct DeskPreset: Equatable, Sendable {
     public var eyeAboveScreenTopCm: Double?
 
     public init(deskHeightCm: Double, distanceCm: Double? = nil, eyeAboveScreenTopCm: Double? = nil) {
-        self.deskHeightCm = deskHeightCm; self.distanceCm = distanceCm; self.eyeAboveScreenTopCm = eyeAboveScreenTopCm
+        self.deskHeightCm = deskHeightCm
+        self.distanceCm = distanceCm
+        self.eyeAboveScreenTopCm = eyeAboveScreenTopCm
     }
 
     /// How far a reading may differ from the remembered view and still count as the same place.
@@ -35,7 +37,8 @@ public struct DeskPreset: Equatable, Sendable {
         }
         let dh = r.eyeAboveScreenTopCm - h
         if abs(dh) > Self.toleranceCm {
-            problems.append("your eyes are \(Int(abs(dh).rounded())) cm \(dh > 0 ? "higher" : "lower") against the screen than when you saved it")
+            problems.append(
+                "your eyes are \(Int(abs(dh).rounded())) cm \(dh > 0 ? "higher" : "lower") against the screen than when you saved it")
         }
         guard !problems.isEmpty else { return .confirmed }
         let sentence = problems.joined(separator: " and ")

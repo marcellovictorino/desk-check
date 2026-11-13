@@ -5,7 +5,8 @@ public struct WebcamCalibration: Equatable, Sendable {
     public var focalWidths: Double?
     public var pitchDegrees: Double?
     public init(focalWidths: Double? = nil, pitchDegrees: Double? = nil) {
-        self.focalWidths = focalWidths; self.pitchDegrees = pitchDegrees
+        self.focalWidths = focalWidths
+        self.pitchDegrees = pitchDegrees
     }
 }
 
@@ -59,18 +60,21 @@ public struct DeskConfig: Equatable {
         for a in Adjustment.allCases {
             if case .string(Self.fixedWord)? = document.value(a.rawValue, in: table) { fixed.insert(a) }
         }
-        let measurements = Setup(screenDistanceCm: n("screen_distance_cm"), screenTopHeightCm: n("screen_top_height_cm"),
-                                 lensOffsetCm: n("lens_offset_cm"), userHeightCm: n("user_height_cm"),
-                                 seatedEyeHeightCm: n("seated_eye_height_cm"), eyeToElbowCm: n("eye_to_elbow_cm"))
+        let measurements = Setup(
+            screenDistanceCm: n("screen_distance_cm"), screenTopHeightCm: n("screen_top_height_cm"),
+            lensOffsetCm: n("lens_offset_cm"), userHeightCm: n("user_height_cm"),
+            seatedEyeHeightCm: n("seated_eye_height_cm"), eyeToElbowCm: n("eye_to_elbow_cm"))
         var presets: [Posture: DeskPreset] = [:]
         for posture in Posture.allCases {
             let key = posture.rawValue
             guard let desk = n("\(key)_desk_height_cm") else { continue }
-            presets[posture] = DeskPreset(deskHeightCm: desk, distanceCm: n("\(key)_distance_cm"),
-                                          eyeAboveScreenTopCm: number("\(key)_eye_above_screen_top_cm", in: table))
+            presets[posture] = DeskPreset(
+                deskHeightCm: desk, distanceCm: n("\(key)_distance_cm"),
+                eyeAboveScreenTopCm: number("\(key)_eye_above_screen_top_cm", in: table))
         }
-        return SetupProfile(name: name, camera: CameraChoice(str("camera")), screen: str("screen"),
-                            measurements: measurements, fixed: fixed, presets: presets)
+        return SetupProfile(
+            name: name, camera: CameraChoice(str("camera")), screen: str("screen"),
+            measurements: measurements, fixed: fixed, presets: presets)
     }
 
     /// A number that may be zero or negative, such as eyes below the top of the screen.
@@ -87,17 +91,21 @@ public struct DeskConfig: Equatable {
         let m = p.measurements
         document.set("camera", .string(p.camera.text), in: table)
         document.set("screen", .string(p.screen), in: table)
-        for (key, v) in [("screen_distance_cm", m.screenDistanceCm), ("screen_top_height_cm", m.screenTopHeightCm),
-                         ("lens_offset_cm", m.lensOffsetCm), ("user_height_cm", m.userHeightCm),
-                         ("seated_eye_height_cm", m.seatedEyeHeightCm), ("eye_to_elbow_cm", m.eyeToElbowCm)] {
+        for (key, v) in [
+            ("screen_distance_cm", m.screenDistanceCm), ("screen_top_height_cm", m.screenTopHeightCm),
+            ("lens_offset_cm", m.lensOffsetCm), ("user_height_cm", m.userHeightCm),
+            ("seated_eye_height_cm", m.seatedEyeHeightCm), ("eye_to_elbow_cm", m.eyeToElbowCm),
+        ] {
             if let v { document.set(key, .number(v), in: table) } else { document.remove(key, in: table) }
         }
         for posture in Posture.allCases {
             let key = posture.rawValue
             // A setup with a fixed desk has no standing preset.
             let preset = (posture == .stand && !p.supportsStandingPreset) ? nil : p.presets[posture]
-            for (suffix, v) in [("desk_height_cm", preset?.deskHeightCm), ("distance_cm", preset?.distanceCm),
-                                ("eye_above_screen_top_cm", preset?.eyeAboveScreenTopCm)] {
+            for (suffix, v) in [
+                ("desk_height_cm", preset?.deskHeightCm), ("distance_cm", preset?.distanceCm),
+                ("eye_above_screen_top_cm", preset?.eyeAboveScreenTopCm),
+            ] {
                 if let v { document.set("\(key)_\(suffix)", .number(v), in: table) } else { document.remove("\(key)_\(suffix)", in: table) }
             }
         }
@@ -204,50 +212,50 @@ public struct DeskConfig: Equatable {
     }
 
     public static let starterContents = """
-    # Desk Check settings. Lines starting with # are comments; the app keeps them when it saves.
-    # Delete a measurement line to go back to the default estimate. Lengths are in centimetres.
+        # Desk Check settings. Lines starting with # are comments; the app keeps them when it saves.
+        # Delete a measurement line to go back to the default estimate. Lengths are in centimetres.
 
-    [preferences]
-    # The setup used last; the menu bar popover and Settings change it.
-    active_setup = "Standing desk"
-    # Switch setup by itself when a webcam is plugged in or unplugged.
-    auto_switch = false
-    # Show the camera view with detected eye points during a check. The picture is never saved.
-    preview = false
+        [preferences]
+        # The setup used last; the menu bar popover and Settings change it.
+        active_setup = "Standing desk"
+        # Switch setup by itself when a webcam is plugged in or unplugged.
+        auto_switch = false
+        # Show the camera view with detected eye points during a check. The picture is never saved.
+        preview = false
 
-    # A setup is one place you use Desk Check. Copy a table and rename it to add another, for example
-    # [setups."MacBook on the sofa table"] with camera = "built-in".
-    [setups."Standing desk"]
-    # "auto" is an external webcam when one is plugged in, else the MacBook's. "built-in" is always
-    # the MacBook's own. Or write a webcam name exactly as macOS shows it.
-    camera = "auto"
-    screen = "external"
-    # Tape measure, eye to screen surface, while you sit as you normally do. Used to calibrate the webcam.
-    # screen_distance_cm = 60
-    # Top edge of the screen above the desk surface (default 45; 24 for the built-in screen).
-    # screen_top_height_cm = 45
-    # Webcam lens centre above the top edge of the screen (default 1; 0.5 for the built-in camera).
-    # lens_offset_cm = 1
-    # Your height, and your eyes above the desk surface when seated.
-    # user_height_cm = 175
-    # seated_eye_height_cm = 40
-    # Vertical gap from your eyes to your elbow (default 0.3 of your height). Live mode keeps the
-    # desk surface 3 cm below your elbow.
-    # eye_to_elbow_cm = 52
-    # Desk presets: the height read from the tape on the desk leg. The camera numbers are added
-    # by the popover's "Remember view" and let it confirm you are back at the same height.
-    # sit_desk_height_cm = 72
-    # stand_desk_height_cm = 112
-    # What you can move here: "adjustable" or "fixed". A setup with a fixed desk has no standing preset.
-    screen_height = "adjustable"
-    screen_distance = "adjustable"
-    desk_height = "adjustable"
-    chair_height = "adjustable"
+        # A setup is one place you use Desk Check. Copy a table and rename it to add another, for example
+        # [setups."MacBook on the sofa table"] with camera = "built-in".
+        [setups."Standing desk"]
+        # "auto" is an external webcam when one is plugged in, else the MacBook's. "built-in" is always
+        # the MacBook's own. Or write a webcam name exactly as macOS shows it.
+        camera = "auto"
+        screen = "external"
+        # Tape measure, eye to screen surface, while you sit as you normally do. Used to calibrate the webcam.
+        # screen_distance_cm = 60
+        # Top edge of the screen above the desk surface (default 45; 24 for the built-in screen).
+        # screen_top_height_cm = 45
+        # Webcam lens centre above the top edge of the screen (default 1; 0.5 for the built-in camera).
+        # lens_offset_cm = 1
+        # Your height, and your eyes above the desk surface when seated.
+        # user_height_cm = 175
+        # seated_eye_height_cm = 40
+        # Vertical gap from your eyes to your elbow (default 0.3 of your height). Live mode keeps the
+        # desk surface 3 cm below your elbow.
+        # eye_to_elbow_cm = 52
+        # Desk presets: the height read from the tape on the desk leg. The camera numbers are added
+        # by the popover's "Remember view" and let it confirm you are back at the same height.
+        # sit_desk_height_cm = 72
+        # stand_desk_height_cm = 112
+        # What you can move here: "adjustable" or "fixed". A setup with a fixed desk has no standing preset.
+        screen_height = "adjustable"
+        screen_distance = "adjustable"
+        desk_height = "adjustable"
+        chair_height = "adjustable"
 
-    # Webcam calibration is stored per webcam, not per setup, and is added here by Settings:
-    # [webcams."HD Pro Webcam C920"]
-    # focal_widths = 0.78
-    # pitch_degrees = 0
+        # Webcam calibration is stored per webcam, not per setup, and is added here by Settings:
+        # [webcams."HD Pro Webcam C920"]
+        # focal_widths = 0.78
+        # pitch_degrees = 0
 
-    """
+        """
 }

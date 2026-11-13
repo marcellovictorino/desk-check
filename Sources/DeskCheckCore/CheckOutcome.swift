@@ -27,10 +27,14 @@ public enum CheckOutcome {
     }
 
     /// Stores what the camera sees now as the remembered view of the preset for `posture`.
-    public static func remember(_ r: PostureReading, posture: Posture, config: DeskConfig,
-                                profile: SetupProfile) -> RememberOutcome {
+    public static func remember(
+        _ r: PostureReading, posture: Posture, config: DeskConfig,
+        profile: SetupProfile
+    ) -> RememberOutcome {
         guard var preset = profile.presets[posture] else {
-            return RememberOutcome(config: nil, message: "Enter the \(posture.label.lowercased()) desk height from the tape in Settings first. The camera is off.")
+            return RememberOutcome(
+                config: nil,
+                message: "Enter the \(posture.label.lowercased()) desk height from the tape in Settings first. The camera is off.")
         }
         preset.distanceCm = r.distanceCm
         preset.eyeAboveScreenTopCm = r.eyeAboveScreenTopCm
@@ -38,7 +42,11 @@ public enum CheckOutcome {
         p.presets[posture] = preset
         var updated = config
         updated.save(p)
-        return RememberOutcome(config: updated, message: "Remembered \(posture.label.lowercased()) at \(Int(preset.deskHeightCm.rounded())) cm for \(profile.name). The camera is off.")
+        return RememberOutcome(
+            config: updated,
+            message:
+                "Remembered \(posture.label.lowercased()) at \(Int(preset.deskHeightCm.rounded())) cm for \(profile.name). The camera is off."
+        )
     }
 
     public static func saveFailed(_ reason: String) -> String { "Could not save: \(reason)" }
@@ -93,7 +101,8 @@ public enum CheckOutcome {
         if let top = setup.screenTopHeightCm, let eye = setup.seatedEyeHeightCm {
             let lens = top + setup.lensOffset
             let pitches = samples.compactMap {
-                Geometry.calibratePitch($0, focalWidths: focal, tapeDistanceCm: tape, lensHeightAboveDeskCm: lens, eyeHeightAboveDeskCm: eye)
+                Geometry.calibratePitch(
+                    $0, focalWidths: focal, tapeDistanceCm: tape, lensHeightAboveDeskCm: lens, eyeHeightAboveDeskCm: eye)
             }
             if let pitch = Geometry.median(pitches) {
                 calibration.pitchDegrees = pitch * 180 / .pi
