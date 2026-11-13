@@ -20,6 +20,13 @@ class DeskCheck < Formula
     # Build with the command line tools when they are installed, as Homebrew itself does,
     # so the result is the same whether or not Xcode is present.
     ENV["DEVELOPER_DIR"] = MacOS::CLT::PKG_PATH if MacOS::CLT.installed?
+    # Desk Check builds in the Swift 6 language mode, which needs Swift 6 (command line tools 16 or later).
+    swift_major = Utils.safe_popen_read("xcrun", "swift", "--version")[/Swift version (\d+)/, 1].to_i
+    if swift_major < 6
+      odie "Desk Check needs Swift 6 or later to build, and this Mac has Swift #{swift_major}. " \
+           "Update the command line tools (version 16 or later, which needs macOS 14.5 or later) " \
+           "with `xcode-select --install` or in System Settings > General > Software Update, then run brew install again."
+    end
     system "scripts/build-app.sh", version.to_s, prefix
     pkgshare.install "Tests/verify-app.sh"
     # desk-check quits a copy left running by an older install, then opens this one; --version prints the version.

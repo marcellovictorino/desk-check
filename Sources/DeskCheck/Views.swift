@@ -179,9 +179,11 @@ struct WindowHidden: NSViewRepresentable {
         let view = NSView()
         let observer = context.coordinator
         DispatchQueue.main.async { [weak view] in
-            guard let window = view?.window else { return }
-            observer.attach(to: window)
-            visible { [weak window] in window.map { $0.isVisible && $0.occlusionState.contains(.visible) } ?? false }
+            MainActor.assumeIsolated {
+                guard let window = view?.window else { return }
+                observer.attach(to: window)
+                visible { [weak window] in window.map { $0.isVisible && $0.occlusionState.contains(.visible) } ?? false }
+            }
         }
         return view
     }
@@ -190,7 +192,7 @@ struct WindowHidden: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(hidden: hidden) }
 
-    final class Coordinator {
+    final class Coordinator: @unchecked Sendable { // only touched on the main queue
         var hidden: () -> Void
         private var tokens: [NSObjectProtocol] = []
         init(hidden: @escaping () -> Void) { self.hidden = hidden }
@@ -199,10 +201,10 @@ struct WindowHidden: NSViewRepresentable {
             guard let window, tokens.isEmpty else { return }
             let center = NotificationCenter.default
             tokens.append(center.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { [weak self] _ in
-                self?.hidden()
+                MainActor.assumeIsolated { self?.hidden() }
             })
             tokens.append(center.addObserver(forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main) { [weak self] _ in
-                if !window.occlusionState.contains(.visible) { self?.hidden() }
+                MainActor.assumeIsolated { if !window.occlusionState.contains(.visible) { self?.hidden() } }
             })
         }
 

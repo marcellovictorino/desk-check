@@ -25,12 +25,13 @@ public enum ConfigLocation {
     }
 
     public static var defaultFile: URL { directory.appendingPathComponent("config.toml") }
-    public static let settings = SettingsFile(defaultFile: defaultFile, defaults: .standard) {
+    /// SettingsFile is not thread-safe, so the shared instance and its helpers are main-actor only.
+    @MainActor public static let settings = SettingsFile(defaultFile: defaultFile, defaults: .standard) {
         try ensureStarterFile()
     }
-    public static var file: URL { settings.file }
-    public static func load() -> DeskConfig { settings.load() }
-    public static func save(_ config: DeskConfig) throws { try settings.save(config) }
+    @MainActor public static var file: URL { settings.file }
+    @MainActor public static func load() -> DeskConfig { settings.load() }
+    @MainActor public static func save(_ config: DeskConfig) throws { try settings.save(config) }
 
     /// Writes a commented starter file when none exists. Returns true when it wrote one.
     @discardableResult

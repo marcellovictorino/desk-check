@@ -12,9 +12,9 @@ brew install marcellovictorino/tap/desk-check
 desk-check
 ```
 
-Requires macOS 14 or later on Apple silicon. Homebrew builds the app on your Mac with
-Apple's command line tools; Xcode and a developer account are not needed. Desk Check lives
-in the menu bar. `desk-check --version` prints the installed version.
+Requires macOS 14.5 or later on Apple silicon. Homebrew builds the app on your Mac with
+Apple's command line tools, version 16 or later (Swift 6); Xcode and a developer account are not
+needed. Desk Check lives in the menu bar. `desk-check --version` prints the installed version.
 
 After each `brew upgrade`, run `desk-check` again to replace the running copy. macOS asks for
 the camera once more after an upgrade, because the permission is tied to the exact build.
