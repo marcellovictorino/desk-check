@@ -2,8 +2,6 @@ import Foundation
 
 /// What the camera sessions tell the person, and the calibration maths behind it, with no camera or UI.
 public enum CheckOutcome {
-    public static let cameraOff = "The camera is off."
-
     public static let noFace = "No face found. Sit facing the screen with your face lit. The camera is off."
 
     public static let notCalibratedNote =
