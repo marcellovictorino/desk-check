@@ -30,14 +30,23 @@ button{font:inherit;cursor:pointer}
 .copy{border:1px solid var(--ink);background:transparent;color:var(--ink);border-radius:8px;padding:10px 14px;font-size:15px}
 a{color:var(--ink)}
 .top{position:absolute;top:22px;right:20px;display:flex;gap:8px;z-index:2}
+@media(max-width:760px){.top{position:static;justify-content:flex-end;margin:-40px 0 16px}}
 .top button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;font-size:14px}
 .review{background:var(--card);border-bottom:1px dashed var(--line);font-size:14px;padding:8px 20px;text-align:center}
 .review button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:6px;padding:3px 10px;margin:0 3px}
 .review button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
-.frame{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:18px;max-width:380px}
-.frame .tag{font:11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-.row{display:flex;justify-content:space-between;font:15px var(--mono);padding:9px 12px;border-radius:8px;margin-top:8px;color:var(--rowfg)}
-.row.ok{background:var(--ok)}.row.warn{background:var(--warn)}.row.bad{background:var(--bad)}
+.shots{display:grid;max-width:366px;margin:0 auto}
+.shot{grid-area:1/1;opacity:0;transition:opacity .45s ease}
+.shot.on{opacity:1}
+.shots img,.pic img{display:block;width:100%;height:auto}
+.d{display:none!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .l{display:none!important}:root:not([data-theme=light]) .d{display:block!important}}
+:root[data-theme=dark] .l{display:none!important}:root[data-theme=dark] .d{display:block!important}
+.cap{font:13px var(--mono);color:var(--muted);text-align:center;margin-top:6px}
+.pics{display:grid;grid-template-columns:1fr 1.25fr;gap:24px;align-items:start;margin-top:28px}
+@media(max-width:760px){.pics{grid-template-columns:1fr}}
+.pic figcaption{font-size:15px;color:var(--muted);margin-top:6px}
+figure{margin:0}
 .hero-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:36px;align-items:center}
 @media(max-width:760px){.hero-grid{grid-template-columns:1fr}}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:20px 0}
@@ -46,7 +55,7 @@ a{color:var(--ink)}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px}
 .cols>div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
 body.b #hero>.wrap{min-height:260vh}body.b .hero-grid{position:sticky;top:48px}
-@media(max-width:760px){body.b .hero-grid,body.b .hero-grid>div{display:contents}body.b .hero-grid{position:static}body.b #heroB{position:sticky;top:8px;z-index:1}}
+@media(max-width:760px){body.b .hero-grid,body.b .hero-grid>div{display:contents}body.b .hero-grid{position:static}body.b #shots{position:sticky;top:8px;z-index:1;background:var(--paper)}}
 ul{padding-left:20px;margin:0 0 12px}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
@@ -55,8 +64,8 @@ ul{padding-left:20px;margin:0 0 12px}
 <body>
 <div class="review" role="group" aria-label="Review switch (removed before release)">
  Review only: hero
- <button id="vA" aria-pressed="true">A. Recording</button>
- <button id="vB" aria-pressed="false">B. Scroll screenshots</button>
+ <button id="vA" aria-pressed="true">A. Plays by itself</button>
+ <button id="vB" aria-pressed="false">B. Swaps as you scroll</button>
 </div>
 
 <header>
@@ -72,16 +81,15 @@ ul{padding-left:20px;margin:0 0 12px}
     <p class="muted" style="font-size:15px">macOS 14 or later, Apple silicon. Early: <a href="#early">what is in place</a>.</p>
    </div>
    <div>
-    <div id="heroA" class="frame" role="group" aria-label="Placeholder for a 10-second Live mode recording">
-     <div class="tag">Placeholder: Live recording, 10 s, silent</div>
-     <div class="row bad"><span>Screen ↓ 8 cm</span><span>✗</span></div>
-     <div class="row warn"><span>Distance → 15 cm</span><span>~</span></div>
-     <div class="row ok"><span>Desk</span><span>✓</span></div>
-    </div>
-    <div id="heroB" class="frame" hidden role="group" aria-label="Placeholder for four Live screenshots that swap as you scroll">
-     <div class="tag">Placeholder: scroll swaps four real screenshots <span id="step">1/4</span></div>
-     <div id="stepRows"></div>
-    </div>
+    <figure id="shots" aria-label="Live mode, from wrong to right in four steps">
+     <div class="shots">
+      <div class="shot on"><img class="l" src="img/live-1-light.png" width="366" height="334" alt="Live mode with all three bands red: move the screen 25 cm closer, lower the screen 7 cm and the desk 11 cm"><img class="d" src="img/live-1-dark.png" width="366" height="334" alt="Live mode with all three bands red: move the screen 25 cm closer, lower the screen 7 cm and the desk 11 cm" loading="lazy"></div>
+      <div class="shot"><img class="l" src="img/live-2-light.png" width="366" height="334" alt="Live mode with screen distance green, screen height amber at 4 cm and desk height red at 8 cm" loading="lazy"><img class="d" src="img/live-2-dark.png" width="366" height="334" alt="Live mode with screen distance green, screen height amber at 4 cm and desk height red at 8 cm" loading="lazy"></div>
+      <div class="shot"><img class="l" src="img/live-3-light.png" width="366" height="334" alt="Live mode with screen distance and screen height green, desk height amber at 3 cm" loading="lazy"><img class="d" src="img/live-3-dark.png" width="366" height="334" alt="Live mode with screen distance and screen height green, desk height amber at 3 cm" loading="lazy"></div>
+      <div class="shot"><img class="l" src="img/live-4-light.png" width="366" height="334" alt="Live mode with all three bands green and OK" loading="lazy"><img class="d" src="img/live-4-dark.png" width="366" height="334" alt="Live mode with all three bands green and OK" loading="lazy"></div>
+     </div>
+     <figcaption class="cap">Live <span id="step">1</span> of 4</figcaption>
+    </figure>
    </div>
   </div>
  </div>
@@ -106,6 +114,10 @@ ul{padding-left:20px;margin:0 0 12px}
   <div><h3>Check desk</h3><p>The camera opens for about two seconds, finds your eyes and gives one sentence per adjustment, such as “Screen: lower 8 cm.”</p></div>
   <div><h3>Live</h3><p>Keep the camera on while you crank the desk. A green, amber or red row shows the centimetres still to move.</p></div>
   <div><h3>Remember sit and stand</h3><p>Presets keep the heights you read off the desk leg and confirm the view matches when you return. That is your undo and redo.</p></div>
+ </div>
+ <div class="pics">
+  <figure class="pic"><img class="l" src="img/popover-light.png" width="366" height="243" alt="The Desk Check menu bar window with the Standing desk setup and the Check desk and Live buttons" loading="lazy"><img class="d" src="img/popover-dark.png" width="366" height="243" alt="The Desk Check menu bar window with the Standing desk setup and the Check desk and Live buttons" loading="lazy"><figcaption>Check desk and Live sit one click away in the menu bar.</figcaption></figure>
+  <figure class="pic"><img class="l" src="img/settings-light.png" width="566" height="706" alt="Desk Check Settings showing the settings file and a drawing of the desk with the measurements to take" loading="lazy"><img class="d" src="img/settings-dark.png" width="566" height="706" alt="Desk Check Settings showing the settings file and a drawing of the desk with the measurements to take" loading="lazy"><figcaption>Settings: measure with a tape, type centimetres, save.</figcaption></figure>
  </div>
 </div></section>
 
@@ -148,15 +160,18 @@ ul{padding-left:20px;margin:0 0 12px}
   try{next?localStorage.setItem("theme",next):localStorage.removeItem("theme")}catch(e){}label()};
  document.getElementById("copy").onclick=function(){var b=this;
   (navigator.clipboard?navigator.clipboard.writeText(document.getElementById("cmd").textContent):Promise.reject()).then(function(){b.textContent="Copied"},function(){b.textContent="Select and copy"});};
- var A=document.getElementById("heroA"),B=document.getElementById("heroB"),vA=document.getElementById("vA"),vB=document.getElementById("vB");
- function pick(b){document.body.classList.toggle("b",b);A.hidden=b;B.hidden=!b;vA.setAttribute("aria-pressed",!b);vB.setAttribute("aria-pressed",b)}
+ var shots=[].slice.call(document.querySelectorAll(".shot")),stepEl=document.getElementById("step"),cur=0;
+ function show(i){if(i===cur)return;shots[cur].classList.remove("on");shots[i].classList.add("on");cur=i;stepEl.textContent=i+1}
+ var still=matchMedia("(prefers-reduced-motion: reduce)").matches,timer=null,modeB=false;
+ function tick(){show((cur+1)%4);timer=setTimeout(tick,cur===3?3200:1600)}
+ function play(){clearTimeout(timer);if(still){show(3);return}timer=setTimeout(tick,1600)}
+ var vA=document.getElementById("vA"),vB=document.getElementById("vB");
+ function pick(b){modeB=b;document.body.classList.toggle("b",b);vA.setAttribute("aria-pressed",!b);vB.setAttribute("aria-pressed",b);clearTimeout(timer);show(0);if(!b)play();else onScroll()}
  vA.onclick=function(){pick(false)};vB.onclick=function(){pick(true)};
- var frames=[["bad","Screen ↓ 8 cm","bad","Distance → 15 cm","bad","Desk ✗"],["warn","Screen ↓ 3 cm","bad","Distance → 9 cm","ok","Desk ✓"],["ok","Screen ✓","warn","Distance → 3 cm","ok","Desk ✓"],["ok","Screen ✓","ok","Distance ✓","ok","Desk ✓"]];
- var rows=document.getElementById("stepRows"),step=document.getElementById("step");
- function show(i){var f=frames[i];rows.innerHTML="";for(var k=0;k<6;k+=2){var d=document.createElement("div");d.className="row "+f[k];d.textContent=f[k+1];rows.appendChild(d)}step.textContent=(i+1)+"/4"}
- show(0);
  var hero=document.getElementById("hero");
- addEventListener("scroll",function(){if(B.hidden)return;var r=hero.getBoundingClientRect();var max=r.height-innerHeight;var p=max>0?Math.min(1,Math.max(0,-r.top/max)):0;show(Math.min(3,Math.floor(p*4)))},{passive:true});
+ function onScroll(){if(!modeB)return;var r=hero.getBoundingClientRect();var max=r.height-innerHeight;var p=max>0?Math.min(1,Math.max(0,-r.top/max)):0;show(Math.min(3,Math.floor(p*4)))}
+ addEventListener("scroll",onScroll,{passive:true});
+ play();
 })();
 </script>
 </body>
