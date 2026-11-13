@@ -27,8 +27,29 @@ step() { # name, command...
     fi
 }
 
+# Swift Testing's macros are compiler plugins in the active toolchain's plugins folder. On the
+# command line tools alone, an incremental build sometimes fails with "plugin for module
+# 'TestingMacros' not found", so name that folder when it exists, and retry once on that error.
+swift_test() {
+    plugins="$(dirname "$(xcrun --find swift)")/../lib/swift/host/plugins/testing"
+    set -- swift test
+    if [ -d "$plugins" ]; then
+        plugins="$(cd "$plugins" && pwd)"
+        echo "Using the testing plugins folder $plugins"
+        set -- "$@" -Xswiftc -plugin-path -Xswiftc "$plugins"
+    fi
+    log="$tmp/swift-test.log"
+    { "$@" 2>&1; echo $? >"$log.status"; } | tee "$log"
+    status="$(cat "$log.status")"
+    [ "$status" -eq 0 ] && return 0
+    grep -q "plugin for module 'TestingMacros' not found" "$log" || return "$status"
+    echo
+    echo "swift test could not find the TestingMacros plugin; retrying once."
+    "$@"
+}
+
 step "swift-format lint" swift format lint --strict --recursive Sources Tests
-step "swift test" swift test
+step "swift test" swift_test
 step "release policy (scripts/test-next-version.sh)" sh scripts/test-next-version.sh
 step "build the app ($version)" scripts/build-app.sh "$version" "$tmp"
 step "app permissions (Tests/verify-app.sh)" Tests/verify-app.sh "$app"
