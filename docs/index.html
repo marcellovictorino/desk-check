@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Desk Check: Undo. Redo. For your desk.</title>
-<meta name="description" content="A macOS menu bar app that uses your webcam to tell you, in centimetres, how to move your screen and desk, and remembers your sitting and standing desk heights.">
+<meta name="description" content="A macOS menu bar app that finds your eyes through the webcam, works out where your screen and desk should be for your body, and tells you in centimetres what to move.">
 <meta name="color-scheme" content="light">
 <style>
 :root{
@@ -72,12 +72,18 @@ section::before,footer::before{content:"";position:absolute;left:24px;right:24px
 .stat span{color:var(--ink2);font-size:15px;line-height:1.45;display:block}
 .term{background:var(--term);color:var(--termfg);border-radius:10px;padding:16px 18px;font:14px/1.7 var(--mono);white-space:pre-wrap;margin:0 0 20px}
 .term code{font-size:inherit}
-.term .anywhere{overflow-wrap:anywhere}
 .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .cols>div{border-top:1px solid var(--line2);padding-top:16px}
 .cols p{color:var(--ink2);font-size:15.5px;margin:0}
 .n{display:block;font:600 12px var(--mono);color:var(--amber-text);margin-bottom:14px;letter-spacing:.08em}
-.pics{display:grid;grid-template-columns:1fr 1.25fr;gap:16px;margin-top:40px;align-items:stretch}
+.pics{display:grid;grid-template-columns:minmax(0,600px);justify-content:center;margin-top:40px}
+.feat{display:grid;grid-template-columns:1fr 1.25fr;gap:40px;align-items:center;margin-top:48px}
+.feat:first-of-type{margin-top:0}
+.feat>*{min-width:0}
+.feat p{color:var(--ink2);font-size:15.5px}
+.feat .frame{max-width:472px}
+.feat img{border-radius:8px}
+.frame img.crop-setup{aspect-ratio:1132/422;object-fit:cover;object-position:50% 100%}
 .pic{background:var(--stage);border:1px solid var(--line);border-radius:6px;padding:28px 22px 18px;display:flex;flex-direction:column;justify-content:space-between}
 .frame{max-width:400px;margin:auto;width:100%}
 .pic figcaption{font-size:14px;color:var(--muted);margin-top:14px;text-align:center}
@@ -98,7 +104,7 @@ footer p{margin-top:8px}
  .lede{font-size:18px}
  section{padding-top:56px;padding-bottom:56px}
  section::before,footer::before{left:16px;right:16px}
- .stats,.cols,.pics,.split{grid-template-columns:1fr}
+ .stats,.cols,.pics,.split,.feat{grid-template-columns:1fr;gap:20px}
  .stage{padding:28px 12px 16px}
 }
 @media(prefers-reduced-motion:reduce){.shot{transition:none}}
@@ -112,7 +118,7 @@ footer p{margin-top:8px}
   <p class="kicker">A menu bar app for macOS</p>
   <h1>Undo. Redo.<br>For your desk.</h1>
   <p class="keys"><kbd>⌘Z</kbd><kbd>⇧⌘Z</kbd></p>
-  <p class="lede">Stand up, sit down, and come back to the exact setup you saved. Your webcam tells you, in centimetres, what to move.</p>
+  <p class="lede">Your webcam finds your eyes. Desk Check works out where your screen and desk should be for good posture, and tells you, in centimetres, what to move.</p>
   <div class="install"><code id="cmd"><span class="seg">brew install </span><span class="seg">marcellovictorino/tap/</span><span class="seg">desk-check</span></code><button class="copy" id="copy" type="button">Copy</button></div>
   <p class="req">macOS 14.5 or later, Apple silicon. Early: <a href="#early">what is in place</a>.</p>
  </div>
@@ -130,14 +136,12 @@ footer p{margin-top:8px}
 <main>
 <section id="privacy" class="wrap">
  <p class="kicker">Privacy</p>
- <h2>Your camera, kept short and kept local</h2>
+ <h2>Your camera, only while you use it</h2>
  <div class="stats">
-  <div class="stat"><b>~2 s</b><span>camera on per check</span></div>
-  <div class="stat"><b>0</b><span>images saved</span></div>
+  <div class="stat"><b>Off</b><span>until you start a check, Live or a calibration</span></div>
   <div class="stat"><b>0</b><span>network connections: the App Sandbox denies them all</span></div>
+  <div class="stat"><b>On device</b><span>every reading is worked out on your Mac, and no images are saved</span></div>
  </div>
- <p>The camera runs only during a check or Live. Don't take our word for it; read the permissions back yourself:</p>
- <pre class="term"><code class="anywhere">codesign -d --entitlements - "$(brew --prefix)/opt/desk-check/DeskCheck.app"</code></pre>
 </section>
 
 <section id="how" class="wrap">
@@ -146,11 +150,27 @@ footer p{margin-top:8px}
  <div class="cols">
   <div><span class="n">01</span><h3>Check desk</h3><p>The camera opens for about two seconds, finds your eyes and gives one sentence per adjustment, such as “Screen: lower 8 cm.”</p></div>
   <div><span class="n">02</span><h3>Live</h3><p>Keep the camera on while you crank the desk. A green, amber or red row shows the centimetres still to move.</p></div>
-  <div><span class="n">03</span><h3>Remember sit and stand</h3><p>Presets keep the heights you read off the desk leg and confirm the view matches when you return. That is your undo and redo.</p></div>
+  <div><span class="n">03</span><h3>Worked out for your body</h3><p>The targets come from ergonomic rules and your measurements: your height, your eye level and your elbow. With none entered, sensible defaults still give useful advice.</p></div>
  </div>
  <div class="pics">
   <figure class="pic"><div class="frame"><img src="img/popover-dark.png" width="366" height="243" alt="The Desk Check menu bar window with the Standing desk setup and the Check desk and Live buttons" loading="lazy"></div><figcaption>Check desk and Live sit one click away in the menu bar.</figcaption></figure>
-  <figure class="pic"><div class="frame"><img src="img/settings-dark.png" width="566" height="706" alt="Desk Check Settings showing the settings file and a drawing of the desk with the measurements to take" loading="lazy"></div><figcaption>Settings: measure with a tape, type centimetres, save.</figcaption></figure>
+ </div>
+</section>
+
+<section id="settings" class="wrap">
+ <p class="kicker">Settings</p>
+ <h2>Measure once, and the advice fits you</h2>
+ <div class="feat">
+  <div><h3>Measuring is simple</h3><p>Measurements are optional, but recommended: they fit the calculation to your body. Settings draws a desk and a person. Click a field, and its line lights up with what to measure, from where to where. A tape measure is all it takes.</p></div>
+  <figure class="pic"><div class="frame"><img src="img/guide-dark.png" width="472" height="272" alt="The measuring drawing in Settings with Seated eyes above desk lit in blue, and the caption: from the desk surface up to the centre of your eye, sitting as you normally do" loading="lazy"></div><figcaption>Each field lights its line in the drawing.</figcaption></figure>
+ </div>
+ <div class="feat">
+  <div><h3>One setup per place</h3><p>Make a setup for each place you work often: the main desk at home, a coworking desk, a laptop at the café. Each keeps its own camera, screen and measurements, so switching place is one pick in the menu bar.</p></div>
+  <figure class="pic"><div class="frame"><img class="crop-setup" src="img/settings-dark.png" width="566" height="706" alt="The Setup section of Desk Check Settings: the Standing desk setup picked, a name field, and Rename, Duplicate, Add and Delete" loading="lazy"></div><figcaption>Add, duplicate and rename setups in Settings.</figcaption></figure>
+ </div>
+ <div class="feat">
+  <div><h3>Tell it what cannot move</h3><p>Mark each part of a setup Adjustable or Fixed. If your chair is already at the height where your feet rest flat, keep it fixed: Desk Check advises only on the desk and the screen.</p></div>
+  <figure class="pic"><div class="frame"><img src="img/adjust-dark.png" width="472" height="182" alt="Settings rows for Screen height, Screen distance and Desk height set to Adjustable, and Chair height set to Fixed" loading="lazy"></div><figcaption>Fixed parts are left out of the advice.</figcaption></figure>
  </div>
 </section>
 
@@ -167,7 +187,6 @@ footer p{margin-top:8px}
   </ul></div>
   <div><h3>Not yet</h3><ul class="no">
    <li>Chair advice.</li>
-   <li>Switching setup on lid close.</li>
   </ul></div>
  </div>
 </section>
@@ -177,8 +196,7 @@ footer p{margin-top:8px}
  <h2>Two commands</h2>
  <pre class="term"><code><span class="cmdline">brew install marcellovictorino/tap/<wbr><span class="nowrap">desk-check</span></span>
 <span class="cmdline">desk-check</span></code></pre>
- <p>Requires macOS 14.5 or later on Apple silicon. Homebrew builds the app on your Mac with Apple's command line tools, version 16 or later (Swift 6); Xcode and a developer account are not needed.</p>
- <p>After each <code>brew upgrade</code>, run <code>desk-check</code> again to replace the running copy. macOS asks for the camera once more, because the permission is tied to the exact build.</p>
+ <p>Requires macOS 14.5 or later on Apple silicon.</p>
 </section>
 </main>
 
