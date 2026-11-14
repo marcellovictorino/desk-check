@@ -94,6 +94,10 @@ li:first-child{border-top:0}
 .yes li::before{content:"";position:absolute;left:2px;top:15px;width:9px;height:5px;border-left:2px solid var(--ok);border-bottom:2px solid var(--ok);transform:rotate(-45deg)}
 .no li::before{content:"";position:absolute;left:2px;top:17px;width:11px;height:2px;background:var(--muted)}
 #install p{color:var(--ink2);max-width:44em}
+#contribute p:not(.kicker){color:var(--ink2);max-width:44em}
+#contribute .fine{font-size:14px;color:var(--muted);margin:0}
+.cta{display:inline-block;font:600 15px/1.4 var(--sans);color:var(--ink);text-decoration:none;background:var(--surface);border:1px solid var(--line2);border-bottom-width:3px;border-radius:7px;padding:9px 16px;margin:6px 0 18px}
+.cta:hover{border-color:var(--amber)}
 footer{padding-top:32px;padding-bottom:48px;font-size:14px;color:var(--muted)}
 footer p{margin-top:8px}
 
@@ -188,6 +192,14 @@ footer p{margin-top:8px}
    <li>Chair advice.</li>
   </ul></div>
  </div>
+</section>
+
+<section id="contribute" class="wrap">
+ <p class="kicker">Contribute</p>
+ <h2>Help improve Desk Check</h2>
+ <p>Found a bug, or have an idea? Share it on GitHub Issues. A short form asks for what helps: what happened, how to repeat it, and your versions.</p>
+ <a class="cta" href="https://github.com/marcellovictorino/desk-check/issues/new/choose">Report a bug or suggest a feature</a>
+ <p class="fine">Issues are public, so leave out personal details and camera images. To change the code, read the <a href="https://github.com/marcellovictorino/desk-check/blob/main/CONTRIBUTING.md">contribution guide</a>.</p>
 </section>
 
 <section id="install" class="wrap">
