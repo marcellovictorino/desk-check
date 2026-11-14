@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in Desk Check does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        **Issues are public.** Do not include personal information, camera images, private file paths or a whole settings file. Share only the measurements and setup values that matter, without anything that identifies you.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+      description: Describe what Desk Check did, and what you expected it to do instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The steps that make it happen, starting from opening Desk Check.
+      placeholder: |
+        1. Click Check desk
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: Desk Check version
+      description: Run `desk-check --version` in Terminal.
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      description: From the Apple menu > About This Mac, for example 15.1.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Desk, camera and display (optional)
+      description: If relevant, for example a standing desk, the built-in camera or an external webcam, and the display's size.
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Measurements and setup values (optional)
+      description: Only the values that matter, such as the advice shown and your eye height. Paste the relevant lines, not the whole settings file.

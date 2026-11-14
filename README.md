@@ -83,6 +83,10 @@ command line tools, an incremental build can sometimes fail with "plugin for mod
 not found"; run the command again, or pass
 `-Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`. `scripts/check.sh` does both.
 
+## Contributing
+
+Bug reports, ideas and code are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Credits
 
 Inspired by [Posturr](https://github.com/tldev/dorso) (now Dorso) by tldev. Desk Check shares

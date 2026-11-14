@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest something Desk Check could do better.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea.
+
+        **Issues are public.** Do not include personal information, camera images, private file paths or a whole settings file.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do, and what is difficult today?
+      description: Start with the problem, before any solution.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Suggested solution (optional)
+      description: How you imagine it could work, if you have an idea.
+  - type: textarea
+    id: context
+    attributes:
+      label: Context or workaround (optional)
+      description: Anything else that helps, such as your setup or what you do today instead.
