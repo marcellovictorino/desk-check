@@ -20,5 +20,5 @@ settings files; share only the measurements and setup values that matter.
 4. In the pull request, explain what the change does and why, and which checks you ran.
 
 Commit subjects follow `type(scope): summary`, using `feat`, `fix`, `chore`, `test`, `refactor`,
-`docs` or `perf`. A `feat` or `fix` merged to main publishes a release, so label changes
-accurately.
+`docs` or `perf`. A `feat`, a `fix` or a breaking change (marked with `!` or a
+`BREAKING CHANGE` footer) merged to main publishes a release, so label changes accurately.
