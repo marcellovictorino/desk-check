@@ -52,6 +52,7 @@ kbd{display:inline-block;font:600 14px var(--mono);color:var(--ink);background:v
 .copy{font:600 13px var(--sans);background:var(--term-btn);color:var(--termfg);border:0;border-radius:7px;padding:8px 14px;cursor:pointer;flex:none}
 .copy:hover{background:#4A4033}
 .req{font-size:14px;color:var(--muted);margin-top:14px}
+.hint{font-size:15px;color:var(--muted);max-width:36em;margin:-14px 0 24px}
 .stage{border-radius:6px;padding:40px 24px 22px;background:var(--stage);border:1px solid var(--line)}
 .shots{display:grid;max-width:366px;margin:0 auto}
 .shot{grid-area:1/1;opacity:0;transition:opacity .45s ease}
@@ -124,6 +125,7 @@ footer p{margin-top:8px}
   <h1>Undo. Redo.<br>For your desk.</h1>
   <p class="keys"><kbd>⌘Z</kbd><kbd>⇧⌘Z</kbd></p>
   <p class="lede">Your webcam finds your eyes. Desk Check works out where your screen and desk should be for good posture, and tells you, in centimetres, what to move.</p>
+  <p class="hint">General ergonomics, worked out live from the camera. Not medical advice.</p>
   <div class="install"><code id="cmd"><span class="seg">brew install </span><span class="seg">marcellovictorino/tap/</span><span class="seg">desk-check</span></code><button class="copy" id="copy" type="button">Copy</button></div>
   <p class="req">macOS 14.5 or later, Apple silicon. Early: <a href="#early">what is in place</a>.</p>
  </div>
@@ -167,7 +169,7 @@ footer p{margin-top:8px}
  <p class="kicker">Settings</p>
  <h2>Measure once, and the advice fits you</h2>
  <div class="feat">
-  <div><h3>Measuring is simple</h3><p>Measurements are optional, but recommended: they fit the calculation to your body. Settings draws a desk and a person. Click a field, and its line lights up with what to measure, from where to where. A tape measure is all it takes.</p></div>
+  <div><h3>Measuring is simple</h3><p>Measurements are optional, but recommended: they fit the calculation to your body. Settings draws a desk and a person. Click a field, and its line lights up with what to measure, from where to where. A tape measure is all it takes. The result is still general ergonomics guidance, not medical advice.</p></div>
   <figure class="pic"><div class="frame"><img src="img/guide-dark.png" width="472" height="272" alt="The measuring drawing in Settings with Seated eyes above desk lit in blue, and the caption: from the desk surface up to the centre of your eye, sitting as you normally do" loading="lazy"></div><figcaption>Each field lights its line in the drawing.</figcaption></figure>
  </div>
  <div class="feat">
