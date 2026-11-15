@@ -75,6 +75,8 @@ section::before,footer::before{content:"";position:absolute;left:24px;right:24px
 .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .cols>div{border-top:1px solid var(--line2);padding-top:16px}
 .cols p{color:var(--ink2);font-size:15.5px;margin:0}
+.cols.four{grid-template-columns:repeat(4,1fr)}
+.note{font-size:15px;color:var(--muted);max-width:44em;margin:28px 0 0}
 .n{display:block;font:600 12px var(--mono);color:var(--amber-text);margin-bottom:14px;letter-spacing:.08em}
 .pics{display:grid;grid-template-columns:minmax(0,600px);justify-content:center;margin-top:40px}
 .feat{display:grid;grid-template-columns:1fr 1.25fr;gap:40px;align-items:center;margin-top:48px}
@@ -107,7 +109,7 @@ footer p{margin-top:8px}
  .lede{font-size:18px}
  section{padding-top:56px;padding-bottom:56px}
  section::before,footer::before{left:16px;right:16px}
- .stats,.cols,.pics,.split,.feat{grid-template-columns:1fr;gap:20px}
+ .stats,.cols,.cols.four,.pics,.split,.feat{grid-template-columns:1fr;gap:20px}
  .stage{padding:28px 12px 16px}
 }
 @media(prefers-reduced-motion:reduce){.shot{transition:none}}
@@ -155,6 +157,7 @@ footer p{margin-top:8px}
   <div><span class="n">02</span><h3>Live</h3><p>Keep the camera on while you crank the desk. A green, amber or red row shows the centimetres still to move.</p></div>
   <div><span class="n">03</span><h3>Worked out for your body</h3><p>The targets come from ergonomic rules and your measurements: your height, your eye level and your elbow. With none entered, sensible defaults still give useful advice.</p></div>
  </div>
+ <p class="note">This is not medical advice: Desk Check applies general ergonomics guidelines to a live reading of where your eyes are, which is why it uses the camera.</p>
  <div class="pics">
   <figure class="pic"><div class="frame"><img src="img/popover-dark.png" width="366" height="243" alt="The Desk Check menu bar window with the Standing desk setup and the Check desk and Live buttons" loading="lazy"></div><figcaption>Check desk and Live sit one click away in the menu bar.</figcaption></figure>
  </div>
@@ -194,20 +197,32 @@ footer p{margin-top:8px}
  </div>
 </section>
 
-<section id="contribute" class="wrap">
- <p class="kicker">Contribute</p>
- <h2>Help improve Desk Check</h2>
- <p>Found a bug, or have an idea? Share it on GitHub Issues. For a bug, a short form asks for what helps: what happened, how to repeat it, and your versions.</p>
- <a class="cta" href="https://github.com/marcellovictorino/desk-check/issues/new/choose">Report a bug or suggest a feature</a>
- <p class="fine">Issues are public, so leave out personal details and camera images. To change the code, read the <a href="https://github.com/marcellovictorino/desk-check/blob/main/CONTRIBUTING.md">contribution guide</a>.</p>
-</section>
-
 <section id="install" class="wrap">
  <p class="kicker">Install</p>
  <h2>Two commands</h2>
  <pre class="term"><code><span class="cmdline">brew install marcellovictorino/tap/<wbr><span class="nowrap">desk-check</span></span>
 <span class="cmdline">desk-check</span></code></pre>
  <p>Requires macOS 14.5 or later on Apple silicon.</p>
+</section>
+
+<section id="start" class="wrap">
+ <p class="kicker">Getting started</p>
+ <h2>From install to a green row</h2>
+ <div class="cols four">
+  <div><span class="n">01</span><h3>Open it from Terminal</h3><p>Run <code>desk-check</code>. Homebrew keeps the app in its own folder rather than Applications, so Terminal is how you start it. Run it again after each <code class="nowrap">brew upgrade</code>.</p></div>
+  <div><span class="n">02</span><h3>Click the menu bar icon</h3><p>Desk Check has no Dock icon. It sits in the menu bar at the top of the screen, and one click opens it.</p></div>
+  <div><span class="n">03</span><h3>Press Live</h3><p>The first time, macOS asks to use the camera: allow it. Then move the screen and desk until each row turns green.</p></div>
+  <div><span class="n">04</span><h3>Measure, if you like it</h3><p>For a more accurate recommendation, open Settings (the gear), enter a few tape measurements and press Calibrate webcam.</p></div>
+ </div>
+ <p class="note">Not medical advice, just general ergonomics guidelines and live calculations from where your eyes are. That is all the camera is for.</p>
+</section>
+
+<section id="contribute" class="wrap">
+ <p class="kicker">Contribute</p>
+ <h2>Help improve Desk Check</h2>
+ <p>Found a bug, or have an idea? Share it on GitHub Issues. For a bug, a short form asks for what helps: what happened, how to repeat it, and your versions.</p>
+ <a class="cta" href="https://github.com/marcellovictorino/desk-check/issues/new/choose">Report a bug or suggest a feature</a>
+ <p class="fine">Issues are public, so leave out personal details and camera images. To change the code, read the <a href="https://github.com/marcellovictorino/desk-check/blob/main/CONTRIBUTING.md">contribution guide</a>.</p>
 </section>
 </main>
 
