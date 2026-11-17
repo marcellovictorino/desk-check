@@ -15,12 +15,13 @@ struct LiveView: View {
                 Spacer()
                 // Esc stops Live and returns to the main view; Esc there, or a click away, closes the popover.
                 Button("Stop") { live.stop() }.keyboardShortcut(.cancelAction).glassButton(prominent: true)
-                    // Return stops Live and closes the popover in one press: cancelOperation is what an Esc on the main
-                    // view reaches. The button is invisible and sits behind Stop, so the header layout is unchanged.
+                    // Return stops Live and closes the popover in one press, by doing both Escs: Stop, then an Esc on the
+                    // main view. The button is invisible and sits behind Stop, so the header layout is unchanged.
                     .background {
                         Button("Close") {
                             live.stop()
-                            NSApp.keyWindow?.cancelOperation(nil)
+                            // Once the main view is showing, the Esc that closes the popover there.
+                            DispatchQueue.main.async { Self.pressEscape() }
                         }
                         .keyboardShortcut(.defaultAction).opacity(0).accessibilityHidden(true)
                     }
@@ -42,6 +43,23 @@ struct LiveView: View {
             Text(live.statusText).font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(height: 32, alignment: .topLeading)
+        }
+    }
+}
+
+extension LiveView {
+    /// Queues an Esc press on the key window, as if typed. In the real app, cancelOperation on the popover's window
+    /// left it open, while a typed Esc on the main view closes it.
+    @MainActor static func pressEscape() {
+        guard let window = NSApp.keyWindow else { return }
+        for type in [NSEvent.EventType.keyDown, .keyUp] {
+            guard
+                let event = NSEvent.keyEvent(
+                    with: type, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber, context: nil, characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}",
+                    isARepeat: false, keyCode: 53)
+            else { return }
+            NSApp.postEvent(event, atStart: false)
         }
     }
 }
