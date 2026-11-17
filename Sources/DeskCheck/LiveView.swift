@@ -15,6 +15,15 @@ struct LiveView: View {
                 Spacer()
                 // Esc stops Live and returns to the main view; Esc there, or a click away, closes the popover.
                 Button("Stop") { live.stop() }.keyboardShortcut(.cancelAction).glassButton(prominent: true)
+                    // Return stops Live and closes the popover in one press: cancelOperation is what an Esc on the main
+                    // view reaches. The button is invisible and sits behind Stop, so the header layout is unchanged.
+                    .background {
+                        Button("Close") {
+                            live.stop()
+                            NSApp.keyWindow?.cancelOperation(nil)
+                        }
+                        .keyboardShortcut(.defaultAction).opacity(0).accessibilityHidden(true)
+                    }
             }
             Text(InstructionText.live).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             ZStack(alignment: .top) {

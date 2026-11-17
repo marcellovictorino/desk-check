@@ -32,7 +32,8 @@ the camera once more after an upgrade, because the permission is tied to the exa
 - **Presets** remember the sit and stand desk heights you read off the desk leg, and
   confirm the view matches when you return to them.
 - **Live** keeps the camera on while you crank the desk, with a green, yellow or red row
-  and the centimetres to move for each adjustment.
+  and the centimetres to move for each adjustment. Return stops Live and closes the
+  popover; Esc stops Live and goes back to the main view.
 
 For accurate numbers, enter your tape measurements in Settings (the gear in the popover) and
 press **Calibrate webcam**.
