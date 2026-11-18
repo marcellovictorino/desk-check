@@ -34,6 +34,13 @@ the camera once more after an upgrade, because the permission is tied to the exa
 - **Live** keeps the camera on while you crank the desk, with a green, yellow or red row
   and the centimetres to move for each adjustment. Return stops Live and closes the
   popover; Esc stops Live and goes back to the main view.
+- **Open straight into Live**: `desk-check live` (or opening `deskcheck://live`) opens the
+  menu bar panel and starts Live; the same request again stops it. Point a Raycast quicklink,
+  a Shortcuts action or a script at that link. Or build the shortcut into Desk Check: add
+  `live_shortcut = "hyper+z"` under `[preferences]` in the settings file. Hyper is Shift,
+  Control, Option and Command together; write other combinations such as `ctrl+opt+l`. It needs
+  no permission, takes effect the next time the popover opens or Desk Check starts, and does not
+  work if another app, such as a Raycast hotkey, already holds the same combination.
 
 For accurate numbers, enter your tape measurements in Settings (the gear in the popover) and
 press **Calibrate webcam**.

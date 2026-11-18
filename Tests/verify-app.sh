@@ -30,6 +30,8 @@ actual_keys="$(plutil -convert json -o - "$ents" | /usr/bin/python3 -I -c 'impor
 check "signature is valid" codesign --verify --strict "$app"
 check "signed ad hoc, no developer account" sh -c "codesign -dv \"\$1\" 2>&1 | grep -q 'Signature=adhoc'" _ "$app"
 check "no Dock icon (LSUIElement)" is "$(info LSUIElement || true)" true
+# Intent: the deskcheck://live link needs the scheme registered, and registering it asks for no permission.
+check "deskcheck:// link scheme registered" is "$(info CFBundleURLTypes.0.CFBundleURLSchemes.0 || true)" deskcheck
 check "camera usage text present" info NSCameraUsageDescription
 check "App Sandbox on" is "$(ent com.apple.security.app-sandbox '' || true)" true
 check "camera entitlement on" is "$(ent com.apple.security.device.camera '' || true)" true

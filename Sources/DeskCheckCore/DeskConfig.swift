@@ -181,6 +181,15 @@ public struct DeskConfig: Equatable {
         set { document.set("preview", .bool(newValue), in: Self.preferences) }
     }
 
+    /// The global key combination that opens Desk Check and starts Live, as written in `live_shortcut`, or nil when
+    /// it is absent or not a combination Desk Check understands.
+    public var liveShortcutText: String? {
+        if case .string(let s)? = document.value("live_shortcut", in: Self.preferences), !s.isEmpty { return s }
+        return nil
+    }
+
+    public var liveShortcut: KeyShortcut? { liveShortcutText.flatMap(KeyShortcut.init) }
+
     public func calibration(forWebcam name: String) -> WebcamCalibration {
         let table = TOMLDocument.tableName(webcam: name)
         var c = WebcamCalibration()
@@ -222,6 +231,10 @@ public struct DeskConfig: Equatable {
         auto_switch = false
         # Show the camera view with detected eye points during a check. The picture is never saved.
         preview = false
+        # A key combination that opens Desk Check and starts Live from anywhere; the same combination stops it.
+        # Modifiers are cmd, ctrl, opt and shift, or hyper for all four, then one letter or digit. Needs no
+        # permission. Takes effect when Desk Check starts and each time the popover opens.
+        # live_shortcut = "hyper+z"
 
         # A setup is one place you use Desk Check. Copy a table and rename it to add another, for example
         # [setups."MacBook on the sofa table"] with camera = "built-in".
