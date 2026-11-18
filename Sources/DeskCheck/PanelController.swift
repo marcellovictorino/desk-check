@@ -1,3 +1,4 @@
+@preconcurrency import AVFoundation
 import AppKit
 import DeskCheckCore
 import SwiftUI
@@ -12,6 +13,8 @@ final class PanelController: NSObject, NSPopoverDelegate {
     /// The panel is on its way up (the status item may not be laid out yet), with Live to start once it is. One
     /// operation, so a second request can cancel everything that is still waiting.
     private var opening: Task<Void, Never>?
+    /// Counts camera permission prompts, so a delayed restore from an older one changes nothing.
+    private var promptGeneration = 0
 
     init(checker: PostureChecker) {
         self.checker = checker
@@ -33,14 +36,19 @@ final class PanelController: NSObject, NSPopoverDelegate {
         checker.live.permissionPrompt = { [weak self] prompting in
             guard let self else { return }
             log.notice("camera permission prompt \(prompting ? "may be showing" : "is over", privacy: .public)")
+            promptGeneration += 1
+            let generation = promptGeneration
             if prompting {
+                // Only a first-use prompt takes focus; with access already decided nothing changes.
+                guard AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined else { return }
                 popover.behavior = .applicationDefined
-            } else {
+            } else if popover.behavior == .applicationDefined {
                 // Answering the prompt hands focus back to whatever was in front before, a moment after this runs, which
                 // would close a transient popover and cancel the Live that just started. Take the keys back first.
                 Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(500))
-                    guard popover.isShown else { return }
+                    // A newer prompt, or the panel closing meanwhile, owns the popover's behaviour now.
+                    guard generation == promptGeneration, popover.isShown else { return }
                     NSApp.activate(ignoringOtherApps: true)
                     popover.contentViewController?.view.window?.makeKey()
                     popover.behavior = .transient
@@ -114,6 +122,9 @@ final class PanelController: NSObject, NSPopoverDelegate {
 
     /// Clicking away, Esc on the main view or closing from code: Live stops and the camera turns off.
     func popoverDidClose(_ notification: Notification) {
+        // Whatever closed the panel, it reopens as an ordinary transient popover.
+        promptGeneration += 1
+        popover.behavior = .transient
         opening?.cancel()
         opening = nil
         checker.clearPreview()
