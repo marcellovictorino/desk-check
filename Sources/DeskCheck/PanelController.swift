@@ -33,10 +33,18 @@ final class PanelController: NSObject, NSPopoverDelegate {
         checker.live.permissionPrompt = { [weak self] prompting in
             guard let self else { return }
             log.notice("camera permission prompt \(prompting ? "may be showing" : "is over", privacy: .public)")
-            popover.behavior = prompting ? .applicationDefined : .transient
-            if !prompting && popover.isShown {
-                NSApp.activate(ignoringOtherApps: true)
-                popover.contentViewController?.view.window?.makeKey()
+            if prompting {
+                popover.behavior = .applicationDefined
+            } else {
+                // Answering the prompt hands focus back to whatever was in front before, a moment after this runs, which
+                // would close a transient popover and cancel the Live that just started. Take the keys back first.
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(500))
+                    guard popover.isShown else { return }
+                    NSApp.activate(ignoringOtherApps: true)
+                    popover.contentViewController?.view.window?.makeKey()
+                    popover.behavior = .transient
+                }
             }
         }
     }
