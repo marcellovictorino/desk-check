@@ -9,9 +9,9 @@ final class PanelController: NSObject, NSPopoverDelegate {
     private let checker: PostureChecker
     private var item: NSStatusItem?
     private let popover = NSPopover()
-    private var openAttempts = 0
-    /// A Live request is waiting for the panel to come up; a second request before then cancels it.
-    private var livePending = false
+    /// The panel is on its way up (the status item may not be laid out yet), with Live to start once it is. One
+    /// operation, so a second request can cancel everything that is still waiting.
+    private var opening: Task<Void, Never>?
 
     init(checker: PostureChecker) {
         self.checker = checker
@@ -28,22 +28,42 @@ final class PanelController: NSObject, NSPopoverDelegate {
         host.sizingOptions = .preferredContentSize
         popover.contentViewController = host
         checker.live.popoverIsVisible = { [weak self] in self?.popover.isShown ?? false }
+        // The system's camera permission prompt takes focus, which would close a transient popover and cancel Live
+        // before it starts. Keep the panel open until the prompt is answered, then take the keys back.
+        checker.live.permissionPrompt = { [weak self] prompting in
+            guard let self else { return }
+            log.notice("camera permission prompt \(prompting ? "may be showing" : "is over", privacy: .public)")
+            popover.behavior = prompting ? .applicationDefined : .transient
+            if !prompting && popover.isShown {
+                NSApp.activate(ignoringOtherApps: true)
+                popover.contentViewController?.view.window?.makeKey()
+            }
+        }
     }
 
     @objc private func toggle() {
         if popover.isShown { popover.performClose(nil) } else { show() }
     }
 
-    /// Opens the panel and brings it forward so it takes keys (Stop, Esc and Return work at once).
-    func show() {
-        guard let button = item?.button else { return }
-        // Right after launch the status item has no place in the menu bar yet; try again shortly.
-        if button.window?.frame.height ?? 0 == 0, openAttempts < 20 {
-            openAttempts += 1
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.show() }
-            return
+    /// Opens the panel and brings it forward so it takes keys (Stop, Esc and Return work at once), then starts Live
+    /// when asked. Right after launch the status item has no place in the menu bar yet, so it waits for one.
+    func show(startingLive: Bool = false) {
+        opening?.cancel()
+        opening = Task { @MainActor in
+            for _ in 0..<30 {
+                if let button = item?.button, (button.window?.frame.height ?? 0) > 0 {
+                    present(from: button)
+                    break
+                }
+                try? await Task.sleep(for: .milliseconds(100))
+                if Task.isCancelled { return }
+            }
+            opening = nil
+            if startingLive, popover.isShown, !checker.live.isRunning { checker.live.start() }
         }
-        openAttempts = 0
+    }
+
+    private func present(from button: NSStatusBarButton) {
         guard !popover.isShown else { return }
         NSApp.activate(ignoringOtherApps: true)
         checker.reloadSetups()
@@ -53,33 +73,19 @@ final class PanelController: NSObject, NSPopoverDelegate {
     }
 
     /// `deskcheck://live`, `desk-check live` and the key combination: starts Live in the open panel, and the same
-    /// request while Live runs stops it and closes the panel. While a check or calibration runs, only opens the panel.
+    /// request while Live runs, or while the panel is still opening for it, stops it and closes the panel. While a
+    /// check or calibration runs, only opens the panel.
     func toggleLive() {
         let live = checker.live
-        if live.isRunning || livePending {
-            livePending = false
+        if live.isRunning || opening != nil {
+            opening?.cancel()
+            opening = nil
             live.stop()
             popover.performClose(nil)
             return
         }
         checker.showingSettings = false
-        show()
-        guard !checker.isBusy, checker.settingsWarning == nil else { return }
-        // show() may be waiting for the status item; start Live once the panel is really up.
-        livePending = true
-        startLiveWhenShown(attempts: 0)
-    }
-
-    private func startLiveWhenShown(attempts: Int) {
-        guard livePending else { return }
-        if popover.isShown {
-            livePending = false
-            if !checker.live.isRunning { checker.live.start() }
-        } else if attempts < 30 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.startLiveWhenShown(attempts: attempts + 1) }
-        } else {
-            livePending = false
-        }
+        show(startingLive: !checker.isBusy && checker.settingsWarning == nil)
     }
 
     /// Reads `live_shortcut` from the settings file and registers it. Called at launch and whenever the panel opens.
@@ -98,7 +104,8 @@ final class PanelController: NSObject, NSPopoverDelegate {
 
     /// Clicking away, Esc on the main view or closing from code: Live stops and the camera turns off.
     func popoverDidClose(_ notification: Notification) {
-        livePending = false
+        opening?.cancel()
+        opening = nil
         checker.clearPreview()
         checker.live.popoverHidden()
         // Next time the panel opens it starts on the main view, unless a calibration is still running.

@@ -37,7 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let text = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
             let url = URL(string: text), LiveLink.isLive(url)
         else { return }
-        if let panel { panel.toggleLive() } else { liveRequestedBeforeLaunch = true }
+        // Links that arrive before launch finishes keep toggle parity: two cancel each other.
+        if let panel { panel.toggleLive() } else { liveRequestedBeforeLaunch.toggle() }
     }
 
     /// `open DeskCheck.app --args --check` runs one check at launch, the same as pressing

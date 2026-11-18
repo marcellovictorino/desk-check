@@ -23,7 +23,12 @@ final class LiveController: ObservableObject {
 
     /// True from pressing Live until the camera permission answer arrives. The system prompt takes focus from the popover,
     /// which must not count as clicking away.
-    private(set) var awaitingPermission = false
+    private(set) var awaitingPermission = false {
+        didSet { if oldValue != awaitingPermission { permissionPrompt(awaitingPermission) } }
+    }
+    /// Called with true when the camera permission prompt may appear and false when it is answered or abandoned, so the
+    /// panel can stay open while the system prompt has the focus.
+    var permissionPrompt: (Bool) -> Void = { _ in }
     /// Set by the popover; whether its window is still on screen.
     var popoverIsVisible: () -> Bool = { true }
 
