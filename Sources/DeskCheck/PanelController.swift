@@ -10,6 +10,8 @@ final class PanelController: NSObject, NSPopoverDelegate {
     private var item: NSStatusItem?
     private let popover = NSPopover()
     private var openAttempts = 0
+    /// A Live request is waiting for the panel to come up; a second request before then cancels it.
+    private var livePending = false
 
     init(checker: PostureChecker) {
         self.checker = checker
@@ -54,7 +56,8 @@ final class PanelController: NSObject, NSPopoverDelegate {
     /// request while Live runs stops it and closes the panel. While a check or calibration runs, only opens the panel.
     func toggleLive() {
         let live = checker.live
-        if live.isRunning {
+        if live.isRunning || livePending {
+            livePending = false
             live.stop()
             popover.performClose(nil)
             return
@@ -63,14 +66,19 @@ final class PanelController: NSObject, NSPopoverDelegate {
         show()
         guard !checker.isBusy, checker.settingsWarning == nil else { return }
         // show() may be waiting for the status item; start Live once the panel is really up.
+        livePending = true
         startLiveWhenShown(attempts: 0)
     }
 
     private func startLiveWhenShown(attempts: Int) {
+        guard livePending else { return }
         if popover.isShown {
+            livePending = false
             if !checker.live.isRunning { checker.live.start() }
         } else if attempts < 30 {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.startLiveWhenShown(attempts: attempts + 1) }
+        } else {
+            livePending = false
         }
     }
 
@@ -90,6 +98,7 @@ final class PanelController: NSObject, NSPopoverDelegate {
 
     /// Clicking away, Esc on the main view or closing from code: Live stops and the camera turns off.
     func popoverDidClose(_ notification: Notification) {
+        livePending = false
         checker.clearPreview()
         checker.live.popoverHidden()
         // Next time the panel opens it starts on the main view, unless a calibration is still running.

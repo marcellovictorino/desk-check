@@ -4,7 +4,6 @@ import Foundation
 /// quicklink, a Shortcuts action, the built-in key combination) asks Desk Check to open its panel and start Live.
 public enum LiveLink {
     public static let scheme = "deskcheck"
-    public static let live = URL(string: "deskcheck://live")!
 
     /// True for `deskcheck://live`, with or without a trailing slash, in any letter case. Anything else is ignored.
     public static func isLive(_ url: URL) -> Bool {

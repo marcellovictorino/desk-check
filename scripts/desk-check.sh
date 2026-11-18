@@ -11,6 +11,7 @@ if [ "${1:-}" = "--version" ]; then
   exec /usr/bin/plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist"
 fi
 
+[ "$#" -le 1 ] || { echo "usage: desk-check [live | --version]" >&2; exit 2; }
 case "${1:-}" in
   "" | live) ;;
   *) echo "usage: desk-check [live | --version]" >&2; exit 2 ;;

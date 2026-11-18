@@ -31,19 +31,20 @@ check "--version opens nothing" [ "$(running "$app")" = "$before" ]
 # Intent: `desk-check live` opens this install's app with the live link, plain `desk-check` opens it without one,
 # and anything else is refused without opening anything. A stand-in `open` records what would have been opened.
 mkdir -p "$tmp/bin"
-printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s/opened"\n' "$tmp" > "$tmp/bin/open"
+printf '#!/bin/sh\nfor a in "$@"; do printf "[%%s]" "$a"; done >> "%s/opened"\n' "$tmp" > "$tmp/bin/open"
 # A stand-in `pgrep` that finds nothing, so this check never quits a Desk Check you have running.
 printf '#!/bin/sh\nexit 1\n' > "$tmp/bin/pgrep"
 chmod +x "$tmp/bin/open" "$tmp/bin/pgrep"
 opened() { cat "$tmp/opened" 2>/dev/null || true; }
 {
   PATH="$tmp/bin:$PATH" "$cmd" live
-  check "desk-check live opens this app with the live link" [ "$(opened)" = "-a $app deskcheck://live" ]
+  check "desk-check live opens this app with the live link" [ "$(opened)" = "[-a][$app][deskcheck://live]" ]
   : > "$tmp/opened"
   PATH="$tmp/bin:$PATH" "$cmd"
-  check "desk-check opens this app with no link" [ "$(opened)" = "$app" ]
+  check "desk-check opens this app with no link" [ "$(opened)" = "[$app]" ]
   : > "$tmp/opened"
   check "desk-check refuses an unknown word" sh -c '! PATH="$1:$PATH" "$2" bogus 2>/dev/null' _ "$tmp/bin" "$cmd"
+  check "desk-check refuses extra words after live" sh -c '! PATH="$1:$PATH" "$2" live now 2>/dev/null' _ "$tmp/bin" "$cmd"
   check "an unknown word opens nothing" [ -z "$(opened)" ]
 }
 

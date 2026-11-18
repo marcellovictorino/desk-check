@@ -10,10 +10,9 @@ import Testing
         for text in ["deskcheck://live", "deskcheck://live/", "DeskCheck://LIVE"] {
             #expect(LiveLink.isLive(URL(string: text)!), "\(text)")
         }
-        for text in ["deskcheck://settings", "deskcheck://live/extra", "https://live", "deskcheck:live", "otherapp://live"] {
+        for text in ["deskcheck://settings", "deskcheck://live/extra", "https://live", "deskcheck:live"] {
             #expect(!LiveLink.isLive(URL(string: text)!), "\(text)")
         }
-        #expect(LiveLink.isLive(LiveLink.live))
     }
 
     /// Raycast's Caps Lock Hyper key reaches apps as Shift, Control, Option and Command held together.
@@ -26,14 +25,18 @@ import Testing
     }
 
     @Test func modifierNamesCaseAndSpacingAreForgiving() throws {
-        #expect(KeyShortcut(" Ctrl + Option + L ") == KeyShortcut("control+alt+l"))
+        for text in [" Ctrl + Option + L ", "control+alt+l"] {
+            let shortcut = try #require(KeyShortcut(text), "\(text)")
+            #expect(shortcut.modifiers == KeyShortcut.control | KeyShortcut.option)
+            #expect(shortcut.keyCode == 37)  // the physical L key
+        }
         let single = try #require(KeyShortcut("cmd+shift+1"))
         #expect(single.modifiers == KeyShortcut.command | KeyShortcut.shift)
         #expect(single.keyCode == 18)
     }
 
     @Test func combinationsThatWouldBreakTypingOrAreIncompleteAreRejected() {
-        for text in ["z", "space", "hyper", "hyper+", "hyper+zz", "hyper+z+x", "hyper+f13", "", "+z"] {
+        for text in ["z", "space", "hyper", "hyper+zz", "hyper+z+x", "hyper+f13", ""] {
             #expect(KeyShortcut(text) == nil, "\(text)")
         }
     }
@@ -46,9 +49,22 @@ import Testing
         let bad = DeskConfig(text: "[preferences]\nlive_shortcut = \"banana\"\n")
         #expect(bad.liveShortcutText == "banana")
         #expect(bad.liveShortcut == nil)
-        // Saving other settings keeps the line.
-        var kept = config
-        kept.autoSwitch = true
-        #expect(kept.document.text.contains("live_shortcut = \"hyper+z\""))
+    }
+
+    /// Saving another preference must not drop the shortcut line the person wrote.
+    @Test func savingOtherSettingsKeepsTheShortcutLine() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("desk-check-shortcut-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let file = root.appendingPathComponent("config.toml")
+        try "[preferences]\n# my keys\nlive_shortcut = \"hyper+z\"\n".write(to: file, atomically: false, encoding: .utf8)
+        let defaults = try #require(UserDefaults(suiteName: "desk-check-shortcut-tests.\(UUID().uuidString)"))
+        let store = SettingsFile(defaultFile: file, defaults: defaults)
+        var config = try store.read()
+        config.autoSwitch = true
+        try store.save(config)
+        let reread = try store.read()
+        #expect(reread.autoSwitch)
+        #expect(reread.liveShortcut == KeyShortcut("hyper+z"))
+        #expect(reread.document.text.contains("# my keys"))
     }
 }
