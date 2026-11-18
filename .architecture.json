@@ -10,9 +10,9 @@
     { "name": "app", "path": "Sources/DeskCheck", "about": "The menu bar item and its panel, the deskcheck://live link and key combination that open Live, Settings and the camera sessions behind them", "group": "The app" },
     { "name": "core", "path": "Sources/DeskCheckCore", "about": "Eye geometry, advice, Live bands, the live link and key combination, setups, presets and the TOML settings file, with no camera or UI", "group": "The app" },
     { "name": "app resources", "path": "Resources", "about": "The app's Info.plist and its App Sandbox entitlements", "group": "Build and release" },
-    { "name": "build scripts", "path": "scripts", "about": "Builds and signs DeskCheck.app, the desk-check command, the next-version rule and a local formula test", "group": "Build and release" },
+    { "name": "build scripts", "path": "scripts", "about": "Builds and signs DeskCheck.app, the desk-check command, the next-version rule, the after-release checks and a local formula test", "group": "Build and release" },
     { "name": "Homebrew formula", "path": "Formula", "about": "Builds the app on the person's Mac during brew install", "group": "Build and release" },
-    { "name": "release workflow", "path": ".github/workflows", "about": "Runs the check gate on every pull request, and publishes a release for each merge to main that holds a feat, fix or breaking commit once the gate passes", "group": "Build and release" },
+    { "name": "release workflow", "path": ".github/workflows", "about": "Runs the check gate on every pull request, and publishes a release for each merge to main that holds a feat, fix or breaking commit once the gate passes, then checks the release and the tap's formula", "group": "Build and release" },
     { "name": "tests", "path": "Tests", "about": "Core unit tests, offscreen view pictures, a sandbox probe and checks of the built app and command", "group": "Checks" }
   ],
   "outside": [
@@ -35,8 +35,8 @@
     { "from": "Homebrew formula", "to": "tests", "why": "brew test runs the built-app permission check" },
     { "from": "release workflow", "to": "build scripts", "why": "works out the next version from commits, and runs scripts/check.sh as the gate" },
     { "from": "release workflow", "to": "tests", "why": "scripts/check.sh runs the unit tests and the built-app checks on a macOS runner" },
-    { "from": "release workflow", "to": "GitHub releases", "why": "publishes the release with generated notes" },
-    { "from": "release workflow", "to": "Homebrew tap", "why": "starts the tap's update run" },
+    { "from": "release workflow", "to": "GitHub releases", "why": "publishes the release with generated notes, then checks it is published, latest and has notes" },
+    { "from": "release workflow", "to": "Homebrew tap", "why": "starts the tap's update run, then checks its formula downloads this release with a matching checksum" },
     { "from": "Homebrew tap", "to": "GitHub releases", "why": "picks up new releases on its own schedule as a backup" },
     { "from": "tests", "to": "core", "why": "unit tests of geometry, advice, Live, presets and settings" },
     { "from": "tests", "to": "app", "why": "draws the views offscreen and builds a sandboxed Settings test app" },

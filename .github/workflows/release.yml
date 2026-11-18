@@ -2,6 +2,8 @@ name: Release
 
 # Publishes a release for each merge to main that holds a feat, fix or breaking commit,
 # then starts the Homebrew tap's update run. The tap's six-hour run stays as the backup.
+# Then it checks its own work: the release is published with notes, and the tap's formula
+# downloads this release's archive with a matching checksum (scripts/verify-release.sh).
 on:
   push:
     branches: [main]
@@ -53,11 +55,34 @@ jobs:
         run: |
           gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Desk Check $VERSION" --generate-notes --latest
 
+      - name: Check the published release
+        if: steps.version.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: scripts/verify-release.sh release "$VERSION" "$GITHUB_SHA"
+
       - name: Start the Homebrew tap update
+        id: tap
         if: steps.version.outputs.version != ''
         env:
           GH_TOKEN: ${{ secrets.TAP_DISPATCH_TOKEN }}
         run: |
           # The release is already out; if the token is missing or expired, the tap's six-hour run delivers it.
-          gh workflow run update.yml -R marcellovictorino/homebrew-tap \
-            || echo "::warning::Could not start the tap update (TAP_DISPATCH_TOKEN missing or expired). The tap's scheduled run will pick up the release."
+          if gh workflow run update.yml -R marcellovictorino/homebrew-tap; then
+            echo "started=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Could not start the tap update (TAP_DISPATCH_TOKEN missing or expired). The tap's scheduled run will pick up the release."
+          fi
+
+      - name: Check the Homebrew formula
+        # Waits up to 20 minutes for the tap's update run, then compares the formula with the release's archive.
+        if: steps.version.outputs.version != '' && steps.tap.outputs.started == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: scripts/verify-release.sh tap "$VERSION"
+
+      - name: Note the unchecked formula
+        if: steps.version.outputs.version != '' && steps.tap.outputs.started != 'true'
+        run: echo "::warning::The tap update did not start, so this run did not check the Homebrew formula. Check it after the tap's scheduled run."
