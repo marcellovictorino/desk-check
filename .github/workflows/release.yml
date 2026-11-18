@@ -63,26 +63,21 @@ jobs:
         run: scripts/verify-release.sh release "$VERSION" "$GITHUB_SHA"
 
       - name: Start the Homebrew tap update
-        id: tap
         if: steps.version.outputs.version != ''
         env:
           GH_TOKEN: ${{ secrets.TAP_DISPATCH_TOKEN }}
         run: |
-          # The release is already out; if the token is missing or expired, the tap's six-hour run delivers it.
-          if gh workflow run update.yml -R marcellovictorino/homebrew-tap; then
-            echo "started=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::Could not start the tap update (TAP_DISPATCH_TOKEN missing or expired). The tap's scheduled run will pick up the release."
+          # The release is already out, and the tap's six-hour run still delivers it if this fails.
+          # The run fails anyway, because it cannot check the formula without the tap's update run.
+          if ! gh workflow run update.yml -R marcellovictorino/homebrew-tap; then
+            echo "::error::Could not start the tap update (TAP_DISPATCH_TOKEN missing or expired), so this run cannot check the Homebrew formula. The tap's scheduled run will pick up the release; renew the token."
+            exit 1
           fi
 
       - name: Check the Homebrew formula
         # Waits up to 20 minutes for the tap's update run, then compares the formula with the release's archive.
-        if: steps.version.outputs.version != '' && steps.tap.outputs.started == 'true'
+        if: steps.version.outputs.version != ''
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
         run: scripts/verify-release.sh tap "$VERSION"
-
-      - name: Note the unchecked formula
-        if: steps.version.outputs.version != '' && steps.tap.outputs.started != 'true'
-        run: echo "::warning::The tap update did not start, so this run did not check the Homebrew formula. Check it after the tap's scheduled run."
