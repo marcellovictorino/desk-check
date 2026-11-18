@@ -7,8 +7,8 @@
     { "name": "Checks", "why": "Run by developers and by brew test, never shipped in the app" }
   ],
   "parts": [
-    { "name": "app", "path": "Sources/DeskCheck", "about": "The menu bar popover, Live, Settings and the camera sessions behind them", "group": "The app" },
-    { "name": "core", "path": "Sources/DeskCheckCore", "about": "Eye geometry, advice, Live bands, setups, presets and the TOML settings file, with no camera or UI", "group": "The app" },
+    { "name": "app", "path": "Sources/DeskCheck", "about": "The menu bar item and its panel, the deskcheck://live link and key combination that open Live, Settings and the camera sessions behind them", "group": "The app" },
+    { "name": "core", "path": "Sources/DeskCheckCore", "about": "Eye geometry, advice, Live bands, the live link and key combination, setups, presets and the TOML settings file, with no camera or UI", "group": "The app" },
     { "name": "app resources", "path": "Resources", "about": "The app's Info.plist and its App Sandbox entitlements", "group": "Build and release" },
     { "name": "build scripts", "path": "scripts", "about": "Builds and signs DeskCheck.app, the desk-check command, the next-version rule and a local formula test", "group": "Build and release" },
     { "name": "Homebrew formula", "path": "Formula", "about": "Builds the app on the person's Mac during brew install", "group": "Build and release" },
@@ -23,7 +23,7 @@
     { "name": "Homebrew tap", "about": "The separate tap project whose formula brew install reads" }
   ],
   "links": [
-    { "from": "app", "to": "core", "why": "loads settings, turns eye points into readings, advice and Live bands" },
+    { "from": "app", "to": "core", "why": "loads settings, turns eye points into readings, advice and Live bands, and reads the link and the live_shortcut key combination" },
     { "from": "app", "to": "camera", "why": "asks permission, samples frames and finds the eyes" },
     { "from": "app", "to": "settings file", "why": "opens it in the person's editor and lets them choose another" },
     { "from": "core", "to": "settings file", "why": "reads and edits it, keeping comments, and writes the starter file" },
@@ -31,7 +31,7 @@
     { "from": "build scripts", "to": "app", "why": "builds and signs it with Swift" },
     { "from": "build scripts", "to": "app resources", "why": "fills in the version and signs with the entitlements" },
     { "from": "build scripts", "to": "Homebrew formula", "why": "installs it through a local test tap and runs brew test" },
-    { "from": "Homebrew formula", "to": "build scripts", "why": "runs the app build and installs desk-check.sh as the command that opens or replaces the app" },
+    { "from": "Homebrew formula", "to": "build scripts", "why": "runs the app build and installs desk-check.sh as the command that opens or replaces the app, or opens it into Live" },
     { "from": "Homebrew formula", "to": "tests", "why": "brew test runs the built-app permission check" },
     { "from": "release workflow", "to": "build scripts", "why": "works out the next version from commits, and runs scripts/check.sh as the gate" },
     { "from": "release workflow", "to": "tests", "why": "scripts/check.sh runs the unit tests and the built-app checks on a macOS runner" },
@@ -63,10 +63,10 @@
       "about": "Live keeps the camera on while the desk or screen moves; a token tells a stale answer from the current session",
       "states": ["off", "asking permission", "camera on"],
       "moves": [
-        { "from": "off", "to": "asking permission", "why": "Live is pressed and settings load", "by": "app" },
+        { "from": "off", "to": "asking permission", "why": "Live is pressed, deskcheck://live opens, or the live_shortcut keys are pressed, and settings load", "by": "app" },
         { "from": "asking permission", "to": "camera on", "why": "the camera is allowed while the popover is still open", "by": "app" },
         { "from": "asking permission", "to": "off", "why": "denied, no camera, Stop or the popover closed", "by": "app" },
-        { "from": "camera on", "to": "off", "why": "Stop, the popover closes, the camera fails or ten minutes pass", "by": "app" }
+        { "from": "camera on", "to": "off", "why": "Stop, the same link or keys again, the popover closes, the camera fails or ten minutes pass", "by": "app" }
       ]
     },
     {

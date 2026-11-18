@@ -8,32 +8,51 @@ let log = Logger(subsystem: "io.github.marcellovictorino.desk-check", category: 
 @main
 struct DeskCheckApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var checker = PostureChecker.shared
 
     init() {
         _ = ConfigLocation.load()  // Creates only the default file when no file has been chosen.
         if let warning = ConfigLocation.settings.loadWarning { log.error("\(warning, privacy: .public)") }
     }
 
+    /// The menu bar item and its panel belong to the app delegate (see PanelController); SwiftUI needs one scene.
     var body: some Scene {
-        MenuBarExtra {
-            PopoverView(checker: checker)
-        } label: {
-            Image(nsImage: MenuBarIcon.image()).accessibilityLabel("Desk Check")
-        }
-        .menuBarExtraStyle(.window)
+        Settings { EmptyView() }
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var panel: PanelController?
+    private var liveRequestedBeforeLaunch = false
+
+    /// A deskcheck:// link that launches the app arrives before applicationDidFinishLaunching, so the handler is
+    /// registered here.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSAppleEventManager.shared().setEventHandler(
+            self, andSelector: #selector(handleURL(_:reply:)),
+            forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
+    }
+
+    @objc private func handleURL(_ event: NSAppleEventDescriptor, reply: NSAppleEventDescriptor) {
+        guard let text = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
+            let url = URL(string: text), LiveLink.isLive(url)
+        else { return }
+        if let panel { panel.toggleLive() } else { liveRequestedBeforeLaunch = true }
+    }
+
     /// `open DeskCheck.app --args --check` runs one check at launch, the same as pressing
     /// Check desk; the numbers go to the unified log (subsystem io.github.marcellovictorino.desk-check).
     func applicationDidFinishLaunching(_ notification: Notification) {
-        Task { @MainActor in
-            PostureChecker.shared.refreshPermission()
-            if CommandLine.arguments.contains("--check") {
-                PostureChecker.shared.check()
-            }
+        PostureChecker.shared.refreshPermission()
+        let panel = PanelController(checker: PostureChecker.shared)
+        self.panel = panel
+        panel.refreshShortcut()
+        if liveRequestedBeforeLaunch {
+            liveRequestedBeforeLaunch = false
+            panel.toggleLive()
+        }
+        if CommandLine.arguments.contains("--check") {
+            PostureChecker.shared.check()
         }
     }
 }

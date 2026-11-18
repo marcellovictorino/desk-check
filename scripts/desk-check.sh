@@ -2,6 +2,7 @@
 # The `desk-check` command. Homebrew's formula installs it with @APP@ replaced by the installed DeskCheck.app.
 #
 #   desk-check            quits a Desk Check left running by an older install, then opens this one
+#   desk-check live       the same, then opens the panel and starts Live; run it again to stop Live
 #   desk-check --version  prints this install's version and opens nothing
 set -eu
 app="@APP@"
@@ -9,6 +10,11 @@ app="@APP@"
 if [ "${1:-}" = "--version" ]; then
   exec /usr/bin/plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist"
 fi
+
+case "${1:-}" in
+  "" | live) ;;
+  *) echo "usage: desk-check [live | --version]" >&2; exit 2 ;;
+esac
 
 # After `brew upgrade` the old build keeps running from its removed folder, and `open` would start the new
 # one beside it. Quit only this user's processes named exactly DeskCheck that run a DeskCheck.app other than this one.
@@ -25,4 +31,8 @@ for pid in $(pgrep -x -U "$(id -u)" DeskCheck || true); do
     exit 1
   fi
 done
+if [ "${1:-}" = "live" ]; then
+  # -a names this install's app, so the link never reaches another copy that registered the same scheme.
+  exec open -a "$app" "deskcheck://live"
+fi
 exec open "$app"
