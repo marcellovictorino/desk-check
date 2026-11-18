@@ -50,14 +50,16 @@ final class PanelController: NSObject, NSPopoverDelegate {
     func show(startingLive: Bool = false) {
         opening?.cancel()
         opening = Task { @MainActor in
+            // A task cancelled before it first runs must change nothing, and must not clear a newer opening.
             for _ in 0..<30 {
+                guard !Task.isCancelled else { return }
                 if let button = item?.button, (button.window?.frame.height ?? 0) > 0 {
                     present(from: button)
                     break
                 }
                 try? await Task.sleep(for: .milliseconds(100))
-                if Task.isCancelled { return }
             }
+            guard !Task.isCancelled else { return }
             opening = nil
             if startingLive, popover.isShown, !checker.live.isRunning { checker.live.start() }
         }
