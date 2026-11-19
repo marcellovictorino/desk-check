@@ -25,6 +25,7 @@ final class ShortcutRecorder: ObservableObject {
     /// Ends a recording that changed nothing and puts the saved shortcut back.
     func cancel(_ checker: PostureChecker) {
         guard isRecording else { return }
+        message = ""
         finish()
         checker.restoreLiveShortcut()
     }
