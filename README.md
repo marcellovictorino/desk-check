@@ -41,7 +41,9 @@ the camera once more after an upgrade, because the permission is tied to the exa
   press **Record**, then the keys you want (a letter, digit or Space with at least one
   modifier). It is saved and active at once; Esc cancels and **Clear** turns it off. It needs no
   permission. Desk Check refuses a combination macOS uses, or that another app has claimed
-  exclusively, and keeps the old one; an app that shares the combination would react as well. The settings file holds it as `live_shortcut = "ctrl+opt+l"` under
+  exclusively, and keeps the old one. Desk Check holds its combination exclusively, so another
+  app that registered the same keys without claiming them exclusively, such as a launcher's
+  Hyper+W, stops receiving them while Desk Check holds them. Pick other keys if you need both. The settings file holds it as `live_shortcut = "ctrl+opt+l"` under
   `[preferences]`: an absent line means `hyper+w`, and `live_shortcut = ""` means off.
 
 For accurate numbers, enter your tape measurements in Settings (the gear in the popover) and

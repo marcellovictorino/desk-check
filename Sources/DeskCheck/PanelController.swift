@@ -108,7 +108,7 @@ final class PanelController: NSObject, NSPopoverDelegate {
     }
 
     /// Reads `live_shortcut` from the settings file and registers it. Called at launch, whenever the panel opens and after the recorder saves a new one.
-    /// Returns false when macOS refused the combination, for example because another app holds it.
+    /// Returns false when macOS refused the combination, for example because another app holds it exclusively.
     @discardableResult
     func refreshShortcut() -> Bool {
         let config = checker.settings.load()
