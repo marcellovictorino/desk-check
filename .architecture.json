@@ -23,7 +23,7 @@
     { "name": "Homebrew tap", "about": "The separate tap project whose formula brew install reads" }
   ],
   "links": [
-    { "from": "app", "to": "core", "why": "loads settings, turns eye points into readings, advice and Live bands, and reads the link and the live_shortcut key combination" },
+    { "from": "app", "to": "core", "why": "loads settings, turns eye points into readings, advice and Live bands, and reads the link and the live_shortcut key combination, and turns the keys the recorder sees into the file's text" },
     { "from": "app", "to": "camera", "why": "asks permission, samples frames and finds the eyes" },
     { "from": "app", "to": "settings file", "why": "opens it in the person's editor and lets them choose another" },
     { "from": "core", "to": "settings file", "why": "reads and edits it, keeping comments, and writes the starter file" },
@@ -67,6 +67,16 @@
         { "from": "asking permission", "to": "camera on", "why": "the camera is allowed while the popover is still open", "by": "app" },
         { "from": "asking permission", "to": "off", "why": "denied, no camera, Stop or the popover closed", "by": "app" },
         { "from": "camera on", "to": "off", "why": "Stop, the same link or keys again, the popover closes, the camera fails or ten minutes pass", "by": "app" }
+      ]
+    },
+    {
+      "name": "the live shortcut recorder",
+      "in": "app",
+      "about": "Settings records the Live shortcut from the keys pressed; the current system-wide key is released while it listens",
+      "states": ["idle", "recording"],
+      "moves": [
+        { "from": "idle", "to": "recording", "why": "Record is pressed; the saved combination is released and every key press is consumed", "by": "app" },
+        { "from": "recording", "to": "idle", "why": "a valid combination is pressed and saved at once, or Esc, Delete, Clear, closing Settings or the panel ends it", "by": "app" }
       ]
     },
     {

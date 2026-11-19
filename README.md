@@ -36,11 +36,15 @@ the camera once more after an upgrade, because the permission is tied to the exa
   popover; Esc stops Live and goes back to the main view.
 - **Open straight into Live**: `desk-check live` (or opening `deskcheck://live`) opens the
   menu bar panel and starts Live; the same request again stops it. Point a Raycast quicklink,
-  a Shortcuts action or a script at that link. Or build the shortcut into Desk Check: add
-  `live_shortcut = "hyper+z"` under `[preferences]` in the settings file. Hyper is Shift,
-  Control, Option and Command together; write other combinations such as `ctrl+opt+l`. It needs
-  no permission, takes effect the next time the popover opens or Desk Check starts, and does not
-  work if another app, such as a Raycast hotkey, already holds the same combination.
+  a Shortcuts action or a script at that link. Or use the built-in shortcut, **Hyper+W** by
+  default (Hyper is Shift, Control, Option and Command together). Change it in Settings:
+  press **Record**, then the keys you want (a letter, digit or Space with at least one
+  modifier). It is saved and active at once; Esc cancels and **Clear** turns it off. It needs no
+  permission. Desk Check refuses a combination macOS uses, or that another app has claimed
+  exclusively, and keeps the old one. Desk Check holds its combination exclusively, so another
+  app that registered the same keys without claiming them exclusively, such as a launcher's
+  Hyper+W, stops receiving them while Desk Check holds them. Pick other keys if you need both. The settings file holds it as `live_shortcut = "ctrl+opt+l"` under
+  `[preferences]`: an absent line means `hyper+w`, and `live_shortcut = ""` means off.
 
 For accurate numbers, enter your tape measurements in Settings (the gear in the popover) and
 press **Calibrate webcam**.
