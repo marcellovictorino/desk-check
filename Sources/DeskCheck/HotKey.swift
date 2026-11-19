@@ -11,8 +11,8 @@ final class GlobalHotKey {
     private var action: (() -> Void)?
     private var registered: KeyShortcut?
 
-    /// Registers `shortcut`, or removes the registration when it is nil. Returns false when macOS refused it,
-    /// for example because another app already holds the combination.
+    /// Registers `shortcut` as an exclusive hot key, so another app holding the same combination makes this fail
+    /// instead of both being notified, or removes the registration when it is nil. Returns false when macOS refused it.
     @discardableResult
     func register(_ shortcut: KeyShortcut?, action: @escaping () -> Void) -> Bool {
         self.action = action
@@ -24,7 +24,8 @@ final class GlobalHotKey {
         installHandlerOnce()
         let id = EventHotKeyID(signature: OSType(0x4465_6B43), id: 1)  // 'DekC'
         let status = RegisterEventHotKey(
-            shortcut.keyCode, shortcut.modifiers, id, GetApplicationEventTarget(), 0, &ref)
+            shortcut.keyCode, shortcut.modifiers, id, GetApplicationEventTarget(),
+            OptionBits(kEventHotKeyExclusive), &ref)
         if status != noErr {
             ref = nil
             log.error("live_shortcut could not be registered (status \(status, privacy: .public))")

@@ -107,7 +107,7 @@ final class PanelController: NSObject, NSPopoverDelegate {
         show(startingLive: !checker.isBusy && checker.settingsWarning == nil)
     }
 
-    /// Reads `live_shortcut` from the settings file and registers it. Called at launch and whenever the panel opens.
+    /// Reads `live_shortcut` from the settings file and registers it. Called at launch, whenever the panel opens and after the recorder saves a new one.
     /// Returns false when macOS refused the combination, for example because another app holds it.
     @discardableResult
     func refreshShortcut() -> Bool {

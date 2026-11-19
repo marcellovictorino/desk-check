@@ -355,9 +355,13 @@ struct SettingsView: View {
         let shortcut = config.liveShortcut
         return Section("Live shortcut") {
             HStack {
-                Text(shortcut?.symbol ?? (config.liveShortcutText.map { "Not recognised: \($0)" } ?? "Off"))
-                    .font(.system(.title3, design: .rounded, weight: .medium))
-                    .accessibilityLabel("Live shortcut")
+                Text(
+                    checker.settingsWarning != nil
+                        ? "Settings unavailable"
+                        : shortcut?.symbol ?? (config.liveShortcutText.map { "Not recognised: \($0)" } ?? "Off")
+                )
+                .font(.system(.title3, design: .rounded, weight: .medium))
+                .accessibilityLabel("Live shortcut")
                 Spacer()
                 Button(recorder.isRecording ? "Press the keys…" : "Record") {
                     if recorder.isRecording { recorder.cancel(checker) } else { recorder.start(checker) }
