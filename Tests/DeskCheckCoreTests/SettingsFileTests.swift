@@ -176,4 +176,27 @@ import Testing
         #expect(throws: (any Error).self) { try store.read() }
         #expect(try #require(store.loadWarning).hasPrefix("Could not load settings:"))
     }
+
+    /// Intent: Open config file hands the editor the file the saved permission covers, and holds that permission only until released.
+    @Test func openAccessResolvesTheChosenLinkTargetNotTheDefaultLink() throws {
+        let (root, defaults) = try fixture()
+        let target = root.appendingPathComponent("dotfiles/config.toml")
+        try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try DeskConfig.starterContents.write(to: target, atomically: false, encoding: .utf8)
+        let link = root.appendingPathComponent("config.toml")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        let store = SettingsFile(defaultFile: link, defaults: defaults)
+        try store.choose(target)
+        let access = try SettingsFile(defaultFile: link, defaults: defaults).beginAccess()
+        #expect(access.file.resolvingSymlinksInPath() == target.resolvingSymlinksInPath())
+        access.release()
+        access.release()
+    }
+
+    @Test func openAccessWithBrokenBookmarkFailsInsteadOfOpeningTheDefault() throws {
+        let (root, defaults) = try fixture()
+        defaults.set(Data([1, 2, 3]), forKey: "settingsFileBookmark")
+        let store = SettingsFile(defaultFile: root.appendingPathComponent("config.toml"), defaults: defaults)
+        #expect(throws: Error.self) { try store.beginAccess() }
+    }
 }

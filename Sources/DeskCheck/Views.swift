@@ -398,8 +398,19 @@ struct SettingsView: View {
     }
 
     private func openConfigFile() {
-        let file = checker.settings.file
-        openWithTextEditFallback(file) { message = "No app could open the config file. Open \(file.path) yourself." }
+        let access: SettingsFile.Access
+        do { access = try checker.settings.beginAccess() } catch {
+            message = "Could not open the config file: \(error.localizedDescription)"
+            return
+        }
+        let file = access.file
+        let linked = !checker.settings.hasSelection && checker.settings.defaultLinkTarget != nil
+        openWithTextEditFallback(file, release: access.release) {
+            message =
+                linked
+                ? "macOS has not allowed Desk Check to open the linked config file. Click Choose settings file…, then Open."
+                : "No app could open the config file. Open \(file.path) yourself."
+        }
     }
 
     private var defaults: Setup { Setup(builtIn: profile.camera == .builtIn) }

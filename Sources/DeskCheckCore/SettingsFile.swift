@@ -84,6 +84,30 @@ public final class SettingsFile {
         }
     }
 
+    /// The settings file with its sandbox permission switched on, for handing to another app (the default editor).
+    /// Opening it elsewhere needs the same saved permission as reading it, so keep it until `release` runs; it is safe to call twice.
+    public struct Access {
+        public let file: URL
+        private let stop: () -> Void
+        fileprivate init(file: URL, stop: @escaping () -> Void) {
+            self.file = file
+            self.stop = stop
+        }
+        public func release() { stop() }
+    }
+
+    public func beginAccess() throws -> Access {
+        let location = try resolve()
+        let accessing = location.startAccessingSecurityScopedResource()
+        nonisolated(unsafe) var active = accessing
+        return Access(file: location) {
+            if active {
+                active = false
+                location.stopAccessingSecurityScopedResource()
+            }
+        }
+    }
+
     /// Only a refused read is fixed by choosing the file; other failures keep their own diagnosis.
     private static func isAccessDenied(_ error: Error) -> Bool {
         let error = error as NSError
