@@ -32,6 +32,23 @@ final class GlobalHotKey {
         return status == noErr
     }
 
+    /// Releases the current combination so that, while the person records a new one, pressing the old one does
+    /// nothing. `register` or the panel's refresh puts a shortcut back.
+    func pause() { register(nil) { [action] in action?() } }
+
+    /// True when macOS itself uses the combination (an enabled entry in Keyboard Shortcuts), which Carbon would
+    /// still let this app register without ever receiving it.
+    static func isSystemShortcut(_ shortcut: KeyShortcut) -> Bool {
+        var unmanaged: Unmanaged<CFArray>?
+        guard CopySymbolicHotKeys(&unmanaged) == noErr, let list = unmanaged?.takeRetainedValue() as? [[String: Any]]
+        else { return false }
+        return list.contains {
+            ($0[kHISymbolicHotKeyEnabled as String] as? Bool) == true
+                && ($0[kHISymbolicHotKeyCode as String] as? Int) == Int(shortcut.keyCode)
+                && ($0[kHISymbolicHotKeyModifiers as String] as? Int) == Int(shortcut.modifiers)
+        }
+    }
+
     private func installHandlerOnce() {
         guard handler == nil else { return }
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))

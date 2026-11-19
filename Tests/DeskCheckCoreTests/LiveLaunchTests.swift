@@ -42,7 +42,8 @@ import Testing
     }
 
     @Test func theSettingsFileLineIsReadAndAbsenceIsFine() throws {
-        #expect(DeskConfig(text: DeskConfig.starterContents).liveShortcut == nil)  // only a comment in the starter file
+        // An absent line means the default, so a new install works without editing the file.
+        #expect(DeskConfig(text: DeskConfig.starterContents).liveShortcut == KeyShortcut("hyper+w"))
         let config = DeskConfig(text: "[preferences]\nlive_shortcut = \"hyper+z\"\n")
         #expect(config.liveShortcutText == "hyper+z")
         #expect(config.liveShortcut == KeyShortcut("hyper+z"))
@@ -66,5 +67,61 @@ import Testing
         #expect(reread.autoSwitch)
         #expect(reread.liveShortcut == KeyShortcut("hyper+z"))
         #expect(reread.document.text.contains("# my keys"))
+    }
+
+    /// The captain chose hyper+w as the default and an empty string as the way to switch it off.
+    @Test func anEmptyLineMeansOffAndAbsentMeansTheDefault() {
+        let off = DeskConfig(text: "[preferences]\nlive_shortcut = \"\"\n")
+        #expect(off.liveShortcutText == nil)
+        #expect(off.liveShortcut == nil)
+        #expect(DeskConfig(text: "").liveShortcutText == "hyper+w")
+    }
+
+    /// The recorder reads a key code and the held modifiers; what it writes must read back as the same shortcut.
+    @Test func aRecordedKeyWritesTextThatParsesBack() throws {
+        let hyper = KeyShortcut.command | KeyShortcut.shift | KeyShortcut.option | KeyShortcut.control
+        let recorded = try #require(KeyShortcut(keyCode: 13, modifiers: hyper))
+        #expect(recorded.text == "hyper+w")
+        #expect(recorded.symbol == "⌃⌥⇧⌘W")
+        for (code, mods, text) in [
+            (UInt32(37), KeyShortcut.control | KeyShortcut.option, "ctrl+opt+l"),
+            (UInt32(49), KeyShortcut.command | KeyShortcut.shift, "cmd+shift+space"),
+            (UInt32(18), KeyShortcut.command, "cmd+1"),
+        ] {
+            let shortcut = try #require(KeyShortcut(keyCode: code, modifiers: mods))
+            #expect(shortcut.text == text)
+            #expect(KeyShortcut(shortcut.text) == shortcut)
+        }
+    }
+
+    /// Caps Lock and Fn must not change the shortcut, a bare key would steal typing, and keys the file cannot
+    /// hold (arrows, F-keys, Return) are refused.
+    @Test func theRecorderIgnoresStrayModifiersAndRefusesWhatTheFileCannotHold() throws {
+        let capsLockAndFn: UInt32 = 0x10000 | 0x800000
+        let withStray = try #require(KeyShortcut(keyCode: 13, modifiers: KeyShortcut.control | capsLockAndFn))
+        #expect(withStray == KeyShortcut("ctrl+w"))
+        #expect(KeyShortcut(keyCode: 13, modifiers: capsLockAndFn) == nil)
+        #expect(KeyShortcut(keyCode: 13, modifiers: 0) == nil)
+        for code: UInt32 in [36, 123, 122, 53] {  // Return, left arrow, F1, Esc
+            #expect(KeyShortcut(keyCode: code, modifiers: KeyShortcut.command) == nil, "\(code)")
+        }
+    }
+
+    /// Recording writes at once into the file, keeps the person's comments, and "off" survives a reload.
+    @Test func settingTheShortcutRewritesOnlyItsLine() throws {
+        var config = DeskConfig(text: "[preferences]\n# my keys\nlive_shortcut = \"hyper+z\" # old\nauto_switch = true\n")
+        let new = try #require(KeyShortcut("ctrl+opt+l"))
+        config.setLiveShortcut(new)
+        #expect(DeskConfig(text: config.document.text).liveShortcut == new)
+        #expect(config.document.text.contains("# my keys"))
+        #expect(config.autoSwitch)
+        config.setLiveShortcut(nil)
+        let reread = DeskConfig(text: config.document.text)
+        #expect(reread.liveShortcutText == nil)
+        // Without a recorded line the starter file's comment becomes the real line.
+        var starter = DeskConfig(text: DeskConfig.starterContents)
+        starter.setLiveShortcut(new)
+        #expect(starter.document.text.contains("\nlive_shortcut = \"ctrl+opt+l\""))
+        #expect(!starter.document.text.contains("# live_shortcut"))
     }
 }

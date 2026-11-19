@@ -32,6 +32,8 @@ final class PostureChecker: NSObject, ObservableObject {
     @Published private(set) var settingsWarning: String?
     @Published var choosingSettingsFile = false
     private var observers: [NSObjectProtocol] = []
+    /// Set by the panel: reads `live_shortcut` again and registers it. False when macOS refused the combination.
+    var refreshLiveShortcut: (() -> Bool)?
 
     let settings: SettingsFile
     let live: LiveController
@@ -68,6 +70,37 @@ final class PostureChecker: NSObject, ObservableObject {
         }
         reset()
         reloadSetups()
+    }
+
+    /// Saves a recorded shortcut (nil for off) at once and registers it without a restart. Returns nil on success, or
+    /// a message when the combination is refused; the previous shortcut then stays in the file and registered.
+    func setLiveShortcut(_ shortcut: KeyShortcut?) -> String? {
+        let original = settings.load()
+        let previous = original.liveShortcut
+        if let shortcut, GlobalHotKey.isSystemShortcut(shortcut) {
+            _ = refreshLiveShortcut?()
+            return "\(shortcut.symbol) is already a macOS keyboard shortcut. \(Self.kept(previous))"
+        }
+        var updated = original
+        updated.setLiveShortcut(shortcut)
+        do { try settings.save(updated) } catch {
+            _ = refreshLiveShortcut?()
+            return "Could not save the shortcut: \(error.localizedDescription)"
+        }
+        if refreshLiveShortcut?() == false, let shortcut {
+            // Another app holds it: put the file and the registration back as they were.
+            try? settings.save(original)
+            _ = refreshLiveShortcut?()
+            return "\(shortcut.symbol) is already used by another app. \(Self.kept(previous))"
+        }
+        return nil
+    }
+
+    /// Puts the saved shortcut back after a recording that changed nothing.
+    func restoreLiveShortcut() { _ = refreshLiveShortcut?() }
+
+    private static func kept(_ previous: KeyShortcut?) -> String {
+        previous.map { "Kept \($0.symbol)." } ?? "The shortcut stays off."
     }
 
     /// With auto switching on, a webcam plugged in or out moves to the setup that fits what is connected.

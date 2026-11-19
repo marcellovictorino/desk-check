@@ -59,4 +59,39 @@ public struct KeyShortcut: Equatable, Sendable {
         self.keyCode = key
         self.modifiers = modifiers
     }
+
+    /// The shortcut for a key pressed with these modifiers, as the recorder sees it. Only Command, Shift, Option and
+    /// Control count; anything else in `modifiers` (Caps Lock, Fn) is ignored. Nil for a key the file cannot hold
+    /// (letters, digits and Space only) or for no modifier.
+    public init?(keyCode: UInt32, modifiers: UInt32) {
+        let held = modifiers & Self.allModifiers
+        guard held != 0, Self.keys.contains(where: { $0.value == keyCode }) else { return nil }
+        self.keyCode = keyCode
+        self.modifiers = held
+    }
+
+    private static let allModifiers = command | shift | option | control
+
+    private var keyName: String { Self.keys.first { $0.value == keyCode }?.key ?? "" }
+
+    /// The text written in the settings file, such as `hyper+w` or `ctrl+opt+l`. It parses back to this shortcut.
+    public var text: String {
+        if modifiers == Self.allModifiers { return "hyper+\(keyName)" }
+        var parts: [String] = []
+        if modifiers & Self.command != 0 { parts.append("cmd") }
+        if modifiers & Self.control != 0 { parts.append("ctrl") }
+        if modifiers & Self.option != 0 { parts.append("opt") }
+        if modifiers & Self.shift != 0 { parts.append("shift") }
+        return (parts + [keyName]).joined(separator: "+")
+    }
+
+    /// The same shortcut as the symbols a Mac menu shows, such as ⌃⌥⇧⌘W.
+    public var symbol: String {
+        var out = ""
+        if modifiers & Self.control != 0 { out += "⌃" }
+        if modifiers & Self.option != 0 { out += "⌥" }
+        if modifiers & Self.shift != 0 { out += "⇧" }
+        if modifiers & Self.command != 0 { out += "⌘" }
+        return out + (keyName == "space" ? "Space" : keyName.uppercased())
+    }
 }

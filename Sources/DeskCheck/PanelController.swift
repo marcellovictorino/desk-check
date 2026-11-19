@@ -30,6 +30,7 @@ final class PanelController: NSObject, NSPopoverDelegate {
         let host = NSHostingController(rootView: PopoverView(checker: checker))
         host.sizingOptions = .preferredContentSize
         popover.contentViewController = host
+        checker.refreshLiveShortcut = { [weak self] in self?.refreshShortcut() ?? false }
         checker.live.popoverIsVisible = { [weak self] in self?.popover.isShown ?? false }
         // The system's camera permission prompt takes focus, which would close a transient popover and cancel Live
         // before it starts. Keep the panel open until the prompt is answered, then take the keys back.
@@ -107,13 +108,15 @@ final class PanelController: NSObject, NSPopoverDelegate {
     }
 
     /// Reads `live_shortcut` from the settings file and registers it. Called at launch and whenever the panel opens.
-    func refreshShortcut() {
+    /// Returns false when macOS refused the combination, for example because another app holds it.
+    @discardableResult
+    func refreshShortcut() -> Bool {
         let config = checker.settings.load()
         let shortcut = config.liveShortcut
         if let text = config.liveShortcutText, shortcut == nil {
             log.error("live_shortcut \"\(text, privacy: .public)\" is not a key combination Desk Check understands")
         }
-        GlobalHotKey.shared.register(shortcut) { [weak self] in self?.toggleLive() }
+        return GlobalHotKey.shared.register(shortcut) { [weak self] in self?.toggleLive() }
     }
 
     // MARK: NSPopoverDelegate

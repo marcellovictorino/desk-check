@@ -226,6 +226,7 @@ struct SettingsView: View {
     @ViewState private var message = ""
     @ViewState private var hovered: GuideField?
     @FocusState private var focused: GuideField?
+    @StateObject private var recorder = ShortcutRecorder()
 
     struct Fields {
         var distance = "", screenTop = "", lens = "", height = "", seatedEye = "", elbow = "", sitDesk = "", standDesk = ""
@@ -249,11 +250,13 @@ struct SettingsView: View {
             checker.refreshPermission()
             load()
         }
+        .onDisappear { recorder.cancel(checker) }
     }
 
     private var form: some View {
         Form {
             Text(InstructionText.settings).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            liveShortcutSection
             Section("Setup") {
                 Picker("Setup", selection: Binding(get: { checker.activeSetup }, set: { switchSetup(to: $0) })) {
                     ForEach(checker.setupNames, id: \.self) { Text($0).tag($0) }
@@ -344,6 +347,34 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .clearFormBackground()
         .disabled(checker.settingsWarning != nil)
+    }
+
+    /// Pressing Record and then the keys sets `live_shortcut`; it is saved and active at once.
+    private var liveShortcutSection: some View {
+        let config = checker.settings.load()
+        let shortcut = config.liveShortcut
+        return Section("Live shortcut") {
+            HStack {
+                Text(shortcut?.symbol ?? (config.liveShortcutText.map { "Not recognised: \($0)" } ?? "Off"))
+                    .font(.system(.title3, design: .rounded, weight: .medium))
+                    .accessibilityLabel("Live shortcut")
+                Spacer()
+                Button(recorder.isRecording ? "Press the keys…" : "Record") {
+                    if recorder.isRecording { recorder.cancel(checker) } else { recorder.start(checker) }
+                }.glassButton(prominent: recorder.isRecording)
+                Button("Clear") { recorder.clear(checker) }.glassButton()
+                    .disabled(config.liveShortcutText == nil && !recorder.isRecording)
+            }
+            Text(
+                recorder.isRecording
+                    ? "Press the keys you want, with Control, Option, Shift or Command. Esc cancels; Delete turns it off."
+                    : "Starts Live from anywhere in macOS; the same keys stop it. It is saved as soon as you press the keys."
+            )
+            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if !recorder.message.isEmpty {
+                Text(recorder.message).font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
+        }.glassSection()
     }
 
     private var settingsFileControls: some View {
