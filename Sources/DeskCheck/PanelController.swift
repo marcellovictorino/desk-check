@@ -112,8 +112,11 @@ final class PanelController: NSObject, NSPopoverDelegate {
     @discardableResult
     func refreshShortcut() -> Bool {
         let config = checker.settings.load()
-        let shortcut = config.liveShortcut
-        if let text = config.liveShortcutText, shortcut == nil {
+        // An unreadable file loads as the starter file, whose absent line would mean the default: register nothing
+        // until the person's real file can be read, so a shortcut they switched off stays off.
+        let readable = checker.settings.loadWarning == nil
+        let shortcut = readable ? config.liveShortcut : nil
+        if readable, let text = config.liveShortcutText, shortcut == nil {
             log.error("live_shortcut \"\(text, privacy: .public)\" is not a key combination Desk Check understands")
         }
         return GlobalHotKey.shared.register(shortcut) { [weak self] in self?.toggleLive() }
