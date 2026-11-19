@@ -40,8 +40,8 @@ the camera once more after an upgrade, because the permission is tied to the exa
   default (Hyper is Shift, Control, Option and Command together). Change it in Settings:
   press **Record**, then the keys you want (a letter, digit or Space with at least one
   modifier). It is saved and active at once; Esc cancels and **Clear** turns it off. It needs no
-  permission, and Desk Check refuses a combination another app or macOS already uses and keeps
-  the old one. The settings file holds it as `live_shortcut = "ctrl+opt+l"` under
+  permission. Desk Check refuses a combination macOS uses, or that another app has claimed
+  exclusively, and keeps the old one; an app that shares the combination would react as well. The settings file holds it as `live_shortcut = "ctrl+opt+l"` under
   `[preferences]`: an absent line means `hyper+w`, and `live_shortcut = ""` means off.
 
 For accurate numbers, enter your tape measurements in Settings (the gear in the popover) and
