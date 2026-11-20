@@ -59,6 +59,12 @@ import Testing
         #expect(LiveEngine.advise(reading(distance: 45), setup: measured, fixed: []).first!.direction == .further)
     }
 
+    @Test func adviceComesInTheOrderToAdjust() {
+        // Intent: distance, then desk (wrists), then screen; moving the screen shifts the desk reading.
+        let advice = LiveEngine.advise(reading(), setup: measured, fixed: [])
+        #expect(advice.map(\.adjustment) == [.screenDistance, .deskHeight, .screenHeight])
+    }
+
     @Test func macBookSeatedSetupShowsOnlyDistance() {
         let laptop = SetupProfile.laptop(name: "Sofa")
         let advice = LiveEngine.advise(reading(distance: 80), setup: laptop.measurements, fixed: laptop.fixed)

@@ -41,7 +41,7 @@ public struct LiveAdvice: Equatable, Sendable {
 }
 
 public enum LiveEngine {
-    /// Screen height, screen distance and desk height. Fixed adjustments are left out: they cannot be moved here.
+    /// Screen distance, desk height and screen height, in the order to adjust them. Fixed adjustments are left out: they cannot be moved here.
     public static func advise(_ r: PostureReading, setup: Setup, fixed: Set<Adjustment>) -> [LiveAdvice] {
         var out: [LiveAdvice] = []
         if !fixed.contains(.screenDistance) {
@@ -52,6 +52,13 @@ public enum LiveEngine {
                     .screenDistance, Band.distance.level(of: r.distanceCm), off > 0 ? .closer : .further, off,
                     noun: "screen", closer: "Bring the screen closer", further: "Move the screen further away"))
         }
+        if !fixed.contains(.deskHeight) {
+            // The desk should sit 3 cm below the elbow, so the eyes sit one eye-to-elbow gap plus 3 cm above it.
+            let target = setup.eyeToElbow + Band.deskBelowElbowCm
+            let off = r.eyeHeightAboveDeskCm - target
+            let level = Band(target: 0, green: Band.desk.green, yellow: Band.desk.yellow).level(of: off)
+            out.append(make(.deskHeight, level, off > 0 ? .up : .down, off, noun: "desk", up: "Raise the desk", down: "Lower the desk"))
+        }
         if !fixed.contains(.screenHeight) {
             // Eyes higher above the screen top than the target means the screen is too low.
             let off = r.eyeAboveScreenTopCm - Band.screenTop.target
@@ -59,13 +66,6 @@ public enum LiveEngine {
                 make(
                     .screenHeight, Band.screenTop.level(of: r.eyeAboveScreenTopCm), off > 0 ? .up : .down, off,
                     noun: "screen", up: "Raise the screen", down: "Lower the screen"))
-        }
-        if !fixed.contains(.deskHeight) {
-            // The desk should sit 3 cm below the elbow, so the eyes sit one eye-to-elbow gap plus 3 cm above it.
-            let target = setup.eyeToElbow + Band.deskBelowElbowCm
-            let off = r.eyeHeightAboveDeskCm - target
-            let level = Band(target: 0, green: Band.desk.green, yellow: Band.desk.yellow).level(of: off)
-            out.append(make(.deskHeight, level, off > 0 ? .up : .down, off, noun: "desk", up: "Raise the desk", down: "Lower the desk"))
         }
         return out
     }
