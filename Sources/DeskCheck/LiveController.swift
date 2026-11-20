@@ -15,7 +15,7 @@ final class LiveController: ObservableObject {
 
     @Published private(set) var isRunning = false
     private var run = LiveRun()
-    @Published private(set) var advice: [LiveAdvice] = []
+    @Published internal(set) var advice: [LiveAdvice] = []  // settable so view tests can draw populated bands
     @Published private(set) var statusText = LiveController.offText
     @Published private(set) var setupName = ""
     /// Adjustable rows of the setup in use; the live view reserves room for them so Stop never moves.

@@ -62,6 +62,17 @@ import Testing
         try await save(
             LiveView(live: live).padding(14).frame(width: 320), capture: liveCapture,
             title: "Live", width: 320, swiftUI: true, to: directory)
+        // Intent: with rows showing, the hint sits above the bands and they read distance, desk, screen. Synthetic readings.
+        live.advice = LiveEngine.advise(
+            PostureReading(distanceCm: 80, eyeAboveScreenTopCm: 6, eyeHeightAboveDeskCm: 60),
+            setup: Setup(userHeightCm: 175, eyeToElbowCm: 50), fixed: [])
+        try await save(
+            LiveView(live: live).padding(14).frame(width: 320),
+            capture: Capture(
+                file: "live-populated.png", renderer: "SwiftUI ImageRenderer",
+                limitation: "No popover chrome; glass fidelity unverified. Camera off: synthetic readings, not a live session."),
+            title: "Live with rows", width: 320, swiftUI: true, to: directory)
+        live.advice = []
         checker.showingSettings = true
         try await save(
             PopoverView(checker: checker), capture: settings,
