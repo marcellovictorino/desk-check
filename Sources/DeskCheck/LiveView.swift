@@ -27,6 +27,8 @@ struct LiveView: View {
                     }
             }
             Text(InstructionText.live).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(InstructionText.liveOrder).font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             ZStack(alignment: .top) {
                 if live.advice.isEmpty {
                     Text(live.isRunning ? "Waiting for a steady reading…" : LiveController.offText)
@@ -68,6 +70,7 @@ extension LiveView {
 enum InstructionText {
     static let popover = "Check desk measures once. Live shows the bands while you move the desk."
     static let live = "Move the desk or screen until every band is green. Stop turns the camera off."
+    static let liveOrder = "Desk first, for your wrists. Moving the screen also moves the desk reading."
     static let settings = "Measure with a tape, type centimetres, then Save. Hover a field to see where the tape runs."
 }
 
